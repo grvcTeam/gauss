@@ -2,10 +2,13 @@
 #include <gauss_msgs/Track.h>
 #include <gauss_msgs/Plan.h>
 #include <gauss_msgs/ReadTrack.h>
+#include <gauss_msgs/ReadAllTrack.h>
 #include <gauss_msgs/WriteTrack.h>
 #include <gauss_msgs/ReadPlan.h>
+#include <gauss_msgs/ReadAllPlan.h>
 #include <gauss_msgs/WritePlan.h>
 #include <gauss_msgs/ReadGeofence.h>
+#include <gauss_msgs/ReadAllGeofence.h>
 #include <gauss_msgs/WriteGeofence.h>
 
 #define DB_SIZE 100
@@ -21,10 +24,13 @@ private:
 
     // Service Callbacks
     bool readTrackCB(gauss_msgs::ReadTrack::Request &req, gauss_msgs::ReadTrack::Response &res);
+    bool readAllTrackCB(gauss_msgs::ReadAllTrack::Request &req, gauss_msgs::ReadAllTrack::Response &res);
     bool writeTrackCB(gauss_msgs::WriteTrack::Request &req, gauss_msgs::WriteTrack::Response &res);
     bool readPlanCB(gauss_msgs::ReadPlan::Request &req, gauss_msgs::ReadPlan::Response &res);
+    bool readAllPlanCB(gauss_msgs::ReadAllPlan::Request &req, gauss_msgs::ReadAllPlan::Response &res);
     bool writePlanCB(gauss_msgs::WritePlan::Request &req, gauss_msgs::WritePlan::Response &res);
     bool readGeofenceCB(gauss_msgs::ReadGeofence::Request &req, gauss_msgs::ReadGeofence::Response &res);
+    bool readAllGeofenceCB(gauss_msgs::ReadAllGeofence::Request &req, gauss_msgs::ReadAllGeofence::Response &res);
     bool writeGeofenceCB(gauss_msgs::WriteGeofence::Request &req, gauss_msgs::WriteGeofence::Response &res);
 
     // Auxilary variables
@@ -47,10 +53,13 @@ private:
 
     // Server
     ros::ServiceServer read_track_server_;
+    ros::ServiceServer read_all_track_server_;
     ros::ServiceServer write_track_server_;
     ros::ServiceServer read_plan_server_;
+    ros::ServiceServer read_all_plan_server_;
     ros::ServiceServer write_plan_server_;
     ros::ServiceServer read_geofences_server_;
+    ros::ServiceServer read_all_geofence_server_;
     ros::ServiceServer write_geofences_server_;
 
 };
@@ -73,10 +82,13 @@ DataBase::DataBase()
 
     // Server
     read_track_server_=nh_.advertiseService("/gauss/readTrack",&DataBase::readTrackCB,this);
+    read_all_track_server_=nh_.advertiseService("/gauss/readAllTracks",&DataBase::readAllTrackCB,this);
     write_track_server_=nh_.advertiseService("/gauss/writeTrack",&DataBase::writeTrackCB,this);
     read_plan_server_=nh_.advertiseService("/gauss/readPlan",&DataBase::readPlanCB,this);
+    read_all_plan_server_=nh_.advertiseService("/gauss/readAllPlans",&DataBase::readAllPlanCB,this);
     write_plan_server_=nh_.advertiseService("/gauss/writePlan",&DataBase::writePlanCB,this);
     read_geofences_server_=nh_.advertiseService("/gauss_msgs/readGeofence",&DataBase::readGeofenceCB,this);
+    read_all_geofence_server_=nh_.advertiseService("/gauss/readAllGeofence",&DataBase::readAllGeofenceCB,this);
     write_geofences_server_=nh_.advertiseService("/gauss/writeGeofence",&DataBase::writeGeofenceCB,this);
 
     ROS_INFO("Started DataBase node!");
@@ -101,6 +113,18 @@ bool DataBase::readTrackCB(gauss_msgs::ReadTrack::Request &req, gauss_msgs::Read
         }
     }
     res.success=false;
+    return true;
+}
+
+// Read All Tracks callback
+bool DataBase::readAllTrackCB(gauss_msgs::ReadAllTrack::Request &req, gauss_msgs::ReadAllTrack::Response &res)
+{
+    res.size=size_tracks;
+    for (int i=0; i<size_tracks; i++)
+    {
+        res.tracks.push_back(tracks[i]);
+    }
+    res.success=true;
     return true;
 }
 
@@ -162,6 +186,17 @@ bool DataBase::readPlanCB(gauss_msgs::ReadPlan::Request &req, gauss_msgs::ReadPl
     return true;
 }
 
+// Read All Plans callback
+bool DataBase::readAllPlanCB(gauss_msgs::ReadAllPlan::Request &req, gauss_msgs::ReadAllPlan::Response &res)
+{
+    res.size=size_plans;
+    for (int i=0; i<size_plans; i++)
+    {
+        res.plans.push_back(plans[i]);
+    }
+    res.success=true;
+    return true;
+}
 
 // WritePlan callback
 bool DataBase::writePlanCB(gauss_msgs::WritePlan::Request &req, gauss_msgs::WritePlan::Response &res)
@@ -236,6 +271,25 @@ bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofence::Request &req, gauss_msgs
     }
 
     res.success=false;
+    return true;
+}
+
+// ReadAllGeofence callback
+bool DataBase::readAllGeofenceCB(gauss_msgs::ReadAllGeofence::Request &req, gauss_msgs::ReadAllGeofence::Response &res)
+{
+    if (req.type==0)
+    {
+        res.size=size_static_geofences;
+        for (int i=0; i<size_static_geofences; i++)
+            res.geofences.push_back(static_geofences[i]);
+    }
+    else if (req.type==1)
+    {
+        res.size=size_temp_geofences;
+        for (int i=0; i<size_temp_geofences; i++)
+            res.geofences.push_back(temp_geofences[i]);
+    }
+    res.success=true;
     return true;
 }
 

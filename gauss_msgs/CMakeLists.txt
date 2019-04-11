@@ -78,6 +78,11 @@ find_package(catkin REQUIRED COMPONENTS
    WritePlan.srv
    ReadGeofence.srv
    WriteGeofence.srv
+   Alert.srv
+   Deconflict.srv
+   ReadAllGeofence.srv
+   ReadAllPlan.srv
+   ReadAllTrack.srv
 #   Service2.srv
  )
 
