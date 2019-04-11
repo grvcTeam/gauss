@@ -1,0 +1,5 @@
+int32 id
+int8 type # 0:static, 1:temporary
+---
+Geofence geofence
+bool success
