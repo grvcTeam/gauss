@@ -1,0 +1,4 @@
+int32 id
+Emergency emergency
+---
+bool success

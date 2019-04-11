@@ -1,0 +1,5 @@
+int8 type # 0:static, 1:temporary
+---
+Geofence[] geofences
+int32 size
+bool success
