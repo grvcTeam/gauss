@@ -63,7 +63,9 @@ find_package(catkin REQUIRED COMPONENTS
    Track.msg
    Traffic.msg
    Geofence.msg
+   Jamming.msg
    Emergency.msg
+   RPICaction.msg
 #   Message1.msg
 #   Message2.msg
  )

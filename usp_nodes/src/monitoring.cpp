@@ -170,23 +170,22 @@ void Monitoring::geofenceApproaching()
     // Comprueba si track se mete en algún geofence, usa geofences y track
     if (false) // Si track se acerca a algún geofence
     {
-        traffic.warnings_id.push_back(2); // TBD 2: Geofence approach
+        traffic.warnings_id.push_back(2); // TBD 2: Static Geofence approach or 3: Temporary Geofences approach
         traffic.warnings_description.push_back("TBD");
 
         // Comprueba si está dentro de un geofence
         if (false)  // Si UAV está dentro de un geofence
         {
             emergency_msg.request.id=id;
-            emergency_msg.request.emergency.emergency_id=2; // Geofence violation TBD
+            emergency_msg.request.emergency.emergency_id=2; // 2: Static  or 3: Temporary Geofence violation TBD
             emergency_msg.request.emergency.emergency_description="TBD";
-            emergency_msg.request.emergency.ids.push_back(geofences[1].id); // se incluye el id del geofence
+            emergency_msg.request.emergency.geofences.push_back(geofences[1].id); // se incluye el id del geofence
             if (!alert_client_.call(emergency_msg) || !emergency_msg.response.success)
                 ROS_ERROR("[Monitoring]: Failed calling Emergency management service.");
             else
                 ROS_INFO("[Monitoring]: Emergency management service called.");
         }
     }
-
 }
 
 void Monitoring::conflictDetection()
@@ -233,8 +232,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             ROS_INFO("[Monitoring]: Flight plan read");
         }
     }
-
-
 
     if (plan_read)
         planDeviation();

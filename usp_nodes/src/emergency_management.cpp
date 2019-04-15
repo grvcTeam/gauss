@@ -1,46 +1,59 @@
 #include <ros/ros.h>
 #include <gauss_msgs/PositionReport.h>
-#include <gauss_msgs/trajectory.h>
-#include <gauss_msgs/GetTrack.h>
-
+#include <gauss_msgs/Emergency.h>
+#include <gauss_msgs/Alert.h>
+#include <gauss_msgs/RPICaction.h>
+#include <gauss_msgs/ReadGeofence.h>
+#include <gauss_msgs/ReadAllGeofence.h>
+#include <gauss_msgs/WriteGeofence.h>
+#include <gauss_msgs/ReadPlan.h>
+#include <gauss_msgs/ReadTrack.h>
 
 
 // Class definition
-class Tracking
+class EmergencyManagement
 {
 public:
-    Tracking();
+    EmergencyManagement();
 
 private:
     // Topic Callbacks
-    void positionReportCB(const gauss_msgs::PositionReport::ConstPtr& msg);
 
     // Service Callbacks
-    bool getPositionCB(gauss_msgs::GetTrack::Request &req, gauss_msgs::GetTrack::Response &res);
+    bool alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res);
+
+    // Auxilary methods
+    void returnToPlan(gauss_msgs::Track track, gauss_msgs::Plan plan);
+    void leaveGeofence(gauss_msgs::Track, gauss_msgs::Geofence geofence);
+    bool checkGeofence(gauss_msgs::Geofence obstacle, gauss_msgs::Geofence *geofences);
 
     // Auxilary variables
-    gauss_msgs::PositionReport position;
-    gauss_msgs::trajectory track_in;
-    gauss_msgs::trajectory track_out;
+    gauss_msgs::RPICaction action;
 
 
     ros::NodeHandle nh_;
 
 
     // Subscribers
-    ros::Subscriber pos_report_sub_;
 
     // Publisher
+    ros::Publisher action_pub_;
 
     // Timer
 
     // Server
-    ros::ServiceServer position_server_;
+    ros::ServiceServer alert_server_;
 
+    // Client
+    ros::ServiceClient read_track_client_;
+    ros::ServiceClient read_geofence_client_;     
+    ros::ServiceClient read_all_geofence_client_;
+    ros::ServiceClient write_geofence_client_;
+    ros::ServiceClient read_plan_client_;
 };
 
-// positionReporting Constructor
-Tracking::Tracking()
+// EmergencyManagement Constructor
+EmergencyManagement::EmergencyManagement()
 {
     // Read parameters
     //nh_.param("desired_altitude",desired_altitude,0.5);
@@ -50,46 +63,152 @@ Tracking::Tracking()
 
 
     // Publish
+    action_pub_ = nh_.advertise<gauss_msgs::RPICaction>("/gauss/rpic_action",1);
 
     // Subscribe
-    pos_report_sub_=nh_.subscribe<gauss_msgs::PositionReport>("/gauss/position_report",1,&Tracking::positionReportCB,this);
 
     // Server
-    position_server_=nh_.advertiseService("/gauss/get_tracks",&Tracking::getPositionCB,this);
+    alert_server_=nh_.advertiseService("/gauss/alert_emergency",&EmergencyManagement::alertEmergencyCB,this);
 
-    ROS_INFO("Started Tracking node!");
+    // Clients
+    read_track_client_ = nh_.serviceClient<gauss_msgs::ReadTrack>("/gauss/readTrack");
+    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofence>("/gauss_msgs/readGeofence");        
+    read_all_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadAllGeofence>("/gauss_msgs/readAllGeofence");
+    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofence>("/gauss_msgs/writeGeofence");
+    read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadPlan>("/gauss/readPlan");
+
+    ROS_INFO("Started EmergencyManagement node!");
 }
 
-
-
-// PositionReport callback
-void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
+// Auxilary methods
+void EmergencyManagement::returnToPlan(gauss_msgs::Track track, gauss_msgs::Plan plan)
 {
-    int id=msg->id;
-    position=*msg;
-
-    // si no hay id, buscar en DB de flight plans cual puede ser
-    // si no puede ser ninguno, guardar tracks como desconocido id=-1
-    // si hay id
-    // leer de DB flight plans de id
-    // leer de DB tracks de id y pasarlo a tracks_in
-    // insertar position en tracks in (filtro)
-    // subir de nuevo tracks_in a DB según id
+    gauss_msgs::Position4D new_position;
+    // Calcula mejor ruta para volver a plan
+    action.positions.push_back(new_position);
 }
 
-// GetTracks callback
-bool Tracking::getPositionCB(gauss_msgs::GetTrack::Request &req, gauss_msgs::GetTrack::Response &res)
+void EmergencyManagement::leaveGeofence(gauss_msgs::Track, gauss_msgs::Geofence geofence)
 {
-    int id = req.id;
+    gauss_msgs::Position4D new_position;
+    // Calcula mejor ruta para dejar geofence
+    action.positions.push_back(new_position);
+}
 
-    // Search tracks from id in DB --> track_out
-
-    if (true)  // si hay un track para id en la DB
-    {
-        res.track=track_out;
+bool EmergencyManagement::checkGeofence(gauss_msgs::Geofence obstacle, gauss_msgs::Geofence *geofences)
+{
+    // Comprueba si el obstaculo esta ya en la lista de gefences
+    if (true)
         return true;
+    else
+        return false;
+}
+
+// Alert callback
+bool EmergencyManagement::alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res)
+{
+    int alert_type=req.emergency.emergency_id;
+    gauss_msgs::ReadTrack track_msg;
+    gauss_msgs::ReadPlan plan_msg;
+    gauss_msgs::ReadGeofence geofence_msg;
+    gauss_msgs::ReadAllGeofence ageofence_msg;
+    gauss_msgs::WriteGeofence wgeofence_msg;
+
+    switch (alert_type) {
+    case 1: // Plan deviation TBC
+        track_msg.request.id=req.emergency.ids[0];
+        plan_msg.request.id=req.emergency.ids[0];
+        if (!read_track_client_.call(track_msg) || !track_msg.response.success)
+            ROS_ERROR("[EmergencyManagement]: Failed reading track.");
+        else
+            ROS_INFO("[EmergencyManagement]:Track read.");
+        if (!read_plan_client_.call(plan_msg) || !plan_msg.response.success)
+            ROS_ERROR("[EmergencyManagement]: Failed reading plan.");
+        else
+            ROS_INFO("[EmergencyManagement]:Plan read.");
+        action.header.stamp=ros::Time::now();
+        action.id=req.emergency.ids[0];;
+        action.action_description="Return to predefined flight plan";
+        action.action=1; //TBC returnToPlan
+        returnToPlan(track_msg.response.track,plan_msg.response.plan);
+        action_pub_.publish(action);
+        break;
+    case 2: // Static Geofence Violation TBC
+        track_msg.request.id=req.emergency.ids[0];
+        geofence_msg.request.type=0; // Static geofences
+        geofence_msg.request.id=req.emergency.geofences[0];
+        if (!read_track_client_.call(track_msg) || !track_msg.response.success)
+            ROS_ERROR("[EmergencyManagement]: Failed reading track.");
+        else
+            ROS_INFO("[EmergencyManagement]:Track read.");
+        if (!read_geofence_client_.call(geofence_msg) || !geofence_msg.response.success)
+            ROS_ERROR("[EmergencyManagement]: Failed reading static geofence.");
+        else
+            ROS_INFO("[EmergencyManagement]: Static Geofence read.");
+        action.header.stamp=ros::Time::now();
+        action.id=req.emergency.ids[0];
+        action.action_description="Leave static geofence.";
+        action.action=2; //TBC Leave static geofence
+        leaveGeofence(track_msg.response.track,geofence_msg.response.geofence);
+        action_pub_.publish(action);
+        break;
+    case 3: // Temporary Geofence Violation TBC
+        track_msg.request.id=req.emergency.ids[0];
+        geofence_msg.request.type=1; // Temporary geofences
+        geofence_msg.request.id=req.emergency.geofences[0];
+        if (!read_track_client_.call(track_msg) || !track_msg.response.success)
+            ROS_ERROR("[EmergencyManagement]: Failed reading track.");
+        else
+            ROS_INFO("[EmergencyManagement]:Track read.");
+        if (!read_geofence_client_.call(geofence_msg) || !geofence_msg.response.success)
+            ROS_ERROR("[EmergencyManagement]: Failed reading temporary geofence.");
+        else
+            ROS_INFO("[EmergencyManagement]:Temporary Geofence read.");
+        action.header.stamp=ros::Time::now();
+        action.id=req.emergency.ids[0];
+        action.action_description="Leave temporary geofence.";
+        action.action=3; //TBC leave temporary geofence
+        leaveGeofence(track_msg.response.track,geofence_msg.response.geofence);
+        action_pub_.publish(action);
+        break;
+    case 4: // Unexpected obstacle TBC  --> escribimos un nuevo geofence... TBD
+        ageofence_msg.request.type=0; // Static geofences
+        if (!read_all_geofence_client_.call(ageofence_msg) || !ageofence_msg.response.success)
+            ROS_ERROR("[EmergencyManagement]: Failed reading Static geofence.");
+        else
+        {
+            ROS_INFO("[EmergencyManagement]:Static Geofence read.");
+            if (!checkGeofence(req.emergency.obstacle,&ageofence_msg.response.geofences[0]))
+            {
+                ageofence_msg.request.type=1; // Temporary geofences
+                if (!read_all_geofence_client_.call(ageofence_msg) || !ageofence_msg.response.success)
+                    ROS_ERROR("[EmergencyManagement]: Failed reading Temporary geofence.");
+                else
+                {
+                    ROS_INFO("[EmergencyManagement]:Temporary Geofence read.");
+                    if (!checkGeofence(req.emergency.obstacle,&ageofence_msg.response.geofences[0]))
+                    {
+                        wgeofence_msg.request.id=ageofence_msg.response.size;
+                        wgeofence_msg.request.type=1; // Temporary geofences
+                        wgeofence_msg.request.geofence=req.emergency.obstacle;
+                        if (!write_geofence_client_.call(wgeofence_msg) || !wgeofence_msg.response.success)
+                            ROS_ERROR("[EmergencyManagement]: Failed writting Temporary geofence.");
+                        else
+                            ROS_INFO("[EmergencyManagement]:Temporary Geofence writted.");
+                    }
+                }
+            }
+        }
+        break;
+    case 5: // Jamming detection
+        // Update jamming map
+        req.emergency.jamming;
+        break;
+    default:
+        break;
     }
-    return false;
+
+    return true;
 }
 
 
@@ -97,10 +216,10 @@ bool Tracking::getPositionCB(gauss_msgs::GetTrack::Request &req, gauss_msgs::Get
 // MAIN function
 int main(int argc, char *argv[])
 {
-    ros::init(argc,argv,"tracking");
+    ros::init(argc,argv,"emergency_management");
 
-    // Create a Tracking object
-    Tracking *tracking = new Tracking();
+    // Create a EmergencyManagement object
+    EmergencyManagement *emergency_management = new EmergencyManagement();
 
     ros::spin();
 }

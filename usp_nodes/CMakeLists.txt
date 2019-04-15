@@ -151,6 +151,18 @@ add_executable(monitoring src/monitoring.cpp)
 target_link_libraries(monitoring ${catkin_LIBRARIES})
 add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
+add_executable(traffic_information src/traffic_information.cpp)
+target_link_libraries(traffic_information ${catkin_LIBRARIES})
+add_dependencies(traffic_information ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
+add_executable(emergency_management src/emergency_management.cpp)
+target_link_libraries(emergency_management ${catkin_LIBRARIES})
+add_dependencies(emergency_management ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
+add_executable(tactical_deconfliction src/tactical_deconfliction.cpp)
+target_link_libraries(tactical_deconfliction ${catkin_LIBRARIES})
+add_dependencies(tactical_deconfliction ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
