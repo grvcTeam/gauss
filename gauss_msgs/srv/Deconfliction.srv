@@ -1,0 +1,8 @@
+uint8[] UAV_ids
+bool tactical
+WaypointList[] tracks
+WaypointList[] geofences
+---
+bool success
+string message
+WaypointList[] deconflicted_plans
