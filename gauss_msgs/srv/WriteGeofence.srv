@@ -1,5 +1,0 @@
-int32 id
-Geofence geofence
-int8 type # 0:static, 1:temporary
----
-bool success

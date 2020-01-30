@@ -135,13 +135,13 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/usp_nodes_node.cpp)
 
-add_executable(position_report src/position_report.cpp)
-target_link_libraries(position_report ${catkin_LIBRARIES})
-add_dependencies(position_report ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+add_executable(USPmanager src/USPmanager.cpp)
+target_link_libraries(USPmanager ${catkin_LIBRARIES})
+add_dependencies(USPmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
-add_executable(databases src/databases.cpp)
-target_link_libraries(databases ${catkin_LIBRARIES})
-add_dependencies(databases ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+add_executable(DBmanager src/DBmanager.cpp)
+target_link_libraries(DBmanager ${catkin_LIBRARIES})
+add_dependencies(DBmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 add_executable(tracking src/tracking.cpp)
 target_link_libraries(tracking ${catkin_LIBRARIES})
@@ -151,17 +151,17 @@ add_executable(monitoring src/monitoring.cpp)
 target_link_libraries(monitoring ${catkin_LIBRARIES})
 add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
-add_executable(traffic_information src/traffic_information.cpp)
-target_link_libraries(traffic_information ${catkin_LIBRARIES})
-add_dependencies(traffic_information ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+add_executable(FlightPlanManagement src/FlightPlanManagement.cpp)
+target_link_libraries(FlightPlanManagement ${catkin_LIBRARIES})
+add_dependencies(FlightPlanManagement ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 add_executable(emergency_management src/emergency_management.cpp)
 target_link_libraries(emergency_management ${catkin_LIBRARIES})
 add_dependencies(emergency_management ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
-add_executable(tactical_deconfliction src/tactical_deconfliction.cpp)
-target_link_libraries(tactical_deconfliction ${catkin_LIBRARIES})
-add_dependencies(tactical_deconfliction ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+add_executable(ConflictSolver src/ConflictSolver.cpp)
+target_link_libraries(ConflictSolver ${catkin_LIBRARIES})
+add_dependencies(ConflictSolver ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

@@ -1,13 +1,9 @@
 #include <ros/ros.h>
-#include <gauss_msgs/PositionReport.h>
-#include <gauss_msgs/Emergency.h>
 #include <gauss_msgs/Alert.h>
-#include <gauss_msgs/RPICaction.h>
-#include <gauss_msgs/ReadGeofence.h>
-#include <gauss_msgs/ReadAllGeofence.h>
-#include <gauss_msgs/WriteGeofence.h>
-#include <gauss_msgs/ReadPlan.h>
-#include <gauss_msgs/ReadTrack.h>
+#include <gauss_msgs/Deconfliction.h>
+#include <gauss_msgs/WriteGeofences.h>
+#include <gauss_msgs/ReadGeofences.h>
+#include <gauss_msgs/Notification.h>
 
 
 // Class definition
@@ -23,13 +19,9 @@ private:
     bool alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res);
 
     // Auxilary methods
-    void returnToPlan(gauss_msgs::Track track, gauss_msgs::Plan plan);
-    void leaveGeofence(gauss_msgs::Track, gauss_msgs::Geofence geofence);
-    bool checkGeofence(gauss_msgs::Geofence obstacle, gauss_msgs::Geofence *geofences);
+
 
     // Auxilary variables
-    gauss_msgs::RPICaction action;
-
 
     ros::NodeHandle nh_;
 
@@ -37,7 +29,7 @@ private:
     // Subscribers
 
     // Publisher
-    ros::Publisher action_pub_;
+    ros::Publisher notification_pub_;
 
     // Timer
 
@@ -45,11 +37,9 @@ private:
     ros::ServiceServer alert_server_;
 
     // Client
-    ros::ServiceClient read_track_client_;
     ros::ServiceClient read_geofence_client_;     
-    ros::ServiceClient read_all_geofence_client_;
     ros::ServiceClient write_geofence_client_;
-    ros::ServiceClient read_plan_client_;
+    ros::ServiceClient deconfliction_client;
 };
 
 // EmergencyManagement Constructor
@@ -63,58 +53,35 @@ EmergencyManagement::EmergencyManagement()
 
 
     // Publish
-    action_pub_ = nh_.advertise<gauss_msgs::RPICaction>("/gauss/rpic_action",1);
+    notification_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/notification",1);
 
     // Subscribe
 
     // Server
-    alert_server_=nh_.advertiseService("/gauss/alert_emergency",&EmergencyManagement::alertEmergencyCB,this);
+    alert_server_=nh_.advertiseService("/gauss/alert",&EmergencyManagement::alertEmergencyCB,this);
 
     // Clients
-    read_track_client_ = nh_.serviceClient<gauss_msgs::ReadTrack>("/gauss/readTrack");
-    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofence>("/gauss_msgs/readGeofence");        
-    read_all_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadAllGeofence>("/gauss_msgs/readAllGeofence");
-    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofence>("/gauss_msgs/writeGeofence");
-    read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadPlan>("/gauss/readPlan");
+    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss_msgs/readGeofences");
+    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofences>("/gauss_msgs/writeGeofences");
+    deconfliction_client = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/conflict_solver");
 
     ROS_INFO("Started EmergencyManagement node!");
 }
 
 // Auxilary methods
-void EmergencyManagement::returnToPlan(gauss_msgs::Track track, gauss_msgs::Plan plan)
-{
-    gauss_msgs::Position4D new_position;
-    // Calcula mejor ruta para volver a plan
-    action.positions.push_back(new_position);
-}
 
-void EmergencyManagement::leaveGeofence(gauss_msgs::Track, gauss_msgs::Geofence geofence)
-{
-    gauss_msgs::Position4D new_position;
-    // Calcula mejor ruta para dejar geofence
-    action.positions.push_back(new_position);
-}
-
-bool EmergencyManagement::checkGeofence(gauss_msgs::Geofence obstacle, gauss_msgs::Geofence *geofences)
-{
-    // Comprueba si el obstaculo esta ya en la lista de gefences
-    if (true)
-        return true;
-    else
-        return false;
-}
 
 // Alert callback
 bool EmergencyManagement::alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res)
 {
-    int alert_type=req.emergency.emergency_id;
-    gauss_msgs::ReadTrack track_msg;
-    gauss_msgs::ReadPlan plan_msg;
-    gauss_msgs::ReadGeofence geofence_msg;
-    gauss_msgs::ReadAllGeofence ageofence_msg;
-    gauss_msgs::WriteGeofence wgeofence_msg;
+    int alert_type=req.code;
+    int alert_level=req.level;
+    int *UAV_ids;
+    int number_of_plans=req.plans.size();
+    gauss_msgs::WaypointList *plans;
 
-    switch (alert_type) {
+
+    /*switch (alert_type) {
     case 1: // Plan deviation TBC
         track_msg.request.id=req.emergency.ids[0];
         plan_msg.request.id=req.emergency.ids[0];
@@ -206,7 +173,7 @@ bool EmergencyManagement::alertEmergencyCB(gauss_msgs::Alert::Request &req, gaus
         break;
     default:
         break;
-    }
+    }*/
 
     return true;
 }

@@ -1,11 +1,9 @@
 #include <ros/ros.h>
 #include <gauss_msgs/PositionReport.h>
-#include <gauss_msgs/Track.h>
-#include <gauss_msgs/Plan.h>
-#include <gauss_msgs/ReadTrack.h>
-#include <gauss_msgs/WriteTrack.h>
-#include <gauss_msgs/ReadPlan.h>
-#include <gauss_msgs/GetTrack.h>
+#include <gauss_msgs/ReadTracks.h>
+#include <gauss_msgs/ReadFlightPlan.h>
+#include <gauss_msgs/WriteTracks.h>
+
 
 
 // Class definition
@@ -19,10 +17,8 @@ private:
     void positionReportCB(const gauss_msgs::PositionReport::ConstPtr& msg);
 
     // Service Callbacks
-    bool getTrackCB(gauss_msgs::GetTrack::Request &req, gauss_msgs::GetTrack::Response &res);
 
     // Auxilary methods
-    void updateTrack(gauss_msgs::Track *track, gauss_msgs::Plan plan, gauss_msgs::PositionReport position);
 
     // Auxilary variables
 
@@ -37,7 +33,6 @@ private:
     // Timer
 
     // Server
-    ros::ServiceServer get_track_server_;
 
     // Client
     ros::ServiceClient read_track_client_;
@@ -62,12 +57,11 @@ Tracking::Tracking()
     pos_report_sub_= nh_.subscribe<gauss_msgs::PositionReport>("/gauss/position_report",1,&Tracking::positionReportCB,this);
 
     // Server
-    get_track_server_= nh_.advertiseService("/gauss/get_track",&Tracking::getTrackCB,this);
 
     // Client
-    read_track_client_ = nh_.serviceClient<gauss_msgs::ReadTrack>("/gauss/readTrack");
-    write_track_client_ = nh_.serviceClient<gauss_msgs::WriteTrack>("/gauss_msgs/writeTrack");
-    read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadPlan>("/gauss/readPlan");
+    read_track_client_ = nh_.serviceClient<gauss_msgs::ReadTracks>("/gauss/ReadTracks");
+    write_track_client_ = nh_.serviceClient<gauss_msgs::WriteTracks>("/gauss_msgs/writeTracks");
+    read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/readFlightPlan");
 
 
     ROS_INFO("Started Tracking node!");
@@ -75,27 +69,26 @@ Tracking::Tracking()
 
 
 // Auxilary methods
-void Tracking::updateTrack(gauss_msgs::Track *track, gauss_msgs::Plan plan, gauss_msgs::PositionReport position)
-{
-    // Filtro para actualizar track
-    // Considerar casos en los que no tengamos track o plan de entrada
-}
+
 
 
 // PositionReport callback
 void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
 {
-    int id=msg->rpa_state.id;
-    gauss_msgs::Track track;
+    int id = msg->UAV_id;
+    double confidence = msg->confidence;
+    gauss_msgs::Waypoint position = msg->position;
+    int source=msg->source;
+    gauss_msgs::WaypointList track;
 
-    gauss_msgs::ReadTrack read_track_msg;
-    gauss_msgs::ReadPlan read_plan_msg;
-    gauss_msgs::WriteTrack write_track_msg;
+    gauss_msgs::ReadTracks read_track_msg;
+    gauss_msgs::ReadFlightPlan read_plan_msg;
+    gauss_msgs::WriteTracks write_track_msg;
 
-    if (msg->source==msg->SOURCE_RPA)
+    /*if (source==msg->SOURCE_RPA)
     {
-        read_track_msg.request.id=id;
-        read_plan_msg.request.id=id;
+        read_track_msg.request.UAV_ids[0]=id;
+        read_plan_msg.request.id[0]=id;
         read_plan_client_.call(read_plan_msg);
         read_track_client_.call(read_track_msg);
 
@@ -113,29 +106,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     {
         // TBD
         // Si source es ADSB, tenemos solo la ICAO address, ¿base de datos que relacione ICAO address con id?
-    }
-}
-
-// GetTracks callback
-bool Tracking::getTrackCB(gauss_msgs::GetTrack::Request &req, gauss_msgs::GetTrack::Response &res)
-{
-    int id = req.id;
-
-    gauss_msgs::ReadTrack read_msg;
-
-    read_msg.request.id=id;
-
-    if (!read_track_client_.call(read_msg) || !read_msg.response.success)
-    {
-        ROS_ERROR("Failed reading track from database");
-        res.success=false;
-    }
-    else
-    {
-        res.track=read_msg.response.track;
-        res.success=true;
-    }
-    return res.success;
+    }*/
 }
 
 

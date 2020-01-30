@@ -52,20 +52,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
  add_message_files(
    FILES
-   Attitude.msg
-   Barometer.msg
-   Plan.msg
-   Position.msg
-   Position4D.msg
    PositionReport.msg
-   RPA_state.msg
-   Speed.msg
-   Track.msg
-   Traffic.msg
-   Geofence.msg
-   Jamming.msg
-   Emergency.msg
-   RPICaction.msg
+   Waypoint.msg
+   WaypointList.msg
+   Notification.msg
 #   Message1.msg
 #   Message2.msg
  )
@@ -73,18 +63,15 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
  add_service_files(
    FILES
-   ReadTrack.srv
-   WriteTrack.srv
-   GetTrack.srv
-   ReadPlan.srv
-   WritePlan.srv
-   ReadGeofence.srv
-   WriteGeofence.srv
    Alert.srv
-   Deconflict.srv
-   ReadAllGeofence.srv
-   ReadAllPlan.srv
-   ReadAllTrack.srv
+   Deconfliction.srv
+   FlightPlanReq.srv
+   ReadFlightPlan.srv
+   WriteFlightPlan.srv
+   ReadTracks.srv
+   WriteTracks.srv
+   ReadGeofences.srv
+   WriteGeofences.srv
 #   Service2.srv
  )
 

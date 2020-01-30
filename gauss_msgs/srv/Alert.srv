@@ -1,4 +1,8 @@
-int32 id
-Emergency emergency
+int8[] UAV_ids
+uint8 code
+uint8 level
+string description
+WaypointList[] plans
 ---
 bool success
+string message
