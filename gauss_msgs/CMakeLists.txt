@@ -56,6 +56,7 @@ find_package(catkin REQUIRED COMPONENTS
    Waypoint.msg
    WaypointList.msg
    Notification.msg
+   Mission.msg
 #   Message1.msg
 #   Message2.msg
  )
@@ -72,6 +73,8 @@ find_package(catkin REQUIRED COMPONENTS
    WriteTracks.srv
    ReadGeofences.srv
    WriteGeofences.srv
+   ReadMission.srv
+   WriteMission.srv
 #   Service2.srv
  )
 

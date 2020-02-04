@@ -2,6 +2,6 @@ uint8[] uav_ids
 ---
 bool success
 string message
-WaypointList[] plans
-
+Mission[] missions
+uint8 type
 
