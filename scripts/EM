@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+from typing import List, Any, Union
+
+from clase import UAS
+from clase import Threat
+from clase import Actions
+
+import numpy as np
+
+# En UAS MANAGER SE DEFINEN LA INFO DE LOS UAS
+
+UAS_1 = UAS(1, 'RW', 10, 'LOW', [[0, 0, 1], [0, 1, 1], [0, 0, 0]], [0, 0, 0], [1, 1, 1], 'Traffic monitoring', 'normal')
+UAS_2 = UAS(2, 'RW', 5, 'HIGH', [[2, 2, 1], [0, 2, 1], [0, 2, 0]], [2, 2, 0], [1, 1, 1], 'Package delivery',
+            'normal')  # se sale del FG
+UAS_3 = UAS(3, 'RW', 15, 'LOW', [[2, 0, 2], [1, 1, 1], [2, 0, 0]], [2, 0, 0], [1, 1, 1], 'Event media production',
+            'normal')
+
+# Definimos la lista de UAS y sus caracteristicas de operación.
+
+uas_list = [UAS_1, UAS_2, UAS_3]
+
+# EN MONITORING SE DEFINEN LAS THREATS Y SE VINCULAN CON UN UAS EN CONCRETO.
+
+threat_1 = Threat(1, 'UAS_IN_CV', 1)
+threat_2 = Threat(2, 'UAS_OUT_OV', 2)
+threat_3 = Threat(3, 'LOSS_OF_SEPARATION', 2)
+threat_4 = Threat(4, 'BAD_WEATHER_WARNING', 1)
+threat_5 = Threat(5, 'GEOFENCE_INTRUSION', 2)
+threat_6 = Threat(6, 'GEOFENCE_CONFLICT', 1)
+threat_7 = Threat(7, 'ENGINE_FAILURE', 3)
+threat_8 = Threat(8, 'COMMUNICATION_FAILURE', 3)
+threat_9 = Threat(9, 'LACK_OF_BATTERY', 1)
+threat_10 = Threat(10, 'JAMMING_ATTACK', 2)
+threat_11 = Threat(11, 'SPOOFING_ATTACK', 3)
+
+# Definimos las threats y su severidad.
+
+threat_list = [threat_1, threat_2, threat_3, threat_4, threat_5, threat_6, threat_7, threat_8, threat_9, threat_10,
+               threat_11]
+# Diccionario para definir qué UAS tiene activos qué amenazas.
+uas_threats = {'uas1': {'UAS_IN_CV': 0, 'UAS_OUT_OV': 0, 'LOSS_OF_SEPARATION': 0, 'BAD_WEATHER_WARNING': 0,
+                        'GEOFENCE_INTRUSION': 0, 'GEOFENCE_CONFLICT': 0, 'ENGINE_FAILURE': 1,
+                        'COMMUNICATION_FAILURE': 0, 'LACK_OF_BATTERY': 0, 'JAMMING_ATTACK': 0, 'SPOOFING_ATTACK': 0},
+               'uas2': {'UAS_IN_CV': 0, 'UAS_OUT_OV': 1, 'LOSS_OF_SEPARATION': 0, 'BAD_WEATHER_WARNING': 0,
+                        'GEOFENCE_INTRUSION': 0, 'GEOFENCE_CONFLICT': 0, 'ENGINE_FAILURE': 0,
+                        'COMMUNICATION_FAILURE': 0, 'LACK_OF_BATTERY': 0, 'JAMMING_ATTACK': 0, 'SPOOFING_ATTACK': 1},
+               'uas3': {'UAS_IN_CV': 1, 'UAS_OUT_OV': 0, 'LOSS_OF_SEPARATION': 0, 'BAD_WEATHER_WARNING': 0,
+                        'GEOFENCE_INTRUSION': 0, 'GEOFENCE_CONFLICT': 0, 'ENGINE_FAILURE': 0,
+                        'COMMUNICATION_FAILURE': 0, 'LACK_OF_BATTERY': 0, 'JAMMING_ATTACK': 0, 'SPOOFING_ATTACK': 0}
+               }
+
+top_severity_events = {}
+for uas in uas_threats:
+    evs = []
+    for evento_id, active in uas_threats[uas].items():
+        if evento_id == 'ENGINE_FAILURE' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'COMMUNICATION_FAILURE' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'SPOOFING_ATTACK' and active == 1:
+            evs.append(evento_id)
+    top_severity_events = {uas: evs}
+    print("Events with a top level of severity: ", top_severity_events)
+
+medium_severity_events = {}
+for uas in uas_threats:
+    evs = []
+    for evento_id, active in uas_threats[uas].items():
+        if evento_id == 'UAS_OUT_OV' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'LOSS_OF_SEPARATION' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'GEOFENCE_INTRUSION' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'JAMMING_ATTACK' and active == 1:
+            evs.append(evento_id)
+    medium_severity_events = {uas: evs}
+    print("Events with a medium level of severity: ", medium_severity_events)
+
+bottom_severity_events = {}
+for uas in uas_threats:
+    evs = []
+    for evento_id, active in uas_threats[uas].items():
+        if evento_id == 'UAS_IN_CV' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'BAD_WEATHER_WARNING' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'GEOFENCE_CONFLICT' and active == 1:
+            evs.append(evento_id)
+        if evento_id == 'LACK_OF_BATTERY' and active == 1:
+            evs.append(evento_id)
+    bottom_severity_events = {uas: evs}
+    print("Events with a top level of severity: ", bottom_severity_events)
+
+#Actions(top_severity_events, medium_severity_events, bottom_severity_events, UAS_1.FP, UAS_1.FG, 5, [0, 0, 0], 10)
+
+
+def activate_FTS(uas):
+    print("Send an activation message for the parachute of the:", uas)
+
+
+def main():
+    for uas in top_severity_events:
+        for events in top_severity_events[uas]:
+            if events == 'ENGINE_FAILURE' or 'SPOOFING_ATTACK' or 'COMMUNICATION_FAILURE':
+                activate_FTS(uas)
+
+
+if __name__ == "__main__":
+    main()
