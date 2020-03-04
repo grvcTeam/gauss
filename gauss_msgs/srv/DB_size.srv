@@ -1,0 +1,7 @@
+---
+bool success
+string message
+uint8 missions
+uint8 geofences
+
+

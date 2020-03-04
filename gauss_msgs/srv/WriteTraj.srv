@@ -1,0 +1,5 @@
+uint8[] UAV_ids
+WaypointList[] tracks
+---
+bool success
+string message
