@@ -12,7 +12,7 @@
 
 // Conflict msg constants
 #define UAVLOSSOFSEPARATION 0
-#define GEOFENCEVIOLATION 1
+#define GEOFENCECONFLICT 1
 
 using namespace std;
 
@@ -137,8 +137,26 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             ROS_ERROR("Failed to read a geofence");
             return;
         }
-        msg_geo.response.geofences;
-        // función que rellene el grid segun el geofence (el mensaje anterior contiene una lista de waypoints que delimita el geofence, el geofence esta definido entre el tiempo del primer elemento y el tiempo del ultimo)
+        gauss_msgs::WaypointList geofence = msg_geo.response.geofences[0];
+
+        int geofences = geofence.waypoints.size();
+
+        int tinit=floor(geofence.waypoints.at(0).stamp.sec/dT);
+        int tlast=floor(geofence.waypoints.at(geofeces-1).stamp.sec/dT);
+
+        for (int j=0; j<geofeces; j++)
+        {
+            int posx = floor(geofence.waypoints.at(j).latitude/dX);
+            int posy = floor(geofence.waypoints.at(j).longitude/dX);
+            int posz = floor(geofence.waypoints.at(j).altitude/dX);
+
+            for (int t=tinit; t<tlast; t++)
+            {
+                grid[posx][posy][posz][t].traj.push_back(i+1000);
+                grid[posx][posy][posz][t].wp.push_back(j);
+                // habria que rellenar el interior del geofence y el borde completo
+            }
+        }
     }
 
     // Rellena grid con waypoints de las missiones
@@ -211,7 +229,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                         conflict.wp_ids.push_back(j);
                                         conflict.geofence_ids.push_back(*it-1000);
                                         conflict.header.stamp=ros::Time::now();
-                                        conflict.type=GEOFENCEVIOLATION;
+                                        conflict.type=GEOFENCECONFLICT;
                                         alert.request.conflicts.push_back(conflict);
                                     }
                                     it++;

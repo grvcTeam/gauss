@@ -1,7 +1,5 @@
-uint8[] UAV_ids
 bool tactical
-WaypointList[] tracks
-WaypointList[] geofences
+Conflict conflict
 ---
 bool success
 string message

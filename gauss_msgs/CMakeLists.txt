@@ -62,7 +62,7 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message2.msg
  )
 
-## Generate services in the 'srv' folder
+## Generate services in the 'srv' folde
  add_service_files(
    FILES
    Alert.srv
