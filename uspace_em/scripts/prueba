@@ -1,0 +1,7 @@
+#!/usr/bin/env python
+import rospy
+
+def threat_usp_client(uas_ids, threats_flaged):
+    print(uas_ids)
+
+threat_usp_client([], 2)

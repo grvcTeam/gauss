@@ -1,0 +1,15 @@
+{
+            "uas_id": 1,
+	    "UAS_IN_CV": 0,
+            "UAS_OUT_OV": 0,
+            "LOSS_OF_SEPARATION": 1, 
+            "ALERT_WARNING": 0, 
+            "GEOFENCE_INTRUSION": 0, 
+            "GEOFENCE_CONFLICT": 0,
+            "ENGINE_FAILURE": 0,  
+            "COMMUNICATION_FAILURE": 0,          
+            "LACK_OF_BATTERY": 0, 
+            "JAMMING_ATTACK": 0,
+            "SPOOFING_ATTACK": 0
+            
+}

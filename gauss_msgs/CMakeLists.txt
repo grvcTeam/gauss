@@ -57,7 +57,7 @@ find_package(catkin REQUIRED COMPONENTS
    WaypointList.msg
    Notification.msg
    Mission.msg
-   Conflict.msg
+   Threat.msg
 #   Message1.msg
 #   Message2.msg
  )
@@ -65,7 +65,6 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
  add_service_files(
    FILES
-   Alert.srv
    Deconfliction.srv
    FlightPlanReq.srv
    ReadFlightPlan.srv
@@ -76,6 +75,8 @@ find_package(catkin REQUIRED COMPONENTS
    WriteGeofences.srv
    ReadMission.srv
    WriteMission.srv
+   UasOperation.srv
+   Threats.srv	
 #   Service2.srv
  )
 

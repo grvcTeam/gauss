@@ -1,0 +1,12 @@
+int32 uas_id
+---
+bool success
+int32 uas_id
+string frame
+int32 range
+string priority
+WaypointList[] fp
+Waypoint[] pose
+Waypoint[] fg
+string conop
+string conformance

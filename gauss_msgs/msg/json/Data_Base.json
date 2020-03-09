@@ -1,0 +1,43 @@
+{
+ 
+	"RPAS_operation_info": {
+				"RPA_1": {"frame": "rw", "range": 10, "priority": "low", "fp": [[1, 0, 1, 1], [0, 1, 1, 2], [0, 0, 0, 3]], "track": [0, 0, 0, 1], "fg": [1, 1, 1, 5], "conop": "Traffic 					monitoring", "conformance": "normal"}, 
+				"RPA_2": {"frame": "rw", "range": 5, "priority": "high", "fp": [[2, 2, 1, 1], [0, 2, 1, 2], [0, 2, 0, 3]], "track": [2, 2, 0, 1], "fg": [1, 1, 1, 5], "conop": "Package 					delivery", "conformance": "normal"}, 
+				"RPA_3": {"frame": "rw", "range": 15, "priority": "low", "fp": [[2, 0, 2, 1], [1, 1, 1, 2], [2, 0, 0, 3]], "track": [2, 0, 0, 1], "fg": [1, 1, 1, 5], "conop": "Event 					media production", "conformance": "normal"}
+				},
+
+          "RPAS_state_info":   {
+				"RPA_1":{"latitude": 32.42, "longitude": 6.83, "altitude": 50.5, "time": , "yaw": 250 , "pitch": 35 , "roll": 25, "integrity":, "jamming":, "spoofing": }, 
+				"RPA_2":{"latitude": 32.42, "longitude": 6.83, "altitude": 50.5, "time": , "yaw": 250 , "pitch": 35 , "roll": 25, "integrity":, "jamming":, "spoofing": }, 
+				"RPA_3":{"latitude": 32.42, "longitude": 6.83, "altitude": 50.5, "time": , "yaw": 250 , "pitch": 35 , "roll": 25, "integrity":, "jamming":, "spoofing": }, 
+				},
+
+"Statics_cylindrical_geofence": {
+				"Geofence_1": {"latitude": 36.56, "longitude": 25.56, "circle_radius": 65.5, "time": , "start_altitude": 25 , "end_altitude": 50}, 
+				"Geofence_2": {"latitude": 36.56, "longitude": 25.56, "circle_radius": 65.5, "time": , "start_altitude": 25 , "end_altitude": 70}, 
+				},
+
+"Dynamics_cylindrical_geofence": {
+				"Geofence_id": {"latitude": 36.56, "longitude": 25.56, "circle_radius": 65.5, "time": , "start_altitude": 25 , "end_altitude": 50}, 
+				"Geofence_id": {"latitude": 36.56, "longitude": 25.56, "circle_radius": 65.5, "time": , "start_altitude": 25 , "end_altitude": 70}, 
+				},
+
+"ADSB_surveillance":          {
+				"icao_1": {"callsign": "", "latitude": 25.56, "longitude": , "altitude": 25 , "timestamp": , "heading": 25 , "speed": 50}, 
+				"icao_2": {"callsign": "", "latitude": 25.56, "longitude": , "altitude": 25 , "timestamp": , "heading": 25 , "speed": 50},
+				"icao_3": {"callsign": "", "latitude": 25.56, "longitude": , "altitude": 25 , "timestamp": , "heading": 25 , "speed": 50},
+				},
+
+
+"RPAS_threats": 	     {
+		"RPA_1": {"UAS_IN_CV": 0, "UAS_OUT_OV": 0, "LOSS_OF_SEPARATION":0, "ALERT_WARNING": 0, "GEOFENCE_INTRUSION": 0, "GEOFENCE_CONFLICT": 0, "TECHNICAL_FAILURE": 0, "COMMUNICATION_FAILURE": 0, 			"LACK_OF_BATTERY": 0, "JAMMING_ATTACK": 0, "SPOOFING_ATTACK": 0},
+
+		"RPA_2": {"UAS_IN_CV": 0, "UAS_OUT_OV": 1, "LOSS_OF_SEPARATION":0, "ALERT_WARNING": 0, "GEOFENCE_INTRUSION": 0, "GEOFENCE_CONFLICT": 0, "TECHNICAL_FAILURE": 0, "COMMUNICATION_FAILURE": 0, 			"LACK_OF_BATTERY": 0, "JAMMING_ATTACK": 0, "SPOOFING_ATTACK": 0},
+
+		"RPA_3": {"UAS_IN_CV": 0, "UAS_OUT_OV": 0, "LOSS_OF_SEPARATION":0, "ALERT_WARNING": 0, "GEOFENCE_INTRUSION": 0, "GEOFENCE_CONFLICT": 0, "TECHNICAL_FAILURE": 0, "COMMUNICATION_FAILURE": 0, 			"LACK_OF_BATTERY": 0, "JAMMING_ATTACK": 0, "SPOOFING_ATTACK": 0}
+		                }
+
+}
+
+
+

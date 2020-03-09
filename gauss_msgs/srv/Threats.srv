@@ -1,0 +1,5 @@
+int8[] uas_ids
+Threat[] threats_flaged
+---
+bool success
+string action

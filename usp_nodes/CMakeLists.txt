@@ -155,9 +155,9 @@ add_executable(FlightPlanManagement src/FlightPlanManagement.cpp)
 target_link_libraries(FlightPlanManagement ${catkin_LIBRARIES})
 add_dependencies(FlightPlanManagement ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
-add_executable(emergency_management src/emergency_management.cpp)
-target_link_libraries(emergency_management ${catkin_LIBRARIES})
-add_dependencies(emergency_management ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+#add_executable(emergency_management src/emergency_management.cpp)
+#target_link_libraries(emergency_management ${catkin_LIBRARIES})
+#add_dependencies(emergency_management ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 add_executable(ConflictSolver src/ConflictSolver.cpp)
 target_link_libraries(ConflictSolver ${catkin_LIBRARIES})
