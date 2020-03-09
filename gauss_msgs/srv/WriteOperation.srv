@@ -1,5 +1,5 @@
 uint8[] UAV_ids
-Mission[] missions
+Operation[] operation
 ---
 bool success
 string message

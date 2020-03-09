@@ -2,6 +2,6 @@ uint8[] uav_ids
 ---
 bool success
 string message
-Mission[] missions
-uint8 type
+Operation[] operation
+
 

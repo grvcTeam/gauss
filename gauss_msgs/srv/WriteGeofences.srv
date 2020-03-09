@@ -1,5 +1,5 @@
 uint8[] geofence_ids
-WaypointList[] geofences
+Geofence[] geofences
 ---
 bool success
 string message
