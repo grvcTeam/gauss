@@ -38,11 +38,6 @@ private:
     bool writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs::WriteTraj::Response &res);
     bool returnDBsizeCB(gauss_msgs::DB_size::Request &req, gauss_msgs::DB_size::Response &res);
 
-   /* bool readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::ReadTracks::Response &res);
-    bool writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::WriteTracks::Response &res);
-    bool readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::ReadFlightPlan::Response &res);
-    bool writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs::WriteFlightPlan::Response &res);*/
-
     // Auxilary variables
     int size_plans;
     int size_geofences;
@@ -76,8 +71,7 @@ private:
 DataBase::DataBase()
 {
     // Read parameters
-    //nh_.param("desired_altitude",desired_altitude,0.5);
-    //nh_.param("/gauss/db_max_size",max_size,100);
+
 
     // Initialization
     size_plans=size_geofences=0;

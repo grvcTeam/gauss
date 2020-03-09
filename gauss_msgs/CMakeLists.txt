@@ -61,6 +61,7 @@ find_package(catkin REQUIRED COMPONENTS
    Polygon.msg
    Operation.msg
    Geofence.msg
+   Threat.msg
 #   Message1.msg
 #   Message2.msg
  )
@@ -68,7 +69,6 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folde
  add_service_files(
    FILES
-   Alert.srv
    Deconfliction.srv
    FlightPlanReq.srv
    ReadFlightPlan.srv
@@ -82,6 +82,7 @@ find_package(catkin REQUIRED COMPONENTS
    ReadOperation.srv
    WriteOperation.srv
    DB_size.srv
+   Threats.srv
 #   Service2.srv
  )
 
