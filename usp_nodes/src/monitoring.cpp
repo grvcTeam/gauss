@@ -1,18 +1,14 @@
 #include <ros/ros.h>
-#include <gauss_msgs/Alert.h>
+#include <gauss_msgs/Threats.h>
+#include <gauss_msgs/Threat.h>
 #include <gauss_msgs/ReadGeofences.h>
+#include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/DB_size.h>
 #include <list>
-#include <gauss_msgs/WaypointList.h>
 #include <gauss_msgs/Conflict.h>
-
-// Alert srv constatns
-#define CONFLICT 0
-
-// Conflict msg constants
-#define UAVLOSSOFSEPARATION 0
-#define GEOFENCECONFLICT 1
+#include <geometry_msgs/Point.h>
+#include <gauss_msgs/Waypoint.h>
 
 using namespace std;
 
@@ -37,6 +33,7 @@ private:
     void timerCallback(const ros::TimerEvent&);
 
     // Auxilary methods
+    int checkGeofences(gauss_msgs::Waypoint position4D, int geofence_size);
 
 
     // Auxilary variables
@@ -57,9 +54,10 @@ private:
     // Server
 
     // Client
-    ros::ServiceClient alert_client_;
+    ros::ServiceClient threats_client_;
     ros::ServiceClient read_geofence_client_;
-    ros::ServiceClient read_traj_client_;
+    ros::ServiceClient read_operation_client_;
+    ros::ServiceClient read_trajectory_client_;
     ros::ServiceClient dbsize_cilent_;
 };
 
@@ -87,9 +85,10 @@ Monitoring::Monitoring()
     // Server
 
     // Client
-    read_traj_client_ = nh_.serviceClient<gauss_msgs::ReadTraj>("/gauss/readTraj");
+    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/readOperation");
+    read_trajectory_client_ = nh_.serviceClient<gauss_msgs::ReadTraj>("/gauss/readEstimatedTrajectory");
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/readGeofence");
-    alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
+    threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
     dbsize_cilent_ = nh_.serviceClient<gauss_msgs::DB_size>("/gauss/db_size");
 
     // Timer
@@ -99,6 +98,57 @@ Monitoring::Monitoring()
 }
 
 // Auxilary methods
+
+int Monitoring::checkGeofences(gauss_msgs::Waypoint position4D, int geofence_size)
+{
+    for (int i=0; i<geofence_size; i++)
+    {
+        gauss_msgs::ReadGeofences msg_geo;
+        msg_geo.request.geofences_ids[0]=i;
+        if(!(read_geofence_client_.call(msg_geo)) || !(msg_geo.response.success))
+        {
+            ROS_ERROR("Failed to read a geofence");
+            return -1;
+        }
+        gauss_msgs::Geofence geofence= msg_geo.response.geofences[0];
+
+        if (position4D.stamp.nsec>=geofence.start_time.nsec && position4D.stamp.nsec<=geofence.end_time.nsec
+                && position4D.altitude>=geofence.min_altitude && position4D.altitude<=geofence.max_altitude)
+        {
+            if (geofence.cylinder_shape)
+            {
+                if (sqrt((position4D.latitude-geofence.circle.x_center)*(position4D.latitude-geofence.circle.x_center)+
+                         (position4D.longitude-geofence.circle.y_center)*(position4D.longitude-geofence.circle.y_center))<=geofence.circle.radius)
+                    return i;
+            }
+            else
+            {
+                int vertexes=geofence.polygon.x.size();
+                double angle_sum=0.0;
+                for (int i=1; i<vertexes; i++)
+                {
+                    geometry_msgs::Point v1, v2;
+                    v2.x=geofence.polygon.x[i]-position4D.latitude;
+                    v2.y=geofence.polygon.y[i]-position4D.longitude;
+                    v1.x=geofence.polygon.x[i-1]-position4D.latitude;
+                    v1.y=geofence.polygon.y[i-1]-position4D.longitude;
+                    angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v1.y*v1.y)));
+                }
+                geometry_msgs::Point v1, v2;
+                v2.x=geofence.polygon.x[0]-position4D.latitude;
+                v2.y=geofence.polygon.y[0]-position4D.longitude;
+                v1.x=geofence.polygon.x[vertexes-1]-position4D.latitude;
+                v1.y=geofence.polygon.y[vertexes-1]-position4D.longitude;
+                angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v1.y*v1.y)));
+
+                if (abs(angle_sum)>6)  // cercano a 2PI (algoritmo radial para deterinar si un punto está dentro de un polígono)
+                    return i;
+            }
+        }
+    }
+    return -1;
+}
+
 
 // Timer Callback
 void Monitoring::timerCallback(const ros::TimerEvent &)
@@ -118,64 +168,90 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     }
     else
     {
-        missions=msg_size.response.missions;
         geofeces=msg_size.response.geofences;
+        missions=msg_size.response.operations;
     }
 
     // Include geofences in the 4D-grid
     cell grid[X][Y][Z][T];
-    gauss_msgs::Alert alert;
-    alert.request.code=CONFLICT;
-    //alert.request.level //definir este level en función de la severidad de los conflictos
-
-    for (int i=0; i<geofeces; i++)
-    {
-        gauss_msgs::ReadGeofences msg_geo;
-        msg_geo.request.geofences_ids[0]=i;
-        if(!(read_geofence_client_.call(msg_geo)) || !(msg_geo.response.success))
-        {
-            ROS_ERROR("Failed to read a geofence");
-            return;
-        }
-        gauss_msgs::WaypointList geofence = msg_geo.response.geofences[0];
-
-        int geofences = geofence.waypoints.size();
-
-        int tinit=floor(geofence.waypoints.at(0).stamp.sec/dT);
-        int tlast=floor(geofence.waypoints.at(geofeces-1).stamp.sec/dT);
-
-        for (int j=0; j<geofeces; j++)
-        {
-            int posx = floor(geofence.waypoints.at(j).latitude/dX);
-            int posy = floor(geofence.waypoints.at(j).longitude/dX);
-            int posz = floor(geofence.waypoints.at(j).altitude/dX);
-
-            for (int t=tinit; t<tlast; t++)
-            {
-                grid[posx][posy][posz][t].traj.push_back(i+1000);
-                grid[posx][posy][posz][t].wp.push_back(j);
-                // habria que rellenar el interior del geofence y el borde completo
-            }
-        }
-    }
+    gauss_msgs::Threats threats_msg;
 
     // Rellena grid con waypoints de las missiones
     for (int i=0; i<missions; i++)
     {
-        gauss_msgs::ReadTraj msg_traj;
-        msg_traj.request.UAV_ids[0]=i;
-        if(!(read_traj_client_.call(msg_traj)) || !(msg_traj.response.success))
+        gauss_msgs::ReadOperation msg_op;
+        msg_op.request.uav_ids[0]=i;
+        if(!(read_operation_client_.call(msg_op)) || !(msg_op.response.success))
         {
             ROS_ERROR("Failed to read a trajectory");
             return;
         }
 
-        gauss_msgs::WaypointList trajectory = msg_traj.response.tracks[0];
+        gauss_msgs::Operation operation = msg_op.response.operation[0];
+        gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
+        gauss_msgs::WaypointList plan = operation.flight_plan;
+
+        geometry_msgs::Point vd;
+        geometry_msgs::Point pq;
+        geometry_msgs::Point pv;
+        if (operation.current_wp >= plan.waypoints.size())
+        {
+            vd.x=plan.waypoints.at(operation.current_wp).latitude-plan.waypoints.at(operation.current_wp-1).latitude;
+            vd.y=plan.waypoints.at(operation.current_wp).longitude-plan.waypoints.at(operation.current_wp-1).longitude;
+            vd.z=plan.waypoints.at(operation.current_wp).altitude-plan.waypoints.at(operation.current_wp-1).altitude;
+        }
+        else
+        {
+            vd.x=plan.waypoints.at(operation.current_wp+1).latitude-plan.waypoints.at(operation.current_wp).latitude;
+            vd.y=plan.waypoints.at(operation.current_wp+1).longitude-plan.waypoints.at(operation.current_wp).longitude;
+            vd.z=plan.waypoints.at(operation.current_wp+1).altitude-plan.waypoints.at(operation.current_wp).altitude;
+        }
+        pq.x=trajectory.waypoints.at(0).latitude-plan.waypoints.at(operation.current_wp).latitude;
+        pq.y=trajectory.waypoints.at(0).longitude-plan.waypoints.at(operation.current_wp).longitude;
+        pq.z=trajectory.waypoints.at(0).altitude-plan.waypoints.at(operation.current_wp).altitude;
+
+        pv.x=vd.y*pq.z-vd.z*pq.y;
+        pv.y=vd.x*pq.z-vd.z*pq.x;
+        pv.z=vd.x*pq.y-vd.y*pq.x;
+
+        // distancia = |pq x vd| / |vd|: distancia de punto q a recta cuyo vevtor director es vd y que contiene al punto p
+
+        double distance=sqrt(pv.x*pv.x+pv.y*pv.y+pv.z*pv.z)/sqrt(vd.x*vd.x+vd.y*vd.y+vd.z*vd.z);
+
+        if (distance>operation.flight_geometry)
+        {
+            gauss_msgs::Threat threat;
+            threat.header.stamp=ros::Time::now();
+            threat.uas_ids.push_back(i);
+            threat.times.push_back(ros::Time::now());
+            if (distance<operation.contingency_volume)
+                threat.threat_id=threat.UAS_IN_CV;
+            else
+                threat.threat_id=threat.UAS_OUT_CV;
+            threats_msg.request.uas_ids.push_back(i);
+            threats_msg.request.threats.push_back(threat);
+        }
 
         int waypoints = trajectory.waypoints.size();
 
         for (int j=1; j<waypoints; j++)
         {
+            // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
+            int geofence_intrusion = checkGeofences(trajectory.waypoints.at(j),geofeces);
+            if (geofence_intrusion>=0)
+            {
+                gauss_msgs::Threat threat;
+                threat.header.stamp=ros::Time::now();
+                threat.uas_ids.push_back(i);
+                threat.times.push_back(ros::Time::now());
+                if (j==0)
+                    threat.threat_id=threat.GEOFENCE_INTRUSION;
+                else
+                    threat.threat_id=threat.GEOFENCE_CONFLICT;
+                threats_msg.request.uas_ids.push_back(i);
+                threats_msg.request.threats.push_back(threat);
+            }
+
             int posx = floor(trajectory.waypoints.at(j).latitude/dX);
             int posy = floor(trajectory.waypoints.at(j).longitude/dX);
             int posz = floor(trajectory.waypoints.at(j).altitude/dX);
@@ -196,41 +272,33 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                 list<int>::iterator it_wp = grid[m][n][p][t].wp.begin();
                                 while (it != grid[m][n][p][t].traj.end())
                                 {
-                                    if (*it != i && *it<1000)  // los id superiores a 1000 pertencen a geofences
+                                    if (*it != i)
                                     {
                                         gauss_msgs::ReadTraj msg_traj2;
                                         msg_traj2.request.UAV_ids[0]=*it;
-                                        if(!(read_traj_client_.call(msg_traj2)) || !(msg_traj2.response.success))
+                                        if(!(read_trajectory_client_.call(msg_traj2)) || !(msg_traj2.response.success))
                                         {
                                             ROS_ERROR("Failed to read a trajectory");
                                             return;
                                         }
-                                        gauss_msgs::WaypointList trajectory2 = msg_traj.response.tracks[0];
+                                        gauss_msgs::WaypointList trajectory2 = msg_traj2.response.tracks[0];
 
                                         if (sqrt(pow(trajectory.waypoints.at(j).latitude-trajectory2.waypoints.at(*it_wp).latitude,2)+
                                                  pow(trajectory.waypoints.at(j).longitude-trajectory2.waypoints.at(*it_wp).longitude,2)+
                                                  pow(trajectory.waypoints.at(j).altitude-trajectory2.waypoints.at(*it_wp).altitude,2))<dX &&
                                                 abs(trajectory.waypoints.at(j).stamp.sec-trajectory2.waypoints.at(*it_wp).stamp.sec)<dT)
                                         {
-                                            gauss_msgs::Conflict conflict;
-                                            conflict.UAV_ids.push_back(i);
-                                            conflict.UAV_ids.push_back(*it);
-                                            conflict.wp_ids.push_back(j);
-                                            conflict.wp_ids.push_back(*it_wp);
-                                            conflict.header.stamp=ros::Time::now();
-                                            conflict.type=UAVLOSSOFSEPARATION;
-                                            alert.request.conflicts.push_back(conflict);
+                                            gauss_msgs::Threat threat;
+                                            threat.header.stamp=ros::Time::now();
+                                            threat.uas_ids.push_back(i);
+                                            threat.uas_ids.push_back(*it);
+                                            threat.times.push_back(trajectory.waypoints.at(j).stamp);
+                                            threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
+                                            threat.threat_id=threat.LOSS_OF_SEPARATION;
+
+                                            threats_msg.request.uas_ids.push_back(i);
+                                            threats_msg.request.threats.push_back(threat);
                                         }
-                                    }
-                                    else if (*it>=1000)  // Conflicto con geofence
-                                    {
-                                        gauss_msgs::Conflict conflict;
-                                        conflict.UAV_ids.push_back(i);
-                                        conflict.wp_ids.push_back(j);
-                                        conflict.geofence_ids.push_back(*it-1000);
-                                        conflict.header.stamp=ros::Time::now();
-                                        conflict.type=GEOFENCECONFLICT;
-                                        alert.request.conflicts.push_back(conflict);
                                     }
                                     it++;
                                     it_wp++;
@@ -241,17 +309,16 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     }
 
     // LLamar al servicio alerta
-    if (alert.request.conflicts.size()>0)
+    if (threats_msg.request.threats.size()>0)
     {
-        alert.request.description="New conflicts detected";
-        if(!(alert_client_.call(alert)) || !(alert.response.success))
+        if(!(threats_client_.call(threats_msg)) || !(threats_msg.response.success))
         {
             ROS_ERROR("Failed to send alert message");
             return;
         }
     }
     else
-        ROS_INFO("%s",alert.response.message);
+        ROS_INFO("%s",threats_msg.response.message);
 }
 
 
