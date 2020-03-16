@@ -1,0 +1,6 @@
+Conflict conflict
+Waypoint[] deconflicted_wp
+---
+bool success
+string message
+Conflict[] conflicts

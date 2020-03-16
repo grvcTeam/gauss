@@ -83,6 +83,7 @@ find_package(catkin REQUIRED COMPONENTS
    WriteOperation.srv
    DB_size.srv
    Threats.srv
+   CheckConflicts.srv
 #   Service2.srv
  )
 
