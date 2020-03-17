@@ -1,0 +1,7 @@
+float64 latitude
+float64 longitude
+float32 circle_radius
+float32 start_altitude
+float32 end_altitude
+uint64 start_time
+uint64 finish_time
