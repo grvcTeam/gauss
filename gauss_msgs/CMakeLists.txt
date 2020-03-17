@@ -55,7 +55,6 @@ find_package(catkin REQUIRED COMPONENTS
    PositionReport.msg
    Waypoint.msg
    WaypointList.msg
-   Notification.msg
    Mission.msg
    Threat.msg
 #   Message1.msg
@@ -77,6 +76,7 @@ find_package(catkin REQUIRED COMPONENTS
    WriteMission.srv
    UasOperation.srv
    Threats.srv	
+   Notification.srv
 #   Service2.srv
  )
 

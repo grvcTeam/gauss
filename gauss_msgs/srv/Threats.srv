@@ -1,5 +1,5 @@
 int8[] uas_ids
-Threat[] threats_flaged
+Threat[] threats
 ---
 bool success
-string action
+
