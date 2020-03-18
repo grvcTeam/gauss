@@ -131,7 +131,6 @@ def threats_response(request):
     rospy.loginfo("New threat received:") 
     response = ThreatsResponse() # We create the variable which contains the Response.
     response.success = True
-    print("The RPAs involved are the following IDs:", request.uas_ids)
     print("The Threat notified is:", request.threats)
     #uas_notified = request.uas_ids
     #uas_in_conflict = uas_notified
