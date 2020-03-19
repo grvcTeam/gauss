@@ -2,7 +2,7 @@
 import rospy
 from gauss_msgs.srv import Threats, ThreatsResponse
 from gauss_msgs.msg import Threat
-#from gauss_msgs.srv import Notification, NotificationRequest, NotificationResponse
+from gauss_msgs.msg import Notification
 #from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
 
 threats_definition = {'0': {'name': 'UAS_IN_CV', 'type': 'conflict', 'severity': 1},
@@ -127,13 +127,20 @@ def threats_response(request): # This is the callback
     response.success = True
     threat2solve = request
     action = threat_management(threat2solve)
-    print(action)
+    global gpub
+    notification = Notification()
+    notification.description = action
+    gpub.publish(notification)
+    #r = rospy.Rate(1)
+    #print(action)
     return response
 
 def main():
     rospy.init_node('emergency_manager_node')
     threat_service = rospy.Service('threats', Threats, threats_response)
     print("Ready to add a threat request")
+    global gpub 
+    gpub = rospy.Publisher("notification", Notification, queue_size=1)
             
     rospy.spin()
 
