@@ -97,19 +97,6 @@ def threat_management(threat2solve):
     
     return action
 
-#def notification_client(uas_notified, action_id, action_description):
-#    rospy.wait_for_service('notification')
-#    try:    
-#        notification = rospy.ServiceProxy('notification', Notification)
-#        request = NotificationRequest()
-#        request.uas_ids = uas_notified 
-#        request.action_id = action_id 
-#        request.description = action_description 
-#        response = notification(request)
-        
-#    except rospy.ServiceException, e:
-#        print "Service call failed: %s"%e
-
 #def deconfliction_client(uas_in_conflict):
 #    rospy.wait_for_service('deconfliction')
 #    try:  
