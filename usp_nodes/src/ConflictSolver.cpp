@@ -189,7 +189,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
             geometry_msgs::Polygon polygon;
             PathFinder path_finder(init_path_, init_astar_point, goal_astar_point, polygon, min_grid_point, max_grid_point);
-            // nav_msgs::Path a_star_path_res = path_finder.findNewPath();
+            nav_msgs::Path a_star_path_res = path_finder.findNewPath();
         }
     }
 
