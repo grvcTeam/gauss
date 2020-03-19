@@ -46,6 +46,7 @@ def main_menu():
         print "Not a valid option."
 
     return (conflicted_uas, conflict_flaged)
+    
 def main():
 
     rospy.init_node('monitoring_node')
