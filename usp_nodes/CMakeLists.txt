@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(usp_nodes)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -11,6 +11,10 @@ find_package(catkin REQUIRED COMPONENTS
   gauss_msgs
   roscpp
   rospy
+  geometry_msgs
+  nav_msgs
+  std_msgs
+  upat_follower
 )
 
 ## System dependencies are found with CMake's conventions
@@ -103,9 +107,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES usp_nodes
-  CATKIN_DEPENDS gauss_msgs roscpp rospy
+ INCLUDE_DIRS include
+ LIBRARIES usp_nodes
+ CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs upat_follower
 #  DEPENDS system_lib
 )
 
@@ -116,8 +120,8 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+ include
+ ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -160,8 +164,15 @@ target_link_libraries(emergency_management ${catkin_LIBRARIES})
 add_dependencies(emergency_management ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 add_executable(ConflictSolver src/ConflictSolver.cpp)
-target_link_libraries(ConflictSolver ${catkin_LIBRARIES})
+target_link_libraries(ConflictSolver path_finder ${catkin_LIBRARIES})
 add_dependencies(ConflictSolver ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
+add_library(path_planner src/path_planner.cpp)
+add_dependencies(path_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_library(path_finder src/path_finder.cpp)
+target_link_libraries(path_finder path_planner ${catkin_LIBRARIES} ${PYTHON_LIBRARIES}) #pylib matplotlib
+add_dependencies(path_finder ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

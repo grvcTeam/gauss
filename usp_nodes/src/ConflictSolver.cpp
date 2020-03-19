@@ -5,6 +5,7 @@
 #include <gauss_msgs/CheckConflicts.h>
 #include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/ReadFlightPlan.h>
+#include <usp_nodes/path_finder.h>
 
 
 // Class definition
@@ -183,7 +184,12 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
         else if (req.conflict.threat_id==req.conflict.GEOFENCE_CONFLICT)
         {
-            // Lo de Héctor
+            // Empty variables
+            nav_msgs::Path init_path_;
+            geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
+            geometry_msgs::Polygon polygon;
+            PathFinder path_finder(init_path_, init_astar_point, goal_astar_point, polygon, min_grid_point, max_grid_point);
+            // nav_msgs::Path a_star_path_res = path_finder.findNewPath();
         }
     }
 
