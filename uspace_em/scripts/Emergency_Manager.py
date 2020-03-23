@@ -1,5 +1,8 @@
 #!/usr/bin/env python
+# this Python file uses the following encoding: utf-8
+import os, sys
 import rospy
+from math import sqrt
 from gauss_msgs.srv import Threats, ThreatsResponse
 from gauss_msgs.msg import Threat
 from gauss_msgs.msg import Notification
@@ -17,6 +20,29 @@ threats_definition = {'0': {'name': 'UAS_IN_CV', 'type': 'conflict', 'severity':
                       '9': {'name': 'JAMMING_ATTACK', 'type': 'alert', 'severity': 2},
                       '10': {'name': 'SPOOFING_ATTACK', 'type': 'alert', 'severity': 3}
                       }
+
+class point:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z 
+
+def calculate_landingspot(landingspot_list, uas_vel, flight_time, uas_position):
+    '''This function select the best point for landing'''
+    uas_velocity = uas_vel
+    flight_time = flight_time # Time which the UAS can still be flying.
+    max_distance = uas_velocity/flight_time # Max distance in meters which the UAS can achieve.
+    landingspot_uasposition_distance = []
+    for landingspot in landingspot_list:
+        distance = sqrt((landingspot.x -uas_position.x)**2 + (landingspot.y -uas_position.y)**2 + (landingspot.z -uas_position.z)**2)
+        landingspot_uasposition_distance.append(distance)
+        min_distance = min(landingspot_uasposition_distance)
+        pos_min = landingspot_uasposition_distance.index(min(landingspot_uasposition_distance)) # posicion de la lista que tiene la mínima distancia
+    
+    #if min_distance < max_distance:
+    #    best_landingspot = landingspot_list[pos_min]
+    #    print(best_landingspot)
+    return min_distance
 
 def threat_management(threat2solve):
     """This function decide what is the fittest action to take""" 
@@ -72,31 +98,39 @@ def threat_management(threat2solve):
     
     if threat_severity == 3:
                
-        action = 'Send recommendation to Pilot to land as soon as possible' # Use Notification.msg to USP_manager. 
+        action = 'URGENT: Land as soon as possible.'  
+        action_id = 0
 
     if threat_severity == 2:
 
         if threat_id == 1: #UAS_OUT_OV
-            action = 'Send recommendation to Pilot to land as soon as possible' # Use Notification.msg to USP_manager. 
+            action = 'URGENT: Land as soon as possible.'  
+            action_id = 0
         if threat_id == 2: #LOSS_OF_SEPARATION
-            action = 'Send new trajectories recommendations to the UAS involved in the conflict' # Use Notification.msg to USP_manager. It is needed support from Tactical Conflict Resolution.     
+            action = 'Send new trajectories recommendations to the UAS involved in the conflict.' 
+            action_id = 3
         if threat_id == 3: #ALERT_WARNING
-            action = 'Ask for a Geofence creation and send an alert report to all the pilots' # Use Notification.msg to USP_manager.    
+            action = 'Ask for a Geofence creation and send an alert report to all the pilots.' 
+            action_id = 1
         if threat_id == 4: #GEOFENCE_INTRUSION
-            action = 'Ask for leaving the geofence asap and continue its operation' # Needs Tactical Deconfliction support.
+            action = 'Ask for leaving the geofence asap and continue its operation.' 
+            action_id = 3
         if threat_id == 9: #JAMMING_ATTACK
-            action = 'Send recommendation to Pilot to land as soon as possible' # Use Notification.msg to USP_manager. 
-
+            action = 'URGENT: Land as soon as possible.'  
+            action_id = 0
     if threat_severity == 1:
 
         if threat_id == 0: #UAS_IN_CV
-            action = 'Send new trajectory to get into the FG' # Needs Tactical deconfliction.
+            action = 'Send new trajectory to get into the FG.' 
+            action_id = 3
         if threat_id == 5: #GEOFENCE_CONFLICT
-            action = 'Send new trajectory recommendation to the UAS involved in the conflict' # Use Notification.msg to USP_manager. It is needed support from Tactical Conflict Resolution.     
+            action = 'Send new trajectory recommendation to the UAS involved in the conflict.'     
+            action_id = 3
         if threat_id == 8: #LACK_OF_BATTERY
-            action = 'Send a message to the pilot to land in a landing spot.' # Use Notification.msg to USP_manager. Tactical deconfliction is needed for calculating the new trajectory.    
+            action = 'Please, land in the defined landing spot.'     
+            action_id = 3
     
-    return action
+    return action, action_id
 
 #def deconfliction_client(uas_in_conflict):
 #    rospy.wait_for_service('deconfliction')
@@ -114,10 +148,11 @@ def threats_response(request): # This is the callback
     response = ThreatsResponse() # We create the variable which contains the Response.
     response.success = True
     threat2solve = request
-    action = threat_management(threat2solve)
+    (action, action_id) = threat_management(threat2solve)
     global gpub
     notification = Notification()
     notification.description = action
+    notification.action_id = action_id
     gpub.publish(notification)
     
     return response
@@ -126,8 +161,18 @@ def main():
     rospy.init_node('emergency_manager_node')
     threat_service = rospy.Service('threats', Threats, threats_response)
     print("Ready to add a threat request")
+    point1 = point(0, 0, 0)
+    point2 = point(1, 1, 0)
+    point3 = point(2, 1, 0)
+    uas_position = point(1, 1, 1)
+    landingspot_list = [point1, point2, point3]
+    uas_vel = 5 # m/s
+    flight_time = 600 # seconds
+    min_distance = calculate_landingspot(landingspot_list, uas_vel, flight_time, uas_position)
+    print(min_distance)
     global gpub 
     gpub = rospy.Publisher("notification", Notification, queue_size=1)
+    
             
     rospy.spin()
 
