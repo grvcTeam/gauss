@@ -19,6 +19,7 @@ threats_definition = {'0': {'name': 'UAS_IN_CV', 'type': 'conflict', 'severity':
                       }
 
 def threat_management(threat2solve):
+    """This function decide what is the fittest action to take""" 
     events = threat2solve.threats # This is a list of Threat objects.
     threat_id = events[0].threat_id # This is the threat_id of the first Threat object in the previous list.
     uas_threaten = events[0].uas_ids # This is a list of uas involved in the Threat.
@@ -118,8 +119,7 @@ def threats_response(request): # This is the callback
     notification = Notification()
     notification.description = action
     gpub.publish(notification)
-    #r = rospy.Rate(1)
-    #print(action)
+    
     return response
 
 def main():

@@ -49,7 +49,7 @@ def main_menu():
         system("clear")
         print "Not a valid option."
 
-    return (alerted_uas, alert_flaged)
+    return alerted_uas, alert_flaged
 
 def notification_callback(data):
     rospy.loginfo("New notification received:") 
@@ -60,19 +60,21 @@ def main():
     rospy.wait_for_service('threats') # Wait for this service to be running.
     threat_service = rospy.ServiceProxy('threats', Threats) # Create the connection to the service. 
     rospy.Subscriber("notification", Notification, notification_callback)
-    
+
+
     while not rospy.is_shutdown():
+
+        #rospy.Subscriber("notification", Notification, notification_callback)
         
         (alerted_uas, alert_flaged) = main_menu()
         
         alert_threat = threat_client(alerted_uas, alert_flaged) # alert_threat would be ThreatsRequest()
         
         result = threat_service(alert_threat)
-        
-        print(result)
-        
+                
         time.sleep(0.1)
-    
+     
+
 if __name__ == '__main__':
     main()
 
