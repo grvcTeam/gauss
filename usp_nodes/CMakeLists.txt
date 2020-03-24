@@ -177,6 +177,10 @@ add_library(path_finder src/path_finder.cpp)
 target_link_libraries(path_finder path_planner ${catkin_LIBRARIES} ${PYTHON_LIBRARIES}) #pylib matplotlib
 add_dependencies(path_finder ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+add_executable(ualCommunication src/ualCommunication.cpp)
+target_link_libraries(ualCommunication ${catkin_LIBRARIES})
+add_dependencies(ualCommunication ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
