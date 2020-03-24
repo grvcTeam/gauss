@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   upat_follower
 )
+find_package(Eigen3 REQUIRED)
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -110,7 +112,7 @@ catkin_package(
  INCLUDE_DIRS include
  LIBRARIES usp_nodes
  CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs upat_follower
-#  DEPENDS system_lib
+ DEPENDS EIGEN3
 )
 
 ###########
@@ -122,6 +124,7 @@ catkin_package(
 include_directories(
  include
  ${catkin_INCLUDE_DIRS}
+ ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
