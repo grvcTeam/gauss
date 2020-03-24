@@ -21,28 +21,21 @@ threats_definition = {'0': {'name': 'UAS_IN_CV', 'type': 'conflict', 'severity':
                       '10': {'name': 'SPOOFING_ATTACK', 'type': 'alert', 'severity': 3}
                       }
 
-class point:
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z 
-
 def calculate_landingspot(landingspot_list, uas_vel, flight_time, uas_position):
     '''This function select the best point for landing'''
     uas_velocity = uas_vel
     flight_time = flight_time # Time which the UAS can still be flying.
     max_distance = uas_velocity/flight_time # Max distance in meters which the UAS can achieve.
-    landingspot_uasposition_distance = []
-    for landingspot in landingspot_list:
-        distance = sqrt((landingspot.x -uas_position.x)**2 + (landingspot.y -uas_position.y)**2 + (landingspot.z -uas_position.z)**2)
-        landingspot_uasposition_distance.append(distance)
-        min_distance = min(landingspot_uasposition_distance)
-        pos_min = landingspot_uasposition_distance.index(min(landingspot_uasposition_distance)) # posicion de la lista que tiene la mínima distancia
+    landing_list = landingspot_list
+    landingspot_uasposition_distance = []  
+    for point in landing_list:
+        distance = sqrt((landing_list[point[0]][0]-uas_position[0])**2 + (landing_list[point[1]][1]-uas_position[1])**2 + (landing_list[point[2]][2]-uas_position[2])**2)
+        landingspot_uasposition_distance.append(distance)       
+    min_distance = min(landingspot_uasposition_distance)
+    pos_min = landingspot_uasposition_distance.index(min(landingspot_uasposition_distance)) # posicion de la lista que tiene la mínima distancia
+    best_landingspot = landing_list[pos_min]
     
-    #if min_distance < max_distance:
-    #    best_landingspot = landingspot_list[pos_min]
-    #    print(best_landingspot)
-    return min_distance
+    return best_landingspot
 
 def threat_management(threat2solve):
     """This function decide what is the fittest action to take""" 
@@ -161,15 +154,14 @@ def main():
     rospy.init_node('emergency_manager_node')
     threat_service = rospy.Service('threats', Threats, threats_response)
     print("Ready to add a threat request")
-    point1 = point(0, 0, 0)
-    point2 = point(1, 1, 0)
-    point3 = point(2, 1, 0)
-    uas_position = point(1, 1, 1)
-    landingspot_list = [point1, point2, point3]
+    # We declare actual info for Lack_of_battery solution
+    uas_position = [1, 1, 0]
+    landingspot_list = [[0, 0, 0], [1, 1, 0], [2, 1, 0]]
+    
     uas_vel = 5 # m/s
     flight_time = 600 # seconds
-    min_distance = calculate_landingspot(landingspot_list, uas_vel, flight_time, uas_position)
-    print(min_distance)
+    best_landingspot = calculate_landingspot(landingspot_list, uas_vel, flight_time, uas_position)
+    print(best_landingspot)
     global gpub 
     gpub = rospy.Publisher("notification", Notification, queue_size=1)
     

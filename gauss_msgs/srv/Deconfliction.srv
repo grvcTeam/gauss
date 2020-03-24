@@ -2,6 +2,7 @@ int8[] uas_ids
 bool tactical
 WaypointList[] tracks
 WaypointList[] geofences
+Waypoint landing_spot
 ---
 bool success
 string message
