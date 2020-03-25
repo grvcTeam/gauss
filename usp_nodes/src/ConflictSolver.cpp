@@ -103,6 +103,7 @@ geometry_msgs::Point ConflictSolver::findInitAStarPoint(geometry_msgs::Polygon &
             out_point.x = _path.poses.at(i - 1).pose.position.x;
             out_point.y = _path.poses.at(i - 1).pose.position.y;
             out_point.z = _path.poses.at(i - 1).pose.position.z;
+            break;
         }
     }
     return out_point;
@@ -127,6 +128,7 @@ geometry_msgs::Point ConflictSolver::findGoalAStarPoint(geometry_msgs::Polygon &
             out_point.x = _path.poses.at(i).pose.position.x;
             out_point.y = _path.poses.at(i).pose.position.y;
             out_point.z = _path.poses.at(i).pose.position.z;
+            break;
         }
     }
 
