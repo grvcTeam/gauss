@@ -1,0 +1,5 @@
+uint8[] UAV_ids
+Operation[] operation
+---
+bool success
+string message

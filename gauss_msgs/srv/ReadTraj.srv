@@ -1,5 +1,7 @@
 uint8[] UAV_ids
-Mission[] missions
 ---
 bool success
 string message
+WaypointList[] tracks
+
+

@@ -1,5 +1,5 @@
-float64 latitude
-float64 longitude
-float64 altitude
+float64 x
+float64 y
+float64 z
 time stamp
 bool mandatory

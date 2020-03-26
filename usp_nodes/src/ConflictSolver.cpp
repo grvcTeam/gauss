@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include <gauss_msgs/Deconfliction.h>
+#include <gauss_msgs/Conflict.h>
+#include <gauss_msgs/Waypoint.h>
 
 
 // Class definition
@@ -15,6 +17,7 @@ private:
     bool deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res);
 
     // Auxilary methods
+    gauss_msgs::Conflict check_conflicts(gauss_msgs::Conflict conflict, gauss_msgs::Waypoint waypoints[]);
 
     // Auxilary variables
 
@@ -47,7 +50,7 @@ ConflictSolver::ConflictSolver()
     // Subscribe
 
     // Server
-    deconflict_server_=nh_.advertiseService("/gauss/conflict_solver",&ConflictSolver::deconflictCB,this);
+    deconflict_server_=nh_.advertiseService("/gauss/tactical_deconfliction",&ConflictSolver::deconflictCB,this);
 
     // Cient
 
@@ -55,6 +58,12 @@ ConflictSolver::ConflictSolver()
     ROS_INFO("Started ConflictSolver node!");
 }
 
+
+// auxilary methods
+gauss_msgs::Conflict check_conflicts(gauss_msgs::Conflict conflict, gauss_msgs::Waypoint waypoints[])
+{
+
+}
 
 
 // deconflictCB callback
@@ -68,6 +77,17 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
     gauss_msgs::WaypointList *geofences;
 
     //Deconfliction
+    if (req.tactical)
+    {
+        if (req.conflict.threat_id==req.conflict.LOSS_OF_SEPARATION)
+        {
+
+        }
+        else if (req.conflict.threat_id==req.conflict.GEOFENCE_CONFLICT)
+        {
+
+        }
+    }
 
     return true;
 }

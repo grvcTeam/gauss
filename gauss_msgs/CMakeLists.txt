@@ -56,13 +56,18 @@ find_package(catkin REQUIRED COMPONENTS
    Waypoint.msg
    WaypointList.msg
    Mission.msg
-   Threat.msg
    Notification.msg
+   Conflict.msg
+   Circle.msg
+   Polygon.msg
+   Operation.msg
+   Geofence.msg
+   Threat.msg
 #   Message1.msg
 #   Message2.msg
  )
 
-## Generate services in the 'srv' folder
+## Generate services in the 'srv' folde
  add_service_files(
    FILES
    Deconfliction.srv
@@ -70,6 +75,8 @@ find_package(catkin REQUIRED COMPONENTS
    ReadFlightPlan.srv
    WriteFlightPlan.srv
    ReadTracks.srv
+   WriteTraj.srv
+   ReadTraj.srv
    WriteTracks.srv
    ReadGeofences.srv
    WriteGeofences.srv
@@ -77,6 +84,11 @@ find_package(catkin REQUIRED COMPONENTS
    WriteMission.srv
    UasOperation.srv
    Threats.srv	
+   ReadOperation.srv
+   WriteOperation.srv
+   DB_size.srv
+   CheckConflicts.srv
+
 #   Service2.srv
  )
 

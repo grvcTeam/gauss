@@ -1,0 +1,7 @@
+---
+bool success
+string message
+uint8 operations
+uint8 geofences
+
+
