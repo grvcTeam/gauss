@@ -6,4 +6,5 @@ Waypoint landing_spot
 ---
 bool success
 string message
+uint8[] UAV_ids
 WaypointList[] deconflicted_plans

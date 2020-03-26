@@ -1,0 +1,8 @@
+<launch>
+  <node name="mqtt_bridge" pkg="mqtt_bridge" type="mqtt_bridge_node.py" output="screen">
+    <rosparam command="delete" param="" />
+    <rosparam command="load" file="$(find test_mqtt)/config/test_cylindrical_geofence_creation.yaml" />
+  </node>
+
+  <node name="geofence_publisher" pkg="test_mqtt" type="geofence_creation.py" output="screen" />
+</launch>

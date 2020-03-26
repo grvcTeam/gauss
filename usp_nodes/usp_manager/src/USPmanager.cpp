@@ -2,7 +2,7 @@
 //#include <mavros_msgs/ADSBVehicle.h>  //TBD message to/from UAVs
 #include <gauss_msgs/PositionReport.h>
 #include <gauss_msgs/Notification.h>
-#include <gauss_msgs/Alert.h>
+// #include <gauss_msgs/Alert.h>
 #include <gauss_msgs/FlightPlanReq.h>
 
 
@@ -57,7 +57,7 @@ USPManager::USPManager()
     rpaStatus_sub_=nh_.subscribe<gauss_msgs::Notification>("/gauss/rpa_state",1,&USPManager::RPAStatusCB,this); //TBD message from UAVs
 
     // Client
-    alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
+    // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
     FPreq_client_ = nh_.serviceClient<gauss_msgs::FlightPlanReq>("/gauss_msgs/flight_plan");
 
     // Timer

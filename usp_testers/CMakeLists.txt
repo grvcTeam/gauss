@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(usp_nodes)
+project(usp_testers)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -11,7 +11,12 @@ find_package(catkin REQUIRED COMPONENTS
   gauss_msgs
   roscpp
   rospy
+  geometry_msgs
+  nav_msgs
+  std_msgs
 )
+find_package(Eigen3 REQUIRED)
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -103,10 +108,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES usp_nodes
-  CATKIN_DEPENDS gauss_msgs roscpp rospy
-#  DEPENDS system_lib
+ INCLUDE_DIRS include
+ LIBRARIES usp_testers
+ CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs
+ DEPENDS EIGEN3
 )
 
 ###########
@@ -116,8 +121,9 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+ include
+ ${catkin_INCLUDE_DIRS}
+ ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
@@ -135,33 +141,6 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/usp_nodes_node.cpp)
 
-#add_executable(USPmanager src/USPmanager.cpp)
-#target_link_libraries(USPmanager ${catkin_LIBRARIES})
-#add_dependencies(USPmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-add_executable(DBmanager src/DBmanager.cpp)
-target_link_libraries(DBmanager ${catkin_LIBRARIES})
-add_dependencies(DBmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-add_executable(tracking src/tracking.cpp)
-target_link_libraries(tracking ${catkin_LIBRARIES})
-add_dependencies(tracking ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-#add_executable(monitoring src/monitoring.cpp)
-#target_link_libraries(monitoring ${catkin_LIBRARIES})
-#add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-add_executable(FlightPlanManagement src/FlightPlanManagement.cpp)
-target_link_libraries(FlightPlanManagement ${catkin_LIBRARIES})
-add_dependencies(FlightPlanManagement ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-#add_executable(emergency_management src/emergency_management.cpp)
-#target_link_libraries(emergency_management ${catkin_LIBRARIES})
-#add_dependencies(emergency_management ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-add_executable(ConflictSolver src/ConflictSolver.cpp)
-target_link_libraries(ConflictSolver ${catkin_LIBRARIES})
-add_dependencies(ConflictSolver ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

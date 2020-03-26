@@ -118,12 +118,16 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
     res.success=true;
     for (int i=0; i<tam; i++)
     {
+        ROS_INFO("hola %d", req.uav_ids[i]);
          if (req.uav_ids[i]<size_plans)
          {
+             ROS_INFO("hola");
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
+              ROS_INFO("aqui");
              while (it->UAV_id!=req.uav_ids[i])
                  it++;
-             res.operation.at(i)=*it;
+             //res.operation.at(i)=*it;
+             res.operation.push_back(*it);
          }
          else
              res.success=false;
@@ -137,23 +141,25 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
 bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res)
 {
     int tam = req.UAV_ids.size();
+    ROS_INFO("tam %d",tam);
 
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>size_plans)
+        if (req.UAV_ids[i]>=size_plans)
         {
             operation_db.push_back(req.operation[i]);
             size_plans++;
         }
         else
         {
+            ROS_INFO("escribiendo");
             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
             while (it->UAV_id!=req.UAV_ids[i])
                 it++;
-            operation_db.erase(it);
-            operation_db.push_back(req.operation[i]);
+            *it=req.operation[i];
         }
+        ROS_INFO("operaciones %d",size_plans);
     }
     res.message="All requested operations was written on the DataBase";
 }
@@ -188,18 +194,18 @@ bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_m
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.geofence_ids[i]>size_geofences)
+        if (req.geofence_ids[i]>=size_geofences)
         {
             geofence_db.push_back(req.geofences[i]);
             size_geofences++;
         }
         else
         {
+
             list<gauss_msgs::Geofence>::iterator it = geofence_db.begin();
             while (it->id!=req.geofence_ids[i])
                 it++;
-            geofence_db.erase(it);
-            geofence_db.push_back(req.geofences[i]);
+            *it=req.geofences[i];
         }
     }
     res.message="All requested geofences was written on the DataBase";
@@ -235,7 +241,7 @@ bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>size_plans)
+        if (req.UAV_ids[i]>=size_plans)
         {
             res.success=false;
             res.message="A flight plan was not written";
@@ -281,7 +287,7 @@ bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::W
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>size_plans)
+        if (req.UAV_ids[i]>=size_plans)
         {
             res.success=false;
             res.message="A track was not written";
@@ -327,7 +333,7 @@ bool DataBase::writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>size_plans)
+        if (req.UAV_ids[i]>=size_plans)
         {
             res.success=false;
             res.message="A trajectory was not written";

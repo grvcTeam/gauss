@@ -1,5 +1,5 @@
 #include <ros/ros.h>
-#include <gauss_msgs/Alert.h>
+// #include <gauss_msgs/Alert.h>
 #include <gauss_msgs/Deconfliction.h>
 #include <gauss_msgs/WriteGeofences.h>
 #include <gauss_msgs/ReadGeofences.h>
@@ -16,7 +16,7 @@ private:
     // Topic Callbacks
 
     // Service Callbacks
-    bool alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res);
+    // bool alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res);
 
     // Auxilary methods
 
@@ -58,7 +58,7 @@ EmergencyManagement::EmergencyManagement()
     // Subscribe
 
     // Server
-    alert_server_=nh_.advertiseService("/gauss/alert",&EmergencyManagement::alertEmergencyCB,this);
+    // alert_server_=nh_.advertiseService("/gauss/alert",&EmergencyManagement::alertEmergencyCB,this);
 
     // Clients
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss_msgs/readGeofences");
@@ -72,13 +72,13 @@ EmergencyManagement::EmergencyManagement()
 
 
 // Alert callback
-bool EmergencyManagement::alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res)
-{
-    int alert_type=req.code;
-    int alert_level=req.level;
-    int *UAV_ids;
-    int number_of_plans=req.plans.size();
-    gauss_msgs::WaypointList *plans;
+// bool EmergencyManagement::alertEmergencyCB(gauss_msgs::Alert::Request &req, gauss_msgs::Alert::Response &res)
+// {
+//     int alert_type=req.code;
+//     int alert_level=req.level;
+//     int *UAV_ids;
+//     int number_of_plans=req.plans.size();
+//     gauss_msgs::WaypointList *plans;
 
 
     /*switch (alert_type) {
@@ -175,8 +175,8 @@ bool EmergencyManagement::alertEmergencyCB(gauss_msgs::Alert::Request &req, gaus
         break;
     }*/
 
-    return true;
-}
+//     return true;
+// }
 
 
 
