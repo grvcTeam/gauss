@@ -22,8 +22,8 @@ private:
     bool deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res);
 
     // Auxilary methods
-    geometry_msgs::Point findInitAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path);
-    geometry_msgs::Point findGoalAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path);
+    geometry_msgs::Point findInitAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, int &_init_astar_pos);
+    geometry_msgs::Point findGoalAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, int &_goal_astar_pos);
     int pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy);
     std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, geometry_msgs::Point _init_point, geometry_msgs::Point _goal_point);
     geometry_msgs::Polygon circleToPolygon(float _x, float _y, float _radius, float _nVertices = 8);
@@ -89,7 +89,7 @@ int ConflictSolver::pnpoly(int nvert, std::vector<float> &vertx, std::vector<flo
     return c;
 }
 
-geometry_msgs::Point ConflictSolver::findInitAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path) {
+geometry_msgs::Point ConflictSolver::findInitAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, int &_init_astar_pos) {
     geometry_msgs::Point out_point;
     std::vector<float> vert_x, vert_y;
     for (int i = 0; i < _polygon.points.size(); i++) {
@@ -103,13 +103,14 @@ geometry_msgs::Point ConflictSolver::findInitAStarPoint(geometry_msgs::Polygon &
             out_point.x = _path.poses.at(i - 1).pose.position.x;
             out_point.y = _path.poses.at(i - 1).pose.position.y;
             out_point.z = _path.poses.at(i - 1).pose.position.z;
+            _init_astar_pos = i - 1;
             break;
         }
     }
     return out_point;
 }
 
-geometry_msgs::Point ConflictSolver::findGoalAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path) {
+geometry_msgs::Point ConflictSolver::findGoalAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, int &_goal_astar_pos) {
     bool flag1 = false;
     bool flag2 = false;
     geometry_msgs::Point out_point;
@@ -128,6 +129,7 @@ geometry_msgs::Point ConflictSolver::findGoalAStarPoint(geometry_msgs::Polygon &
             out_point.x = _path.poses.at(i).pose.position.x;
             out_point.y = _path.poses.at(i).pose.position.y;
             out_point.z = _path.poses.at(i).pose.position.z;
+            _goal_astar_pos = i;
             break;
         }
     }
@@ -315,12 +317,14 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 return false;
             }
             nav_msgs::Path res_path;
+            std::vector<double> res_times;
             for (int i = 0; i < plan_msg.response.plans.front().waypoints.size(); i++){
                 geometry_msgs::PoseStamped temp_pose;
                 temp_pose.pose.position.x = plan_msg.response.plans.front().waypoints.at(i).x;
                 temp_pose.pose.position.y = plan_msg.response.plans.front().waypoints.at(i).y;
                 temp_pose.pose.position.z = plan_msg.response.plans.front().waypoints.at(i).z;
                 res_path.poses.push_back(temp_pose);
+                res_times.push_back(plan_msg.response.plans.front().waypoints.at(i).stamp.toSec());
             }
             gauss_msgs::ReadGeofences geofence_msg;
             geofence_msg.request.geofences_ids.push_back(req.conflict.geofence_ids.front());
@@ -344,8 +348,9 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 }
             }
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
-            init_astar_point = findInitAStarPoint(res_polygon, res_path);
-            goal_astar_point = findGoalAStarPoint(res_polygon, res_path);
+            int init_astar_pos, goal_astar_pos;
+            init_astar_point = findInitAStarPoint(res_polygon, res_path, init_astar_pos);
+            goal_astar_point = findGoalAStarPoint(res_polygon, res_path, goal_astar_pos);
             std::vector<double> grid_borders = findGridBorders(res_polygon, res_path, init_astar_point, goal_astar_point);
             min_grid_point.x = grid_borders[0];
             min_grid_point.y = grid_borders[1];
@@ -353,6 +358,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             max_grid_point.y = grid_borders[3];
             PathFinder path_finder(res_path, init_astar_point, goal_astar_point, res_polygon, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
+            static upat_follower::Generator generator(1.0, 1.0, 1.0);
+            std::vector<double> interp_times, a_star_times_res;
+            interp_times.push_back(res_times.at(init_astar_pos));
+            interp_times.push_back(res_times.at(goal_astar_pos));
+            a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
+            a_star_times_res.push_back(res_times.at(goal_astar_pos));
+            // Solutions of conflict solver are a_star_path_res and a_star_times_res
         }
     }
 
