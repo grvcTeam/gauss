@@ -1,0 +1,8 @@
+prefix=/usr/local
+
+Name: ual_communication
+Description: Description of ual_communication
+Version: 0.0.0
+Cflags: -I/usr/local/include -I/usr/include/eigen3
+Libs: -L/usr/local/lib -lusp_nodes
+Requires: gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs upat_follower
