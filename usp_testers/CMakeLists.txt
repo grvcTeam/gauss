@@ -192,6 +192,10 @@ include_directories(
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
+add_executable(prueba src/prueba.cpp)
+target_link_libraries(prueba ${catkin_LIBRARIES})
+add_dependencies(prueba ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
 #############
 ## Testing ##
 #############
