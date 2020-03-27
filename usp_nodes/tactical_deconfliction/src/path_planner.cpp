@@ -5,7 +5,7 @@
  * 
  */
 
-#include <usp_nodes/path_planner.h>
+#include <tactical_deconfliction/path_planner.h>
 
 #include <map>
 #include <math.h>

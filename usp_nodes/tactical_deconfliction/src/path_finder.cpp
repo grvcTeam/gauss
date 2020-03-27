@@ -17,7 +17,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //----------------------------------------------------------------------------------------------------------------------
 
-#include <usp_nodes/path_finder.h>
+#include <tactical_deconfliction/path_finder.h>
 
 PathFinder::PathFinder(nav_msgs::Path &_init_path, geometry_msgs::Point &_init_astar_point, geometry_msgs::Point &_goal_astar_point, geometry_msgs::Polygon &_polygon, geometry_msgs::Point &_min_grid_point, geometry_msgs::Point &_max_grid_point) {
     init_path_ = _init_path;

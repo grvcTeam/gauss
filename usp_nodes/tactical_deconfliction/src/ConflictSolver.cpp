@@ -6,7 +6,7 @@
 #include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/ReadFlightPlan.h>
 #include <gauss_msgs/ReadGeofences.h>
-#include <usp_nodes/path_finder.h>
+#include <tactical_deconfliction/path_finder.h>
 #include <Eigen/Eigen>
 
 // Class definition
