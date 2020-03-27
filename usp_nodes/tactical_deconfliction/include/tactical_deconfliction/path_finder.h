@@ -22,9 +22,12 @@
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <upat_follower/generator.h>
-#include <usp_nodes/path_planner.h>
+#include <tactical_deconfliction/path_planner.h>
 
 #include <Eigen/Eigen>
+
+#ifndef PATH_FINDER_H
+#define PATH_FINDER_H
 
 class PathFinder {
    public:
@@ -50,3 +53,5 @@ class PathFinder {
     double x_min_, y_min_, x_max_, y_max_;
     // Params
 };
+
+#endif  // PATH_FINDEr_H
