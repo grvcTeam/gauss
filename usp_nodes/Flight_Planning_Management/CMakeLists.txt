@@ -145,25 +145,10 @@ include_directories(
 #target_link_libraries(USPmanager ${catkin_LIBRARIES})
 #add_dependencies(USPmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
-add_executable(DBmanager src/DBmanager.cpp)
-target_link_libraries(DBmanager ${catkin_LIBRARIES})
-add_dependencies(DBmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
-add_executable(tracking src/tracking.cpp)
-target_link_libraries(tracking ${catkin_LIBRARIES})
-add_dependencies(tracking ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-#add_executable(monitoring src/monitoring.cpp)
-#target_link_libraries(monitoring ${catkin_LIBRARIES})
-#add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-#add_executable(emergency_management src/emergency_management.cpp)
-#target_link_libraries(emergency_management ${catkin_LIBRARIES})
-#add_dependencies(emergency_management ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
-
-add_executable(ConflictSolver src/ConflictSolver.cpp)
-target_link_libraries(ConflictSolver ${catkin_LIBRARIES})
-add_dependencies(ConflictSolver ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+add_executable(FlightPlanManagement src/FlightPlanManagement.cpp)
+target_link_libraries(FlightPlanManagement ${catkin_LIBRARIES})
+add_dependencies(FlightPlanManagement ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

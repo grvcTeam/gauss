@@ -1,5 +1,6 @@
-int8[] uas_ids
-int8 action_id
+std_msgs/Header header
+uint8 UAV_id
+uint8 action
 string description
 Waypoint[] waypoints
 

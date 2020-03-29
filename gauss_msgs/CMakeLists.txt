@@ -80,8 +80,6 @@ find_package(catkin REQUIRED COMPONENTS
    WriteTracks.srv
    ReadGeofences.srv
    WriteGeofences.srv
-   ReadMission.srv
-   WriteMission.srv
    UasOperation.srv
    Threats.srv	
    ReadOperation.srv
