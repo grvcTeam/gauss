@@ -6,6 +6,10 @@
 #include <gauss_msgs/WriteOperation.h>
 #include <gauss_msgs/Operation.h>
 #include <gauss_msgs/ReadOperation.h>
+#include <gauss_msgs/Geofence.h>
+#include <gauss_msgs/WriteGeofences.h>
+#include <gauss_msgs/ReadGeofences.h>
+#include <gauss_msgs/Deconfliction.h>
 
 
 
@@ -14,6 +18,8 @@ class Tracking
 {
 public:
     Tracking();
+    bool writeDB();
+    ros::ServiceClient write_deconfliction_client_;
 
 private:
     // Topic Callbacks
@@ -44,7 +50,8 @@ private:
     ros::ServiceClient read_plan_client_;
     ros::ServiceClient write_operation_client_;
     ros::ServiceClient read_operation_client_;
-
+    ros::ServiceClient write_geofence_client_;
+    ros::ServiceClient read_geofence_client_;
 };
 
 // tracking Constructor
@@ -68,18 +75,104 @@ Tracking::Tracking()
 
     // Client
     read_track_client_ = nh_.serviceClient<gauss_msgs::ReadTracks>("/gauss/ReadTracks");
-    write_track_client_ = nh_.serviceClient<gauss_msgs::WriteTracks>("/gauss_msgs/writeTracks");
+    write_track_client_ = nh_.serviceClient<gauss_msgs::WriteTracks>("/gauss/writeTracks");
     read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/readFlightPlan");
     write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/writeOperation");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/readOperation");
-
+    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofences>("/gauss/writeGeofences");
+    write_deconfliction_client_ = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/tactical_deconfliction");
 
     ROS_INFO("Started Tracking node!");
 }
 
 
 // Auxilary methods
+bool Tracking::writeDB(){
+    gauss_msgs::Operation operation;
+    gauss_msgs::Waypoint wp;
+    gauss_msgs::WaypointList wp_list;
+    wp.x = 1.0;
+    wp.y = 4.0;
+    wp.z = 1.0;
+    wp.stamp = ros::Time(0.0);
+    wp_list.waypoints.push_back(wp);
+    wp.x = 3.0;
+    wp.y = 4.0;
+    wp.z = 1.0;
+    wp.stamp = ros::Time(5.0);
+    wp_list.waypoints.push_back(wp);
+    wp.x = 5.0;
+    wp.y = 4.0;
+    wp.z = 1.0;
+    wp.stamp = ros::Time(10.0);
+    wp_list.waypoints.push_back(wp);
+    wp.x = 7.0;
+    wp.y = 4.0;
+    wp.z = 1.0;
+    wp.stamp = ros::Time(15.0);
+    wp_list.waypoints.push_back(wp);
+    wp.x = 9.0;
+    wp.y = 4.0;
+    wp.z = 1.0;
+    wp.stamp = ros::Time(20.0);
+    wp_list.waypoints.push_back(wp);
+    wp.x = 10.0;
+    wp.y = 4.0;
+    wp.z = 1.0;
+    wp.stamp = ros::Time(25.0);
+    wp_list.waypoints.push_back(wp);
+    operation.flight_plan = wp_list;
+    operation.autonomy = 0.0;
+    operation.conop = "conop";
+    operation.contingency_volume = 0.0;
+    operation.current_wp = 0;
+    operation.dT = 0.0;
+    operation.estimated_trajectory = operation.flight_plan;
+    operation.flight_geometry = 0.0;
+    operation.flight_plan = operation.estimated_trajectory;
+    operation.frame = operation.FRAME_ROTOR;
+    operation.ICAO_address = "icaoaddress";
+    operation.priority = 0;
+    operation.time_horizon = 1000.0;
+    operation.time_tracked = 0.0;
+    operation.track = operation.estimated_trajectory;
+    operation.UAV_id = 0;
+    gauss_msgs::WriteOperation write_operation;
+    write_operation.request.operation.push_back(operation);
+    write_operation.request.UAV_ids.push_back(0);
+    if (!write_operation_client_.call(write_operation) || !write_operation.response.success)
+    {
+        ROS_ERROR("Call write operation error");
+        return false;
+    }
 
+    gauss_msgs::Geofence geofence;
+    geofence.cylinder_shape = 0;
+    geofence.end_time = ros::Time(900.0);
+    geofence.id = 0;
+    geofence.max_altitude = 10.0;
+    geofence.min_altitude = 0.0;
+    geofence.polygon.x.push_back(4.0);
+    geofence.polygon.y.push_back(6.0);
+    geofence.polygon.x.push_back(4.0);
+    geofence.polygon.y.push_back(3.0);
+    geofence.polygon.x.push_back(8.0);
+    geofence.polygon.y.push_back(3.0);
+    geofence.polygon.x.push_back(8.0);
+    geofence.polygon.y.push_back(6.0);
+    geofence.start_time = ros::Time(0.0);
+    geofence.static_geofence = 1;
+    gauss_msgs::WriteGeofences write_geofence;
+    write_geofence.request.geofences.push_back(geofence);
+    write_geofence.request.geofence_ids.push_back(0);
+    if (!write_geofence_client_.call(write_geofence) || !write_geofence.response.success)
+    {
+        ROS_ERROR("Call write geofence error");
+        return false;
+    }
+
+    return true;
+}
 
 
 // PositionReport callback
@@ -221,7 +314,26 @@ int main(int argc, char *argv[])
     ros::init(argc,argv,"tracking");
 
     // Create a Tracking object
-    Tracking *tracking = new Tracking();
+    // Tracking *tracking = new Tracking();
+    
+    Tracking tracking;
+    tracking.writeDB();
+    gauss_msgs::Deconfliction deconfliction;
+    deconfliction.request.conflict.geofence_ids.push_back(0);
+    deconfliction.request.conflict.threat_id = deconfliction.request.conflict.GEOFENCE_CONFLICT;
+    deconfliction.request.conflict.times.push_back(ros::Time(0.0));
+    deconfliction.request.conflict.times.push_back(ros::Time(900.0));
+    deconfliction.request.conflict.UAV_ids.push_back(0); 
+    deconfliction.request.tactical = true;
+    if (!tracking.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
+    {
+        ROS_ERROR("Call write deconfliction error");
+        return false;
+    } else {
+        for (auto i : deconfliction.response.deconflicted_plans.front().waypoints){
+            std::cout << i << std::endl;
+        }
+    }
 
     ros::spin();
 }

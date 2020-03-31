@@ -87,7 +87,7 @@ DataBase::DataBase()
     // Server
     read_operation_server_=nh_.advertiseService("/gauss/readOperation",&DataBase::readOperationCB,this);
     write_operation_server_=nh_.advertiseService("/gauss/writeOperation",&DataBase::writeOperationCB,this);
-    read_geofences_server_=nh_.advertiseService("/gauss_msgs/readGeofences",&DataBase::readGeofenceCB,this);
+    read_geofences_server_=nh_.advertiseService("/gauss/readGeofences",&DataBase::readGeofenceCB,this);
     write_geofences_server_=nh_.advertiseService("/gauss/writeGeofences",&DataBase::writeGeofenceCB,this);
     read_plan_server_=nh_.advertiseService("/gauss/readFlightPlan",&DataBase::readPlanCB,this);
     write_plan_server_=nh_.advertiseService("/gauss/writeFlightPlan",&DataBase::writePlanCB,this);
@@ -176,7 +176,7 @@ bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msg
              list<gauss_msgs::Geofence>::iterator it = geofence_db.begin();
              while (it->id!=req.geofences_ids[i])
                  it++;
-             res.geofences.at(i)=*it;
+             res.geofences.push_back(*it);
          }
          else
              res.success=false;
@@ -223,7 +223,7 @@ bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
              while (it->UAV_id!=req.uav_ids[i])
                  it++;
-             res.plans[i]=it->flight_plan;
+             res.plans.push_back(it->flight_plan);
          }
          else
              res.success=false;
@@ -269,7 +269,7 @@ bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::Rea
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
              while (it->UAV_id!=req.UAV_ids[i])
                  it++;
-             res.tracks[i]=it->track;
+             res.tracks.push_back(it->track);
          }
          else
              res.success=false;
@@ -315,7 +315,7 @@ bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
              while (it->UAV_id!=req.UAV_ids[i])
                  it++;
-             res.tracks[i]=it->estimated_trajectory;
+             res.tracks.push_back(it->estimated_trajectory);
          }
          else
              res.success=false;

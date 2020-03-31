@@ -365,6 +365,18 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
             a_star_times_res.push_back(res_times.at(goal_astar_pos));
             // Solutions of conflict solver are a_star_path_res and a_star_times_res
+            gauss_msgs::Waypoint temp_wp;
+            gauss_msgs::WaypointList temp_wp_list;
+            for (int i = 0; i < a_star_path_res.poses.size(); i++){
+                temp_wp.x = a_star_path_res.poses.at(i).pose.position.x;
+                temp_wp.y = a_star_path_res.poses.at(i).pose.position.y;
+                temp_wp.z = a_star_path_res.poses.at(i).pose.position.z;
+                temp_wp.stamp = ros::Time(a_star_times_res.at(i));
+                temp_wp_list.waypoints.push_back(temp_wp);
+            }
+
+            res.deconflicted_plans.push_back(temp_wp_list);
+            res.success = true;
         }
     }
 
