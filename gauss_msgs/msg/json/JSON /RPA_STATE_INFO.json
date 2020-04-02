@@ -1,0 +1,21 @@
+{    
+	"icao": "",
+	"latitude": ,
+	"longitude": ,
+	"altitude": ,		
+	"yaw": ,
+	"pitch": ,
+	"roll": ,
+	"groundspeed": ,					
+	"covariance_h": ,					
+	"covariance_v": ,					
+	"solution_mode": ,  				 
+	"integrity": ,					
+	"timestamp": ,					
+	"jamming": ,					
+	"spoofing": ,					  
+	"GNSS Anomalous Position Drift": , 
+	"GNSS Signal to Noise Ratio": , 
+	"GNSS Received Power":  
+}
+
