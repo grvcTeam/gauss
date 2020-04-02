@@ -5,7 +5,7 @@ time[] times
 uint8[] geofence_ids
 
 uint8 UAS_IN_CV = 0
-uint8 UAS_OUT_CV = 1
+uint8 UAS_OUT_OV = 1
 uint8 LOSS_OF_SEPARATION = 2
 uint8 ALERT_WARNING = 3
 uint8 GEOFENCE_INTRUSION = 4

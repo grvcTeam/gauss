@@ -122,7 +122,7 @@ def threat_management(threat2solve):
         if threat_id == 8: #LACK_OF_BATTERY
             action = 'Please, land in the defined landing spot.'     
             action_id = 3
-    
+    print(action)
     return action, action_id
 
 #def deconfliction_client(uas_in_conflict):
@@ -141,12 +141,12 @@ def threats_response(request): # This is the callback
     response = ThreatsResponse() # We create the variable which contains the Response.
     response.success = True
     threat2solve = request
-    (action, action_id) = threat_management(threat2solve)
-    global gpub
-    notification = Notification()
-    notification.description = action
-    notification.action_id = action_id
-    gpub.publish(notification)
+    action, action_id = threat_management(threat2solve)
+    #global gpub
+    #notification = Notification()
+    #notification.description = action
+    #notification.action_id = action_id
+    #gpub.publish(notification)
     
     return response
 
@@ -162,8 +162,8 @@ def main():
     flight_time = 600 # seconds
     best_landingspot = calculate_landingspot(landingspot_list, uas_vel, flight_time, uas_position)
     print(best_landingspot)
-    global gpub 
-    gpub = rospy.Publisher("notification", Notification, queue_size=1)
+    #global gpub 
+    #gpub = rospy.Publisher("notification", Notification, queue_size=1)
     
             
     rospy.spin()
