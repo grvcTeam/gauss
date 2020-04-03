@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <gauss_msgs/ReadTracks.h>
 #include <gauss_msgs/WriteTracks.h>
 #include <gauss_msgs/ReadTraj.h>
@@ -13,6 +14,8 @@
 #include <gauss_msgs/Geofence.h>
 #include <gauss_msgs/DB_size.h>
 #include <list>
+#include <fstream>
+#include <db_manager/json.hpp>
 
 using namespace std;
 
@@ -41,6 +44,8 @@ private:
     // Auxilary variables
     int size_plans;
     int size_geofences;
+    // Auxilary methods
+    bool operationsFromJson(std::string _file_name);
 
     list<gauss_msgs::Operation> operation_db;
     list<gauss_msgs::Geofence> geofence_db;
@@ -77,7 +82,8 @@ DataBase::DataBase()
     size_plans=size_geofences=0;
 
     // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
-
+    std::string file_name = "OPERATIONS.json";
+    operationsFromJson(file_name);
 
     // Publish
 
@@ -98,6 +104,75 @@ DataBase::DataBase()
     dbsize_server_=nh_.advertiseService("/gauss/db_size",&DataBase::returnDBsizeCB,this);
 
     ROS_INFO("Started DBManager node!");
+}
+
+bool DataBase::operationsFromJson(std::string _file_name)
+{
+    std::string pkg_path = ros::package::getPath("db_manager");
+    std::string file_path = pkg_path + "/config/" + _file_name;
+    std::ifstream i(file_path);
+    nlohmann::json jsonDB;
+    i >> jsonDB;
+    gauss_msgs::WriteOperation json_operation;
+    for(const auto& item : jsonDB.at("operations").items()){
+        gauss_msgs::Operation operation;
+        operation.UAV_id = item.value()["UAV_id"].get<double>();
+        operation.autonomy = item.value()["autonomy"].get<double>();
+        operation.conop = item.value()["conop"].get<std::string>();
+        operation.contingency_volume = item.value()["contingency_volume"].get<double>();
+        operation.current_wp = item.value()["current_wp"].get<double>();
+        operation.dT = item.value()["dT"].get<double>();
+        operation.flight_geometry = item.value()["flight_geometry"].get<double>();
+        operation.frame = operation.FRAME_ROTOR; // Check this parameter
+        operation.ICAO_address = item.value()["ICAO_address"].get<std::string>();
+        operation.priority = item.value()["priority"].get<double>();
+        operation.time_horizon = item.value()["time_horizon"].get<double>();
+        operation.time_tracked = item.value()["time_tracked"].get<double>();
+        gauss_msgs::WaypointList wp_list;
+        for(const auto& it : item.value()["flight_plan"].front().items()){
+            gauss_msgs::Waypoint wp;
+            wp.x = it.value()["x"].get<double>();
+            wp.y = it.value()["y"].get<double>();
+            wp.z = it.value()["z"].get<double>();
+            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+            wp.mandatory = it.value()["mandatory"].get<double>();
+            wp_list.waypoints.push_back(wp);
+        } 
+        operation.flight_plan = wp_list;
+        wp_list.waypoints.clear();
+        for(const auto& it : item.value()["track"].front().items()){
+            gauss_msgs::Waypoint wp;
+            wp.x = it.value()["x"].get<double>();
+            wp.y = it.value()["y"].get<double>();
+            wp.z = it.value()["z"].get<double>();
+            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+            wp.mandatory = it.value()["mandatory"].get<double>();
+            wp_list.waypoints.push_back(wp);
+        } 
+        operation.track = wp_list;
+        wp_list.waypoints.clear();
+        for(const auto& it : item.value()["estimated_trajectory"].front().items()){
+            gauss_msgs::Waypoint wp;
+            wp.x = it.value()["x"].get<double>();
+            wp.y = it.value()["y"].get<double>();
+            wp.z = it.value()["z"].get<double>();
+            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+            wp.mandatory = it.value()["mandatory"].get<double>();
+            wp_list.waypoints.push_back(wp);
+        } 
+        operation.estimated_trajectory = wp_list;
+        json_operation.request.operation.push_back(operation);
+        json_operation.request.UAV_ids.push_back(operation.UAV_id);
+    }
+    writeOperationCB(json_operation.request, json_operation.response);
+    if (!json_operation.response.success){
+        ROS_ERROR("Error initializing DataBase from JSON!");
+        return false;
+    } else {
+        ROS_INFO_STREAM(json_operation.response.message);
+    }
+
+    return true;
 }
 
 // Callback
