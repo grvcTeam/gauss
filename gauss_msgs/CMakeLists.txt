@@ -55,7 +55,6 @@ find_package(catkin REQUIRED COMPONENTS
    PositionReport.msg
    Waypoint.msg
    WaypointList.msg
-   Mission.msg
    Notification.msg
    Circle.msg
    Polygon.msg
@@ -79,7 +78,6 @@ find_package(catkin REQUIRED COMPONENTS
    WriteTracks.srv
    ReadGeofences.srv
    WriteGeofences.srv
-   UasOperation.srv
    Threats.srv	
    ReadOperation.srv
    WriteOperation.srv
