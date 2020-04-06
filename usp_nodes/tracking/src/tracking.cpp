@@ -59,8 +59,8 @@ Tracking::Tracking()
     // Server
 
     // Client
-    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("gauss/readOperation");
-    write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("gauss/writeOperation");
+    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
+    write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/write_operation");
 
     // Modified Operation publisher TODO: Only for debugging purposes
     new_operation_pub_ = nh_.advertise<gauss_msgs::Operation>("gauss_test/updated_operation", 5);

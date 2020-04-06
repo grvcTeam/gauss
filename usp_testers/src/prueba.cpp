@@ -74,12 +74,12 @@ Tracking::Tracking()
     // Server
 
     // Client
-    read_track_client_ = nh_.serviceClient<gauss_msgs::ReadTracks>("/gauss/ReadTracks");
-    write_track_client_ = nh_.serviceClient<gauss_msgs::WriteTracks>("/gauss/writeTracks");
-    read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/readFlightPlan");
-    write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/writeOperation");
-    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/readOperation");
-    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofences>("/gauss/writeGeofences");
+    read_track_client_ = nh_.serviceClient<gauss_msgs::ReadTracks>("/gauss/read_tracks");
+    write_track_client_ = nh_.serviceClient<gauss_msgs::WriteTracks>("/gauss/write_tracks");
+    read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/read_flight_plan");
+    write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/write_operation");
+    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
+    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofences>("/gauss/write_geofences");
     write_deconfliction_client_ = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/tactical_deconfliction");
 
     ROS_INFO("Started Tracking node!");
@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
     // Tracking *tracking = new Tracking();
     
     Tracking tracking;
-    tracking.writeDB();
+    // tracking.writeDB();
     gauss_msgs::Deconfliction deconfliction;
     deconfliction.request.conflict.geofence_ids.push_back(0);
     deconfliction.request.conflict.threat_id = deconfliction.request.conflict.GEOFENCE_CONFLICT;

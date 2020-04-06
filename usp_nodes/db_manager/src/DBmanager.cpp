@@ -93,16 +93,16 @@ DataBase::DataBase()
 
 
     // Server
-    read_operation_server_=nh_.advertiseService("/gauss/readOperation",&DataBase::readOperationCB,this);
-    write_operation_server_=nh_.advertiseService("/gauss/writeOperation",&DataBase::writeOperationCB,this);
-    read_geofences_server_=nh_.advertiseService("/gauss/readGeofences",&DataBase::readGeofenceCB,this);
-    write_geofences_server_=nh_.advertiseService("/gauss/writeGeofences",&DataBase::writeGeofenceCB,this);
-    read_plan_server_=nh_.advertiseService("/gauss/readFlightPlan",&DataBase::readPlanCB,this);
-    write_plan_server_=nh_.advertiseService("/gauss/writeFlightPlan",&DataBase::writePlanCB,this);
-    read_track_server_=nh_.advertiseService("/gauss/readTracks",&DataBase::readTrackCB,this);
-    write_track_server_=nh_.advertiseService("/gauss/writeTracks",&DataBase::writeTrackCB,this);
-    read_traj_server_=nh_.advertiseService("/gauss/readEstimatedTrajectory",&DataBase::readTrajectoryCB,this);
-    write_traj_server_=nh_.advertiseService("/gauss/writeEstimatedTrajectory",&DataBase::writeTrajectoryCB,this);
+    read_operation_server_=nh_.advertiseService("/gauss/read_operation",&DataBase::readOperationCB,this);
+    write_operation_server_=nh_.advertiseService("/gauss/write_operation",&DataBase::writeOperationCB,this);
+    read_geofences_server_=nh_.advertiseService("/gauss/read_geofences",&DataBase::readGeofenceCB,this);
+    write_geofences_server_=nh_.advertiseService("/gauss/write_geofences",&DataBase::writeGeofenceCB,this);
+    read_plan_server_=nh_.advertiseService("/gauss/read_flight_plan",&DataBase::readPlanCB,this);
+    write_plan_server_=nh_.advertiseService("/gauss/write_flight_plan",&DataBase::writePlanCB,this);
+    read_track_server_=nh_.advertiseService("/gauss/read_tracks",&DataBase::readTrackCB,this);
+    write_track_server_=nh_.advertiseService("/gauss/write_tracks",&DataBase::writeTrackCB,this);
+    read_traj_server_=nh_.advertiseService("/gauss/read_estimated_trajectory",&DataBase::readTrajectoryCB,this);
+    write_traj_server_=nh_.advertiseService("/gauss/write_estimated_trajectory",&DataBase::writeTrajectoryCB,this);
     dbsize_server_=nh_.advertiseService("/gauss/db_size",&DataBase::returnDBsizeCB,this);
 
     ROS_INFO("Started DBManager node!");
