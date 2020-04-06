@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-'''This script is the emergency manager node developed to decide what is the best action 
-to take in the U-space when some Threats are showed up.'''
+
+## This script is the emergency manager node developed to decide what is the best action 
+# to take in the U-space when some Threats are showed up.
+
 import os, sys
 import rospy
 from math import sqrt
@@ -11,7 +13,7 @@ from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest
 from gauss_msgs.msg import Threat, Notification, Waypoint, WaypointList, Operation, Geofence
 from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 
-''' It is defined a class with all functionabilities'''
+## It is defined a class with all functionabilities
 
 # Me llega una lista de Threat y los uavs que los tienen. Le asigno una severidad a cada uno de los Threat. Esta severidad
 #debera calcularse con algún criterio. Por otra parte, es necesario read operation de cada UAV para saber cuál es la 
@@ -38,8 +40,7 @@ class EmergencyManagement():
 
         # Publish
         self._notification_publisher = rospy.Publisher("notification", Notification, queue_size=1)
-        #TODO para publicar tengo que hacer lo siguiente 
-
+        
         # Wait until service is available and creat connection
         
         rospy.wait_for_service('/gauss/deconfliction')                    
@@ -72,7 +73,7 @@ class EmergencyManagement():
                                     Threat.JAMMING_ATTACK{'type': 'alert', 'severity': 2},
                                     Threat.SPOOFING_ATTACK{'type': 'alert', 'severity': 3}
                                     }
-
+    ## It is stored the Threat in a ThreatRequest. OK.
     def service_threats_cb(self, request):
         rospy.loginfo("New threat received:") 
         response = ThreatsResponse()
@@ -80,17 +81,17 @@ class EmergencyManagement():
         self._threats2solve = request # ThreatRequest
         return response
 
-#TODO link SORA criteria with Threats
-
-    def estimate_threat_severity(self):
-        pass
+#TODO link SORA criteria with severity Threats
 
     def asignate_threat_severity(self):
         pass
    
+   ## Since a Threat has been received. It is request operation info of the uav linked to
+   # the Threat. OK.
+
     def request_operations_info(self):
         request = ReadOperationRequest()
-        request.uas_ids = self._threats2solve.Threat.uas_ids # Accedo a los ids de los uas que tienen el objeto threat.
+        request.uav_ids = self._threats2solve.threats[0].uav_ids
         response = self._readOperation_service_handle(request)
         return response  
 
@@ -194,6 +195,7 @@ if __name__== '__main__':
     while not rospy.is_shutdown():
     
         e.asignate_threat_severity()
+        e.request_operations_info() # Se solicita info de los uav que usará el decision maker.
         
         
         time.sleep(0.1)
