@@ -1,4 +1,4 @@
-uint8[] UAV_ids
+uint8[] uav_ids
 Operation[] operation
 ---
 bool success

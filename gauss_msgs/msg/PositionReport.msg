@@ -1,6 +1,6 @@
 Header header
-string ICAO_address
-uint8 UAV_id
+string icao_address
+uint8 uav_id
 Waypoint position
 float32 confidence
 

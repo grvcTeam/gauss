@@ -1,4 +1,4 @@
-uint8 UAV_id
+uint8 uav_id
 uint8 type
 Waypoint[] plan_request
 ---

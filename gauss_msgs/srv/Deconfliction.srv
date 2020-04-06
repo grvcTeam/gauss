@@ -3,5 +3,5 @@ Threat threat
 ---
 bool success
 string message
-uint8[] UAV_ids
+uint8[] uav_ids
 WaypointList[] deconflicted_plans
