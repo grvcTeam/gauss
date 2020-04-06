@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 #include <gauss_msgs/Deconfliction.h>
-#include <gauss_msgs/Conflict.h>
+#include <gauss_msgs/Threat.h>
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/CheckConflicts.h>
 #include <gauss_msgs/ReadTraj.h>
@@ -205,11 +205,11 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
     //Deconfliction
     if (req.tactical)
     {
-        gauss_msgs::Conflict conflict;
-        if (req.conflict.threat_id==req.conflict.LOSS_OF_SEPARATION)
+        gauss_msgs::Threat conflict;
+        if (req.threat.threat_id==req.threat.LOSS_OF_SEPARATION)
         {
             gauss_msgs::Waypoint newwp1,newwp2;
-            conflict=req.conflict;
+            conflict=req.threat;
 
 
             int num_conflicts=1;
@@ -219,20 +219,20 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 bool included2=false;
                 for (int i=0;i<res.UAV_ids.size();i++)
                 {
-                    if (conflict.UAV_ids.at(0)==res.UAV_ids.at(i))
+                    if (conflict.uas_ids.at(0)==res.UAV_ids.at(i))
                         included1=true;
-                    if (conflict.UAV_ids.at(1)==res.UAV_ids.at(i))
+                    if (conflict.uas_ids.at(1)==res.UAV_ids.at(i))
                         included2=true;
                 }
                 if (included1=false)
-                    res.UAV_ids.push_back(conflict.UAV_ids.at(0));
+                    res.UAV_ids.push_back(conflict.uas_ids.at(0));
                 if (included2=false)
-                    res.UAV_ids.push_back(conflict.UAV_ids.at(1));
+                    res.UAV_ids.push_back(conflict.uas_ids.at(1));
 
                 num_conflicts=0;
                 gauss_msgs::ReadTraj traj_msg;
-                traj_msg.request.UAV_ids.push_back(conflict.UAV_ids.at(0));
-                traj_msg.request.UAV_ids.push_back(conflict.UAV_ids.at(1));
+                traj_msg.request.UAV_ids.push_back(conflict.uas_ids.at(0));
+                traj_msg.request.UAV_ids.push_back(conflict.uas_ids.at(1));
                 if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
                 {
                     ROS_ERROR("Failed to read a trajectory");
@@ -243,8 +243,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 gauss_msgs::Waypoint wp1,wp2;
                 gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
                 gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);
-                int UAV1=req.conflict.UAV_ids.at(0);
-                int UAV2=req.conflict.UAV_ids.at(1);
+                int UAV1=req.threat.uas_ids.at(0);
+                int UAV2=req.threat.uas_ids.at(1);
 
                 while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>dT);
                 wp1=traj1.waypoints.at(j);
@@ -270,11 +270,11 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 gauss_msgs::CheckConflicts check_msg;
                 check_msg.request.deconflicted_wp.push_back(newwp1);
                 check_msg.request.deconflicted_wp.push_back(newwp2);
-                check_msg.request.conflict.threat_id=check_msg.request.conflict.LOSS_OF_SEPARATION;
-                check_msg.request.conflict.UAV_ids.push_back(UAV1);
-                check_msg.request.conflict.UAV_ids.push_back(UAV2);
-                check_msg.request.conflict.times.push_back(newwp1.stamp);
-                check_msg.request.conflict.times.push_back(newwp2.stamp);
+                check_msg.request.threat.threat_id=check_msg.request.threat.LOSS_OF_SEPARATION;
+                check_msg.request.threat.uas_ids.push_back(UAV1);
+                check_msg.request.threat.uas_ids.push_back(UAV2);
+                check_msg.request.threat.times.push_back(newwp1.stamp);
+                check_msg.request.threat.times.push_back(newwp2.stamp);
                 if (!check_client_.call(check_msg) || !check_msg.response.success)
                 {
                     ROS_ERROR("Failed checking new conflicts");
@@ -282,10 +282,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     return false;
                 }
 
-                num_conflicts=check_msg.response.conflicts.size();
+                num_conflicts=check_msg.response.threats.size();
 
                 if (num_conflicts>0)
-                    conflict=check_msg.response.conflicts.at(0);
+                    conflict=check_msg.response.threats.at(0);
             }
             // Leer flight plans, modificarlo (tiempo y posicion) segun los newwp1 y newwp2
             // incluir nuevos flight plans en
@@ -306,10 +306,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.success=true;
 
         }
-        else if (req.conflict.threat_id==req.conflict.GEOFENCE_CONFLICT)
+        else if (req.threat.threat_id==req.threat.GEOFENCE_CONFLICT)
         {
             gauss_msgs::ReadFlightPlan plan_msg;
-            plan_msg.request.uav_ids.push_back(req.conflict.UAV_ids.front());
+            plan_msg.request.uav_ids.push_back(req.threat.uas_ids.front());
             if (!read_flightplan_client_.call(plan_msg) || !plan_msg.response.success)
             {
                 ROS_ERROR("Failed to read a flight plan");
@@ -327,7 +327,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 res_times.push_back(plan_msg.response.plans.front().waypoints.at(i).stamp.toSec());
             }
             gauss_msgs::ReadGeofences geofence_msg;
-            geofence_msg.request.geofences_ids.push_back(req.conflict.geofence_ids.front());
+            geofence_msg.request.geofences_ids.push_back(req.threat.geofence_ids.front());
             if (!read_geofence_client_.call(geofence_msg) || !geofence_msg.response.success)
             {
                 ROS_ERROR("Failed to read a geofence");

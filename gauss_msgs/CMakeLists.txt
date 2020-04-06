@@ -56,7 +56,6 @@ find_package(catkin REQUIRED COMPONENTS
    Waypoint.msg
    WaypointList.msg
    Notification.msg
-   Conflict.msg
    Circle.msg
    Polygon.msg
    Operation.msg

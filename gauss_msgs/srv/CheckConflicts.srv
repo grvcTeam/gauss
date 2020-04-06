@@ -1,6 +1,6 @@
-Conflict conflict
+Threat threat
 Waypoint[] deconflicted_wp
 ---
 bool success
 string message
-Conflict[] conflicts
+Threat[] threats
