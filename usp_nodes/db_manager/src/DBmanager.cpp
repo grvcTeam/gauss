@@ -118,15 +118,15 @@ bool DataBase::operationsFromJson(std::string _file_name)
     gauss_msgs::WriteOperation json_operation;
     for(const auto& item : jsonDB.at("operations").items()){
         gauss_msgs::Operation operation;
-        operation.UAV_id = item.value()["UAV_id"].get<double>();
+        operation.uav_id = item.value()["uav_id"].get<double>();
         operation.autonomy = item.value()["autonomy"].get<double>();
         operation.conop = item.value()["conop"].get<std::string>();
-        operation.contingency_volume = item.value()["contingency_volume"].get<double>();
+        operation.operational_volume = item.value()["operational_volume"].get<double>();
         operation.current_wp = item.value()["current_wp"].get<double>();
         operation.dT = item.value()["dT"].get<double>();
         operation.flight_geometry = item.value()["flight_geometry"].get<double>();
         operation.frame = operation.FRAME_ROTOR; // Check this parameter
-        operation.ICAO_address = item.value()["ICAO_address"].get<std::string>();
+        operation.icao_address = item.value()["icao_address"].get<std::string>();
         operation.priority = item.value()["priority"].get<double>();
         operation.time_horizon = item.value()["time_horizon"].get<double>();
         operation.time_tracked = item.value()["time_tracked"].get<double>();
@@ -164,7 +164,7 @@ bool DataBase::operationsFromJson(std::string _file_name)
         } 
         operation.estimated_trajectory = wp_list;
         json_operation.request.operation.push_back(operation);
-        json_operation.request.UAV_ids.push_back(operation.UAV_id);
+        json_operation.request.uav_ids.push_back(operation.uav_id);
     }
     writeOperationCB(json_operation.request, json_operation.response);
     if (!json_operation.response.success){
@@ -239,7 +239,7 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
              ROS_INFO("hola");
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
               ROS_INFO("aqui");
-             while (it->UAV_id!=req.uav_ids[i])
+             while (it->uav_id!=req.uav_ids[i])
                  it++;
              //res.operation.at(i)=*it;
              res.operation.push_back(*it);
@@ -255,13 +255,13 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
 
 bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res)
 {
-    int tam = req.UAV_ids.size();
+    int tam = req.uav_ids.size();
     ROS_INFO("tam %d",tam);
 
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>=size_plans)
+        if (req.uav_ids[i]>=size_plans)
         {
             operation_db.push_back(req.operation[i]);
             size_plans++;
@@ -270,7 +270,7 @@ bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_
         {
             ROS_INFO("escribiendo");
             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->UAV_id!=req.UAV_ids[i])
+            while (it->uav_id!=req.uav_ids[i])
                 it++;
             *it=req.operation[i];
         }
@@ -336,7 +336,7 @@ bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::
          if (req.uav_ids[i]<size_plans)
          {
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-             while (it->UAV_id!=req.uav_ids[i])
+             while (it->uav_id!=req.uav_ids[i])
                  it++;
              res.plans.push_back(it->flight_plan);
          }
@@ -351,12 +351,12 @@ bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::
 
 bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs::WriteFlightPlan::Response &res)
 {
-    int tam = req.UAV_ids.size();
+    int tam = req.uav_ids.size();
 
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>=size_plans)
+        if (req.uav_ids[i]>=size_plans)
         {
             res.success=false;
             res.message="A flight plan was not written";
@@ -364,7 +364,7 @@ bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs
         else
         {
             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->UAV_id!=req.UAV_ids[i])
+            while (it->uav_id!=req.uav_ids[i])
                 it++;
             it->flight_plan=req.plans[i];
         }
@@ -374,15 +374,15 @@ bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs
 
 bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::ReadTracks::Response &res)
 {
-    int tam=req.UAV_ids.size();
+    int tam=req.uav_ids.size();
 
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-         if (req.UAV_ids[i]<size_plans)
+         if (req.uav_ids[i]<size_plans)
          {
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-             while (it->UAV_id!=req.UAV_ids[i])
+             while (it->uav_id!=req.uav_ids[i])
                  it++;
              res.tracks.push_back(it->track);
          }
@@ -397,12 +397,12 @@ bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::Rea
 
 bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::WriteTracks::Response &res)
 {
-    int tam = req.UAV_ids.size();
+    int tam = req.uav_ids.size();
 
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>=size_plans)
+        if (req.uav_ids[i]>=size_plans)
         {
             res.success=false;
             res.message="A track was not written";
@@ -410,7 +410,7 @@ bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::W
         else
         {
             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->UAV_id!=req.UAV_ids[i])
+            while (it->uav_id!=req.uav_ids[i])
                 it++;
             it->track=req.tracks[i];
         }
@@ -420,15 +420,15 @@ bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::W
 
 bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::ReadTraj::Response &res)
 {
-    int tam=req.UAV_ids.size();
+    int tam=req.uav_ids.size();
 
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-         if (req.UAV_ids[i]<size_plans)
+         if (req.uav_ids[i]<size_plans)
          {
              list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-             while (it->UAV_id!=req.UAV_ids[i])
+             while (it->uav_id!=req.uav_ids[i])
                  it++;
              res.tracks.push_back(it->estimated_trajectory);
          }
@@ -443,12 +443,12 @@ bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::
 
 bool DataBase::writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs::WriteTraj::Response &res)
 {
-    int tam = req.UAV_ids.size();
+    int tam = req.uav_ids.size();
 
     res.success=true;
     for (int i=0; i<tam; i++)
     {
-        if (req.UAV_ids[i]>=size_plans)
+        if (req.uav_ids[i]>=size_plans)
         {
             res.success=false;
             res.message="A trajectory was not written";
@@ -456,7 +456,7 @@ bool DataBase::writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs
         else
         {
             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->UAV_id!=req.UAV_ids[i])
+            while (it->uav_id!=req.uav_ids[i])
                 it++;
             it->estimated_trajectory=req.tracks[i];
         }

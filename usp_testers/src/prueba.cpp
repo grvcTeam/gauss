@@ -124,22 +124,22 @@ bool Tracking::writeDB(){
     operation.flight_plan = wp_list;
     operation.autonomy = 0.0;
     operation.conop = "conop";
-    operation.contingency_volume = 0.0;
+    operation.operational_volume = 0.0;
     operation.current_wp = 0;
     operation.dT = 0.0;
     operation.estimated_trajectory = operation.flight_plan;
     operation.flight_geometry = 0.0;
     operation.flight_plan = operation.estimated_trajectory;
     operation.frame = operation.FRAME_ROTOR;
-    operation.ICAO_address = "icaoaddress";
+    operation.icao_address = "icaoaddress";
     operation.priority = 0;
     operation.time_horizon = 1000.0;
     operation.time_tracked = 0.0;
     operation.track = operation.estimated_trajectory;
-    operation.UAV_id = 0;
+    operation.uav_id = 0;
     gauss_msgs::WriteOperation write_operation;
     write_operation.request.operation.push_back(operation);
-    write_operation.request.UAV_ids.push_back(0);
+    write_operation.request.uav_ids.push_back(0);
     if (!write_operation_client_.call(write_operation) || !write_operation.response.success)
     {
         ROS_ERROR("Call write operation error");
@@ -178,7 +178,7 @@ bool Tracking::writeDB(){
 // PositionReport callback
 void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
 {
-    int id = msg->UAV_id;
+    int id = msg->uav_id;
     double confidence = msg->confidence;
     gauss_msgs::Waypoint position = msg->position;
     int source=msg->source;
@@ -189,12 +189,12 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     gauss_msgs::WriteTracks write_track_msg;
     gauss_msgs::WriteOperation write_operation_msg;
 
-    write_operation_msg.request.UAV_ids.push_back(0);
+    write_operation_msg.request.uav_ids.push_back(0);
 
 
     gauss_msgs::Operation operation;
-    operation.UAV_id = 0;
-    operation.ICAO_address= "pepe";
+    operation.uav_id = 0;
+    operation.icao_address= "pepe";
     operation.frame=operation.FRAME_ROTOR;
     operation.priority=1;
     operation.current_wp=0;
@@ -211,7 +211,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     operation.time_tracked=0;
     operation.time_horizon=600;
     operation.flight_geometry=10;
-    operation.contingency_volume=20;
+    operation.operational_volume=20;
     operation.conop="nada";
     operation.estimated_trajectory=operation.flight_plan;
 
@@ -242,8 +242,8 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
 
     write_operation_msg.request.operation.pop_back();
 
-    operation.UAV_id = 0;
-    operation.ICAO_address= "pepa";
+    operation.uav_id = 0;
+    operation.icao_address= "pepa";
     operation.frame=operation.FRAME_ROTOR;
     operation.priority=1;
     operation.current_wp=0;
@@ -259,7 +259,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     operation.time_tracked=0;
     operation.time_horizon=600;
     operation.flight_geometry=10;
-    operation.contingency_volume=20;
+    operation.operational_volume=20;
     operation.conop="nada";
     operation.estimated_trajectory=operation.flight_plan;
 
@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
     deconfliction.request.threat.threat_id = deconfliction.request.threat.GEOFENCE_CONFLICT;
     deconfliction.request.threat.times.push_back(ros::Time(0.0));
     deconfliction.request.threat.times.push_back(ros::Time(900.0));
-    deconfliction.request.threat.uas_ids.push_back(0); 
+    deconfliction.request.threat.uav_ids.push_back(0); 
     deconfliction.request.tactical = true;
     if (!tracking.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
     {

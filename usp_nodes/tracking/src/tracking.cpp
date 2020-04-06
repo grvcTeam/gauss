@@ -71,7 +71,7 @@ Tracking::Tracking()
        execution of positionReportCB callback
     */
     read_operation_msg_.request.uav_ids.push_back(0);
-    write_operation_msg_.request.UAV_ids.push_back(0);
+    write_operation_msg_.request.uav_ids.push_back(0);
 
     ROS_INFO("Started Tracking node!");
 }
@@ -90,7 +90,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
        ADSB surveillance, the UAV_id field should not be used to lookup an operation in the database,
        but instead, the ICAO address must be used in this case
     */
-    int id = msg->UAV_id;
+    int id = msg->uav_id;
     double confidence = msg->confidence;
     gauss_msgs::Waypoint position = msg->position;
     int source=msg->source;
@@ -151,7 +151,6 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     operation_ptr->estimated_trajectory.waypoints = new_estimated_trajectory.waypoints;
 
     // Write the modified operation in the database
-    write_operation_msg_.request.UAV_ids[0] = id;
     write_operation_msg_.request.operation.push_back(*operation_ptr);
     write_operation_msg_.request.operation.clear();
 
@@ -172,7 +171,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     
     /*if (source==msg->SOURCE_RPA)
     {
-        read_track_msg.request.UAV_ids[0]=id;
+        read_track_msg.request.uav_ids[0]=id;
         read_plan_msg.request.id[0]=id;
         read_plan_client_.call(read_plan_msg);
         read_track_client_.call(read_track_msg);

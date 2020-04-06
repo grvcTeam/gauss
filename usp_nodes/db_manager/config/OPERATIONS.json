@@ -1,8 +1,8 @@
 {
 	"operations": [
 		{
-			"UAV_id": 0,
-			"ICAO_address": "1234",
+			"uav_id": 0,
+			"icao_address": "1234",
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
@@ -107,12 +107,12 @@
 				]
 			},
 			"flight_geometry": 0.0,
-			"contingency_volume": 0.0,
+			"operational_volume": 0.0,
 			"conop": "conop1234"
 		},
 		{
-			"UAV_id": 1,
-			"ICAO_address": "4321",
+			"uav_id": 1,
+			"icao_address": "4321",
 			"frame": "",
 			"autonomy": 20,
 			"priority": 0,
@@ -196,7 +196,7 @@
 				]
 			},
 			"flight_geometry": 0.0,
-			"contingency_volume": 0.0,
+			"operational_volume": 0.0,
 			"conop": "conop4321"
 		}
 	]

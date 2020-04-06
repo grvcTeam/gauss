@@ -74,7 +74,7 @@ FlightPlanManager::FlightPlanManager()
 // FPreq callback
 bool FlightPlanManager::flightPlanReqCB(gauss_msgs::FlightPlanReq::Request &req, gauss_msgs::FlightPlanReq::Response &res)
 {
-    int id = req.UAV_id;
+    int id = req.uav_id;
     int type = req.type;
     gauss_msgs::Waypoint *plan;
 
