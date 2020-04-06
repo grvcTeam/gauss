@@ -1,9 +1,9 @@
 {
 	"operations": [
 		{
-			"UAV_id": 0,
-			"ICAO_address": "1234",
-			"frame": "",
+			"uav_id": 0,
+			"icao_address": "gauss0rw",
+			"frame": "rw",
 			"autonomy": 10,
 			"priority": 0,
 			"current_wp": 0,
@@ -107,15 +107,15 @@
 				]
 			},
 			"flight_geometry": 0.0,
-			"contingency_volume": 0.0,
-			"conop": "conop1234"
+			"operational_volume": 0.0,
+			"conop": "Delivery"
 		},
 		{
-			"UAV_id": 1,
-			"ICAO_address": "4321",
-			"frame": "",
+			"uav_id": 1,
+			"icao_address": "gauss1fw",
+			"frame": "fw",
 			"autonomy": 20,
-			"priority": 0,
+			"priority": 1,
 			"current_wp": 0,
 			"flight_plan": {
 				"waypoints": [
@@ -196,8 +196,8 @@
 				]
 			},
 			"flight_geometry": 0.0,
-			"contingency_volume": 0.0,
-			"conop": "conop4321"
+			"operational_volume": 0.0,
+			"conop": "Surveillance"
 		}
 	]
 }
