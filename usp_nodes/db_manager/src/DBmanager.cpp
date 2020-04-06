@@ -13,6 +13,7 @@
 #include <gauss_msgs/WriteOperation.h>
 #include <gauss_msgs/Geofence.h>
 #include <gauss_msgs/DB_size.h>
+#include <gauss_msgs/Polygon.h>
 #include <list>
 #include <fstream>
 #include <db_manager/json.hpp>
@@ -46,6 +47,7 @@ private:
     int size_geofences;
     // Auxilary methods
     bool operationsFromJson(std::string _file_name);
+    bool geofencesFromJson(std::string _file_name);
 
     list<gauss_msgs::Operation> operation_db;
     list<gauss_msgs::Geofence> geofence_db;
@@ -82,8 +84,8 @@ DataBase::DataBase()
     size_plans=size_geofences=0;
 
     // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
-    std::string file_name = "OPERATIONS.json";
-    operationsFromJson(file_name);
+    operationsFromJson("OPERATIONS.json");
+    geofencesFromJson("UTM_GEOFENCE_CREATION.json");
 
     // Publish
 
@@ -170,6 +172,44 @@ bool DataBase::operationsFromJson(std::string _file_name)
         return false;
     } else {
         ROS_INFO_STREAM(json_operation.response.message);
+    }
+
+    return true;
+}
+
+bool DataBase::geofencesFromJson(std::string _file_name)
+{
+    std::string pkg_path = ros::package::getPath("db_manager");
+    std::string file_path = pkg_path + "/config/" + _file_name;
+    std::ifstream i(file_path);
+    nlohmann::json jsonDB;
+    i >> jsonDB;
+    gauss_msgs::WriteGeofences json_geofence;
+    for(const auto& item : jsonDB.at("geofences").items()){
+        gauss_msgs::Geofence geofence;
+        geofence.id = item.value()["id"].get<double>();
+        geofence.static_geofence = item.value()["static_geofence"].get<bool>();
+        geofence.cylinder_shape = item.value()["cylinder_shape"].get<bool>();
+        geofence.min_altitude = item.value()["min_altitude"].get<double>();
+        geofence.max_altitude = item.value()["max_altitude"].get<double>();
+        geofence.start_time = ros::Time(item.value()["start_time"].get<double>());
+        geofence.end_time = ros::Time(item.value()["end_time"].get<double>());
+        geofence.circle.x_center = item.value()["circle"]["x_center"].get<double>();
+        geofence.circle.y_center = item.value()["circle"]["y_center"].get<double>();
+        geofence.circle.radius =   item.value()["circle"]["radius"].get<double>();
+        for(const auto& it : item.value()["polygon"].front().items()){
+            geofence.polygon.x.push_back(it.value()["x"].get<double>());
+            geofence.polygon.y.push_back(it.value()["y"].get<double>());
+        }
+        json_geofence.request.geofences.push_back(geofence);
+        json_geofence.request.geofence_ids.push_back(geofence.id);
+    }
+    writeGeofenceCB(json_geofence.request, json_geofence.response);
+    if (!json_geofence.response.success){
+        ROS_ERROR("Error initializing DataBase from JSON!");
+        return false;
+    } else {
+        ROS_INFO_STREAM(json_geofence.response.message);
     }
 
     return true;
