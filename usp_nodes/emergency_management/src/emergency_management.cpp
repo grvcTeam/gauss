@@ -61,8 +61,8 @@ EmergencyManagement::EmergencyManagement()
     // alert_server_=nh_.advertiseService("/gauss/alert",&EmergencyManagement::alertEmergencyCB,this);
 
     // Clients
-    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss_msgs/readGeofences");
-    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofences>("/gauss_msgs/writeGeofences");
+    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
+    write_geofence_client_ = nh_.serviceClient<gauss_msgs::WriteGeofences>("/gauss/write_geofences");
     deconfliction_client = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/conflict_solver");
 
     ROS_INFO("Started EmergencyManagement node!");

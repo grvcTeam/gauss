@@ -1,5 +1,5 @@
-uint8 UAV_id
-string ICAO_address
+uint8 uav_id
+string icao_address
 uint8 frame
 float64 autonomy			# distance (meters)
 uint8 priority		
@@ -11,7 +11,7 @@ WaypointList track
 float64 time_horizon			# time (seconds)
 WaypointList estimated_trajectory
 float64 flight_geometry			# meters
-float64 contingency_volume		# meters
+float64 operational_volume		# meters
 string conop
 
 uint8 FRAME_ROTOR = 0

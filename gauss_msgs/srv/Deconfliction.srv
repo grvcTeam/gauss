@@ -1,10 +1,7 @@
-int8[] uas_ids
 bool tactical
-WaypointList[] tracks
-WaypointList[] geofences
-Waypoint landing_spot
+Threat threat
 ---
 bool success
 string message
-uint8[] UAV_ids
+uint8[] uav_ids
 WaypointList[] deconflicted_plans

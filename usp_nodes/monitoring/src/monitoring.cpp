@@ -6,7 +6,6 @@
 #include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/DB_size.h>
 #include <list>
-#include <gauss_msgs/Conflict.h>
 #include <geometry_msgs/Point.h>
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/CheckConflicts.h>
@@ -95,12 +94,12 @@ Monitoring::Monitoring()
     // Subscribe
 
     // Server
-    check_conflicts_server_=nh_.advertiseService("/gauss/checkConflicts",&Monitoring::checkConflictsCB,this);
+    check_conflicts_server_=nh_.advertiseService("/gauss/check_conflicts",&Monitoring::checkConflictsCB,this);
 
     // Client
-    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/readOperation");
-    read_trajectory_client_ = nh_.serviceClient<gauss_msgs::ReadTraj>("/gauss/readEstimatedTrajectory");
-    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/readGeofence");
+    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
+    read_trajectory_client_ = nh_.serviceClient<gauss_msgs::ReadTraj>("/gauss/read_estimated_trajectory");
+    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofence");
     threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
     dbsize_cilent_ = nh_.serviceClient<gauss_msgs::DB_size>("/gauss/db_size");
 
@@ -167,7 +166,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
 {
     locker=true;
 
-    int uavs = req.conflict.UAV_ids.size();
+    int uavs = req.threat.uas_ids.size();
 
     for (int i=0; i<uavs; i++)
     {
@@ -187,7 +186,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                             list<int>::iterator it_wp = grid_aux[m][n][p][t].wp.begin();
                             while (it != grid_aux[m][n][p][t].traj.end())
                             {
-                                if (*it != req.conflict.UAV_ids.at(i))
+                                if (*it != req.threat.uas_ids.at(i))
                                 {
                                     gauss_msgs::ReadTraj msg_traj2;
                                     msg_traj2.request.UAV_ids[0]=*it;
@@ -204,14 +203,14 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                              pow(req.deconflicted_wp.at(i).z-trajectory2.waypoints.at(*it_wp).z,2))<dX &&
                                             abs(post-trajectory2.waypoints.at(*it_wp).stamp.sec)<dT)
                                     {
-                                        gauss_msgs::Conflict conflict;
-                                        conflict.header.stamp=ros::Time::now();
-                                        conflict.threat_id = conflict.LOSS_OF_SEPARATION;
-                                        conflict.UAV_ids.push_back(req.conflict.UAV_ids.at(i));
-                                        conflict.UAV_ids.push_back(*it);
-                                        conflict.times.push_back(req.deconflicted_wp.at(i).stamp);
-                                        conflict.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                        res.conflicts.push_back(conflict);
+                                        gauss_msgs::Threat threat;
+                                        threat.header.stamp=ros::Time::now();
+                                        threat.threat_id = threat.LOSS_OF_SEPARATION;
+                                        threat.uas_ids.push_back(req.threat.uas_ids.at(i));
+                                        threat.uas_ids.push_back(*it);
+                                        threat.times.push_back(req.deconflicted_wp.at(i).stamp);
+                                        threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
+                                        res.threats.push_back(threat);
                                     }
                                 }
                                 it++;

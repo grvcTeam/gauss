@@ -60,9 +60,9 @@ FlightPlanManager::FlightPlanManager()
     fpreq_server_=nh_.advertiseService("/gauss/fight_plan",&FlightPlanManager::flightPlanReqCB,this);
 
     // Clients
-    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss_msgs/readGeofences");
-    read_fp_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss_msgs/ReadFlightPlan");
-    write_fp_client_ = nh_.serviceClient<gauss_msgs::WriteFlightPlan>("/gauss_msgs/WriteFlightPlan");
+    read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
+    read_fp_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/read_flight_plan");
+    write_fp_client_ = nh_.serviceClient<gauss_msgs::WriteFlightPlan>("/gauss/write_flight_plan");
     deconfliction_client_ = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/conflict_solver");
 
 
@@ -74,7 +74,7 @@ FlightPlanManager::FlightPlanManager()
 // FPreq callback
 bool FlightPlanManager::flightPlanReqCB(gauss_msgs::FlightPlanReq::Request &req, gauss_msgs::FlightPlanReq::Response &res)
 {
-    int id = req.UAV_id;
+    int id = req.uav_id;
     int type = req.type;
     gauss_msgs::Waypoint *plan;
 
