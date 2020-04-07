@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
     deconfliction.request.threat.threat_id = deconfliction.request.threat.GEOFENCE_CONFLICT;
     deconfliction.request.threat.times.push_back(ros::Time(0.0));
     deconfliction.request.threat.times.push_back(ros::Time(900.0));
-    deconfliction.request.threat.uav_ids.push_back(0); 
+    deconfliction.request.threat.uas_ids.push_back(0);
     deconfliction.request.tactical = true;
     if (!tracking.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
     {

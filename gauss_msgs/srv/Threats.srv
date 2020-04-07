@@ -1,4 +1,4 @@
-uint8[] uav_ids
+uint8[] uas_ids
 Threat[] threats
 ---
 bool success
