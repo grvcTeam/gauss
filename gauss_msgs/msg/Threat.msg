@@ -1,6 +1,6 @@
 Header header
 uint8 threat_id
-uint8[] uas_ids
+uint8[] uav_ids
 time[] times
 uint8[] geofence_ids
 

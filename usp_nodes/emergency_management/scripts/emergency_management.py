@@ -103,7 +103,7 @@ class EmergencyManagement():
         threat_severity = self._threats_definition[threat_id]['severity']
         
         if threat_severity == 3:
-            UAV_id = self._threats2solve.Threat.uas_ids[0]
+            UAV_id = self._threats2solve.Threat.uav_ids[0]
             action = 'URGENT: Land as soon as possible.'  
             notification = self.declare_notification_parameters(UAV_id, action)
             self.send_notification(notification)

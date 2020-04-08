@@ -284,7 +284,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     }
     /*if (source==msg->SOURCE_RPA)
     {
-        read_track_msg.request.uas_ids[0]=id;
+        read_track_msg.request.uav_ids[0]=id;
         read_plan_msg.request.id[0]=id;
         read_plan_client_.call(read_plan_msg);
         read_track_client_.call(read_track_msg);
@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
     deconfliction.request.threat.threat_id = deconfliction.request.threat.GEOFENCE_CONFLICT;
     deconfliction.request.threat.times.push_back(ros::Time(0.0));
     deconfliction.request.threat.times.push_back(ros::Time(900.0));
-    deconfliction.request.threat.uas_ids.push_back(0);
+    deconfliction.request.threat.uav_ids.push_back(0);
     deconfliction.request.tactical = true;
     if (!tracking.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
     {

@@ -23,7 +23,7 @@ class UspManager():
 
     def send_threats(self): 
         request = ThreatsRequest()
-        request.uas_ids = self._alerted_uas
+        request.uav_ids = self._alerted_uas
         request.threats = self._alert_flaged   
         response = self._threats_service(request)        
         return response 
@@ -53,7 +53,7 @@ class UspManager():
         if alert_id == Threat.SPOOFING_ATTACK:
             self._alerted_uas = [1]
             self._alert_id = Threat.SPOOFING_ATTACK
-        alert.uas_ids = self._alerted_uas
+        alert.uav_ids = self._alerted_uas
         self._alert_flaged.append(alert)  
 
     # This method is an HMI in order to check different conflicts configurations.

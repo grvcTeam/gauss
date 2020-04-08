@@ -23,7 +23,7 @@ class Monitoring():
 
     def send_threats(self): 
         request = ThreatsRequest()
-        request.uas_ids = self._conflicted_uas
+        request.uav_ids = self._conflicted_uas
         request.threats = self._conflict_flaged   
         response = self._threats_service(request)        
         return response 
@@ -50,7 +50,7 @@ class Monitoring():
         if conflict_id == Threat.GEOFENCE_CONFLICT:
             self._conflicted_uas = [4]
             self._conflict_id = Threat.GEOFENCE_CONFLICT
-        conflict.uas_ids = self._conflicted_uas
+        conflict.uav_ids = self._conflicted_uas
         self._conflict_flaged.append(conflict)   
     # This method is an HMI in order to check different conflicts configurations.
         

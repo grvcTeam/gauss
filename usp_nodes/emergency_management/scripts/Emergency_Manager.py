@@ -41,7 +41,7 @@ def threat_management(threat2solve):
     """This function decide what is the fittest action to take""" 
     events = threat2solve.threats # This is a list of Threat objects.
     threat_id = events[0].threat_id # This is the threat_id of the first Threat object in the previous list.
-    uas_threaten = events[0].uas_ids # This is a list of uas involved in the Threat.
+    uas_threaten = events[0].uav_ids # This is a list of uas involved in the Threat.
     time = events[0].times #This is a list.
     
     if threat_id == 0:
@@ -130,7 +130,7 @@ def threat_management(threat2solve):
 #    try:  
 #        deconfliction = rospy.ServiceProxy('deconfliction', Deconfliction)
 #        request = DeconflictionRequest()
-#        request.uas_ids = uas_in_conflict 
+#        request.uav_ids = uas_in_conflict 
 #       response = deconfliction(request)
         
 #    except rospy.ServiceException, e:
