@@ -228,29 +228,24 @@ bool DataBase::returnDBsizeCB(gauss_msgs::DB_size::Request &req, gauss_msgs::DB_
 
 bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_msgs::ReadOperation::Response &res)
 {
-    int tam=req.uav_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
-    {
-        ROS_INFO("hola %d", req.uav_ids[i]);
-         if (req.uav_ids[i]<size_plans)
-         {
-             ROS_INFO("hola");
-             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-              ROS_INFO("aqui");
-             while (it->uav_id!=req.uav_ids[i])
-                 it++;
-             //res.operation.at(i)=*it;
-             res.operation.push_back(*it);
-         }
-         else
-             res.success=false;
+    std::string message;
+    res.success = false;
+    if (req.uav_ids.size() <= operation_db.size()){
+        for (int i = 0; i < req.uav_ids.size(); i++){
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    message = "All requested operations were returned";
+                    res.success = true;
+                    res.operation.push_back(*it);
+                    break;
+                }
+            }
+            if(!res.success) message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+        }
+    } else {
+        message = "Request ids size can not be larger than operation_db size!";
     }
-    if (!res.success)
-        res.message="An operation was not returned";
-    else
-        res.message="All requested operations was returned";
+    res.message = message;
 }
 
 bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res)
@@ -281,25 +276,24 @@ bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_
 
 bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msgs::ReadGeofences::Response &res)
 {
-    int tam=req.geofences_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
-    {
-         if (req.geofences_ids[i]<size_geofences)
-         {
-             list<gauss_msgs::Geofence>::iterator it = geofence_db.begin();
-             while (it->id!=req.geofences_ids[i])
-                 it++;
-             res.geofences.push_back(*it);
-         }
-         else
-             res.success=false;
+    std::string message;
+    res.success = false;
+    if (req.geofences_ids.size() <= geofence_db.size()){
+        for (int i = 0; i < req.geofences_ids.size(); i++){
+            for(list<gauss_msgs::Geofence>::iterator it = geofence_db.begin(); it != geofence_db.end(); it++){
+                if (it->id == req.geofences_ids[i]){
+                    message = "All requested geofences were returned";
+                    res.success = true;
+                    res.geofences.push_back(*it);
+                    break;
+                }
+            }
+            if(!res.success) message = "Data base does not contain requested id [" + std::to_string(req.geofences_ids[i]) + "]"; 
+        }
+    } else {
+        message = "Request ids size can not be larger than geofence_db size!";
     }
-    if (!res.success)
-        res.message="A geofence was not returned";
-    else
-        res.message="All requested geofences was returned";
+    res.message = message;
 }
 
 bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_msgs::WriteGeofences::Response &res)
@@ -328,25 +322,24 @@ bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_m
 
 bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::ReadFlightPlan::Response &res)
 {
-    int tam=req.uav_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
-    {
-         if (req.uav_ids[i]<size_plans)
-         {
-             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-             while (it->uav_id!=req.uav_ids[i])
-                 it++;
-             res.plans.push_back(it->flight_plan);
-         }
-         else
-             res.success=false;
+    std::string message;
+    res.success = false;
+    if (req.uav_ids.size() <= operation_db.size()){
+        for (int i = 0; i < req.uav_ids.size(); i++){
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    message = "All requested flight plans were returned";
+                    res.success = true;
+                    res.plans.push_back(it->flight_plan);
+                    break;
+                }
+            }
+            if(!res.success) message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+        }
+    } else {
+        message = "Request ids size can not be larger than operation_db size!";
     }
-    if (!res.success)
-        res.message="A flight plan was not returned";
-    else
-        res.message="All requested flight plans was returned";
+    res.message = message;
 }
 
 bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs::WriteFlightPlan::Response &res)
@@ -374,25 +367,24 @@ bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs
 
 bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::ReadTracks::Response &res)
 {
-    int tam=req.uav_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
-    {
-         if (req.uav_ids[i]<size_plans)
-         {
-             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-             while (it->uav_id!=req.uav_ids[i])
-                 it++;
-             res.tracks.push_back(it->track);
-         }
-         else
-             res.success=false;
+    std::string message;
+    res.success = false;
+    if (req.uav_ids.size() <= operation_db.size()){
+        for (int i = 0; i < req.uav_ids.size(); i++){
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    message = "All requested tracks plans were returned";
+                    res.success = true;
+                    res.tracks.push_back(it->track);
+                    break;
+                }
+            }
+            if(!res.success) message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+        }
+    } else {
+        message = "Request ids size can not be larger than operation_db size!";
     }
-    if (!res.success)
-        res.message="A Track was not returned";
-    else
-        res.message="All requested tracks was returned";
+    res.message = message;
 }
 
 bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::WriteTracks::Response &res)
@@ -420,25 +412,24 @@ bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::W
 
 bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::ReadTraj::Response &res)
 {
-    int tam=req.uav_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
-    {
-         if (req.uav_ids[i]<size_plans)
-         {
-             list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-             while (it->uav_id!=req.uav_ids[i])
-                 it++;
-             res.tracks.push_back(it->estimated_trajectory);
-         }
-         else
-             res.success=false;
+    std::string message;
+    res.success = false;
+    if (req.uav_ids.size() <= operation_db.size()){
+        for (int i = 0; i < req.uav_ids.size(); i++){
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    message = "All requested trajectories plans were returned";
+                    res.success = true;
+                    res.tracks.push_back(it->estimated_trajectory);
+                    break;
+                }
+            }
+            if(!res.success) message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+        }
+    } else {
+        message = "Request ids size can not be larger than operation_db size!";
     }
-    if (!res.success)
-        res.message="A trajectory was not returned";
-    else
-        res.message="All requested trajectories was returned";
+    res.message = message;
 }
 
 bool DataBase::writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs::WriteTraj::Response &res)
