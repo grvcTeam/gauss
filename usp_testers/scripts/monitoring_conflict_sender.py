@@ -36,19 +36,19 @@ class Monitoring():
         conflict.threat_id = conflict_id
         
         if conflict_id == Threat.UAS_IN_CV:
-            self._conflicted_uas = [1]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.UAS_IN_CV
         if conflict_id == Threat.UAS_OUT_OV:
-            self._conflicted_uas = [2]
+            self._conflicted_uas = [1]
             self._conflict_id = Threat.UAS_OUT_OV
         if conflict_id == Threat.LOSS_OF_SEPARATION:
-            self._conflicted_uas = [1, 2]
+            self._conflicted_uas = [0, 1]
             self._conflict_id = Threat.LOSS_OF_SEPARATION
         if conflict_id == Threat.GEOFENCE_INTRUSION:
-            self._conflicted_uas = [3]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.GEOFENCE_INTRUSION
         if conflict_id == Threat.GEOFENCE_CONFLICT:
-            self._conflicted_uas = [4]
+            self._conflicted_uas = [1]
             self._conflict_id = Threat.GEOFENCE_CONFLICT
         conflict.uas_ids = self._conflicted_uas
         self._conflict_flaged.append(conflict)   
