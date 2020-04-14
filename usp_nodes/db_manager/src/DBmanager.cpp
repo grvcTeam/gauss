@@ -228,10 +228,11 @@ bool DataBase::returnDBsizeCB(gauss_msgs::DB_size::Request &req, gauss_msgs::DB_
 
 bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_msgs::ReadOperation::Response &res)
 {
-    std::string message;
+    std::string message = "";
     res.success = false;
     if (req.uav_ids.size() <= operation_db.size()){
         for (int i = 0; i < req.uav_ids.size(); i++){
+            res.success = false;
             for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
                 if (it->uav_id == req.uav_ids[i]){
                     message = "All requested operations were returned";
@@ -250,36 +251,37 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
 
 bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res)
 {
-    int tam = req.uav_ids.size();
-    ROS_INFO("tam %d",tam);
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
+    for (int i = 0; i < req.uav_ids.size(); i++)
     {
-        if (req.uav_ids[i]>=size_plans)
-        {
+        res.success=false;
+        if (operation_db.empty()){
             operation_db.push_back(req.operation[i]);
-            size_plans++;
+            res.success = true;
+        } else {
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    *it = req.operation[i];
+                    res.success = true;
+                    break;
+                }
+                if (!res.success){
+                    operation_db.push_back(req.operation[i]);
+                    res.success = true;
+                }
+            }
         }
-        else
-        {
-            ROS_INFO("escribiendo");
-            list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->uav_id!=req.uav_ids[i])
-                it++;
-            *it=req.operation[i];
-        }
-        ROS_INFO("operaciones %d",size_plans);
     }
-    res.message="All requested operations was written on the DataBase";
+    size_plans = operation_db.size();
+    res.message="All requested operations were written on the DataBase";
 }
 
 bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msgs::ReadGeofences::Response &res)
 {
-    std::string message;
+    std::string message = "";
     res.success = false;
     if (req.geofences_ids.size() <= geofence_db.size()){
         for (int i = 0; i < req.geofences_ids.size(); i++){
+            res.success = false;
             for(list<gauss_msgs::Geofence>::iterator it = geofence_db.begin(); it != geofence_db.end(); it++){
                 if (it->id == req.geofences_ids[i]){
                     message = "All requested geofences were returned";
@@ -288,6 +290,7 @@ bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msg
                     break;
                 }
             }
+            // TODO: res.message shows an invalid id just if it is the last on the request list. It should show all invalid ids. 
             if(!res.success) message = "Data base does not contain requested id [" + std::to_string(req.geofences_ids[i]) + "]"; 
         }
     } else {
@@ -298,34 +301,37 @@ bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msg
 
 bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_msgs::WriteGeofences::Response &res)
 {
-    int tam = req.geofence_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
+    for (int i = 0; i < req.geofences.size(); i++)
     {
-        if (req.geofence_ids[i]>=size_geofences)
-        {
+        res.success=false;
+        if (geofence_db.empty()){
             geofence_db.push_back(req.geofences[i]);
-            size_geofences++;
-        }
-        else
-        {
-
-            list<gauss_msgs::Geofence>::iterator it = geofence_db.begin();
-            while (it->id!=req.geofence_ids[i])
-                it++;
-            *it=req.geofences[i];
+            res.success = true;
+        } else {
+            for(list<gauss_msgs::Geofence>::iterator it = geofence_db.begin(); it != geofence_db.end(); it++){
+                if (it->id == req.geofence_ids[i]){
+                    *it = req.geofences[i];
+                    res.success = true;
+                    break;
+                }
+                if (!res.success){
+                    geofence_db.push_back(req.geofences[i]);
+                    res.success = true;
+                }
+            }
         }
     }
-    res.message="All requested geofences was written on the DataBase";
+    size_geofences = geofence_db.size();
+    res.message="All requested geofences were written on the DataBase";
 }
 
 bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::ReadFlightPlan::Response &res)
 {
-    std::string message;
+    std::string message = "";
     res.success = false;
     if (req.uav_ids.size() <= operation_db.size()){
         for (int i = 0; i < req.uav_ids.size(); i++){
+            res.success = false;
             for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
                 if (it->uav_id == req.uav_ids[i]){
                     message = "All requested flight plans were returned";
@@ -344,33 +350,38 @@ bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::
 
 bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs::WriteFlightPlan::Response &res)
 {
-    int tam = req.uav_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
+    std::string message = "";
+    for (int i = 0; i < req.uav_ids.size(); i++)
     {
-        if (req.uav_ids[i]>=size_plans)
-        {
-            res.success=false;
-            res.message="A flight plan was not written";
-        }
-        else
-        {
-            list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->uav_id!=req.uav_ids[i])
-                it++;
-            it->flight_plan=req.plans[i];
+        res.success=false;
+        if (operation_db.empty()){
+            message = "Data base has zero operations";
+        } else {
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    it->flight_plan = req.plans[i];
+                    message = "All requested plans were written on the DataBase";
+                    res.success = true;
+                    break;
+                }
+                if (!res.success){
+                    message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+                    res.success = false;
+                }
+            }
         }
     }
-    res.message="All requested flight plans was written on the DataBase";
+    size_plans = operation_db.size();
+    res.message = message;
 }
 
 bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::ReadTracks::Response &res)
 {
-    std::string message;
+    std::string message = "";
     res.success = false;
     if (req.uav_ids.size() <= operation_db.size()){
         for (int i = 0; i < req.uav_ids.size(); i++){
+            res.success = false;
             for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
                 if (it->uav_id == req.uav_ids[i]){
                     message = "All requested tracks plans were returned";
@@ -389,33 +400,38 @@ bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::Rea
 
 bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::WriteTracks::Response &res)
 {
-    int tam = req.uav_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
+    std::string message = "";
+    for (int i = 0; i < req.uav_ids.size(); i++)
     {
-        if (req.uav_ids[i]>=size_plans)
-        {
-            res.success=false;
-            res.message="A track was not written";
-        }
-        else
-        {
-            list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->uav_id!=req.uav_ids[i])
-                it++;
-            it->track=req.tracks[i];
+        res.success=false;
+        if (operation_db.empty()){
+            message = "Data base has zero operations";
+        } else {
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    it->track = req.tracks[i];
+                    message = "All requested tracks were written on the DataBase";
+                    res.success = true;
+                    break;
+                }
+                if (!res.success){
+                    message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+                    res.success = false;
+                }
+            }
         }
     }
-    res.message="All requested tracks was written on the DataBase";
+    size_plans = operation_db.size();
+    res.message = message;
 }
 
 bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::ReadTraj::Response &res)
 {
-    std::string message;
+    std::string message = "";
     res.success = false;
     if (req.uav_ids.size() <= operation_db.size()){
         for (int i = 0; i < req.uav_ids.size(); i++){
+            res.success = false;
             for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
                 if (it->uav_id == req.uav_ids[i]){
                     message = "All requested trajectories plans were returned";
@@ -434,25 +450,29 @@ bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::
 
 bool DataBase::writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs::WriteTraj::Response &res)
 {
-    int tam = req.uav_ids.size();
-
-    res.success=true;
-    for (int i=0; i<tam; i++)
+    std::string message = "";
+    for (int i = 0; i < req.uav_ids.size(); i++)
     {
-        if (req.uav_ids[i]>=size_plans)
-        {
-            res.success=false;
-            res.message="A trajectory was not written";
-        }
-        else
-        {
-            list<gauss_msgs::Operation>::iterator it = operation_db.begin();
-            while (it->uav_id!=req.uav_ids[i])
-                it++;
-            it->estimated_trajectory=req.tracks[i];
+        res.success=false;
+        if (operation_db.empty()){
+            message = "Data base has zero operations";
+        } else {
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    it->estimated_trajectory = req.tracks[i];
+                    message = "All requested trajectories were written on the DataBase";
+                    res.success = true;
+                    break;
+                }
+                if (!res.success){
+                    message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+                    res.success = false;
+                }
+            }
         }
     }
-    res.message="All requested trajectory was written on the DataBase";
+    size_plans = operation_db.size();
+    res.message = message;
 }
 
 
