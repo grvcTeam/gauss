@@ -166,7 +166,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
 {
     locker=true;
 
-    int uavs = req.threat.uas_ids.size();
+    int uavs = req.threat.uav_ids.size();
 
     for (int i=0; i<uavs; i++)
     {
@@ -186,10 +186,10 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                             list<int>::iterator it_wp = grid_aux[m][n][p][t].wp.begin();
                             while (it != grid_aux[m][n][p][t].traj.end())
                             {
-                                if (*it != req.threat.uas_ids.at(i))
+                                if (*it != req.threat.uav_ids.at(i))
                                 {
                                     gauss_msgs::ReadTraj msg_traj2;
-                                    msg_traj2.request.UAV_ids[0]=*it;
+                                    msg_traj2.request.uav_ids[0]=*it;
                                     if(!(read_trajectory_client_.call(msg_traj2)) || !(msg_traj2.response.success))
                                     {
                                         ROS_ERROR("Failed to read a trajectory");
@@ -206,8 +206,8 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                         gauss_msgs::Threat threat;
                                         threat.header.stamp=ros::Time::now();
                                         threat.threat_id = threat.LOSS_OF_SEPARATION;
-                                        threat.uas_ids.push_back(req.threat.uas_ids.at(i));
-                                        threat.uas_ids.push_back(*it);
+                                        threat.uav_ids.push_back(req.threat.uav_ids.at(i));
+                                        threat.uav_ids.push_back(*it);
                                         threat.times.push_back(req.deconflicted_wp.at(i).stamp);
                                         threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
                                         res.threats.push_back(threat);
@@ -299,13 +299,13 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         {
             gauss_msgs::Threat threat;
             threat.header.stamp=ros::Time::now();
-            threat.uas_ids.push_back(i);
+            threat.uav_ids.push_back(i);
             threat.times.push_back(ros::Time::now());
-            if (distance<operation.contingency_volume)
+            if (distance<operation.operational_volume)
                 threat.threat_id=threat.UAS_IN_CV;
             else
-                threat.threat_id=threat.UAS_OUT_CV;
-            threats_msg.request.uas_ids.push_back(i);
+                threat.threat_id=threat.UAS_OUT_OV;
+            threats_msg.request.uav_ids.push_back(i);
             threats_msg.request.threats.push_back(threat);
         }
 
@@ -319,13 +319,13 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             {
                 gauss_msgs::Threat threat;
                 threat.header.stamp=ros::Time::now();
-                threat.uas_ids.push_back(i);
+                threat.uav_ids.push_back(i);
                 threat.times.push_back(ros::Time::now());
                 if (j==0)
                     threat.threat_id=threat.GEOFENCE_INTRUSION;
                 else
                     threat.threat_id=threat.GEOFENCE_CONFLICT;
-                threats_msg.request.uas_ids.push_back(i);
+                threats_msg.request.uav_ids.push_back(i);
                 threats_msg.request.threats.push_back(threat);
             }
 
@@ -356,7 +356,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                     if (*it != i)
                                     {
                                         gauss_msgs::ReadTraj msg_traj2;
-                                        msg_traj2.request.UAV_ids[0]=*it;
+                                        msg_traj2.request.uav_ids[0]=*it;
                                         if(!(read_trajectory_client_.call(msg_traj2)) || !(msg_traj2.response.success))
                                         {
                                             ROS_ERROR("Failed to read a trajectory");
@@ -371,13 +371,13 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                         {
                                             gauss_msgs::Threat threat;
                                             threat.header.stamp=ros::Time::now();
-                                            threat.uas_ids.push_back(i);
-                                            threat.uas_ids.push_back(*it);
+                                            threat.uav_ids.push_back(i);
+                                            threat.uav_ids.push_back(*it);
                                             threat.times.push_back(trajectory.waypoints.at(j).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
                                             threat.threat_id=threat.LOSS_OF_SEPARATION;
 
-                                            threats_msg.request.uas_ids.push_back(i);
+                                            threats_msg.request.uav_ids.push_back(i);
                                             threats_msg.request.threats.push_back(threat);
                                         }
                                     }

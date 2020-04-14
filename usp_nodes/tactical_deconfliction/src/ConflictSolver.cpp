@@ -217,22 +217,22 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             {
                 bool included1=false;
                 bool included2=false;
-                for (int i=0;i<res.UAV_ids.size();i++)
+                for (int i=0;i<res.uav_ids.size();i++)
                 {
-                    if (conflict.uas_ids.at(0)==res.UAV_ids.at(i))
+                    if (conflict.uav_ids.at(0)==res.uav_ids.at(i))
                         included1=true;
-                    if (conflict.uas_ids.at(1)==res.UAV_ids.at(i))
+                    if (conflict.uav_ids.at(1)==res.uav_ids.at(i))
                         included2=true;
                 }
                 if (included1=false)
-                    res.UAV_ids.push_back(conflict.uas_ids.at(0));
+                    res.uav_ids.push_back(conflict.uav_ids.at(0));
                 if (included2=false)
-                    res.UAV_ids.push_back(conflict.uas_ids.at(1));
+                    res.uav_ids.push_back(conflict.uav_ids.at(1));
 
                 num_conflicts=0;
                 gauss_msgs::ReadTraj traj_msg;
-                traj_msg.request.UAV_ids.push_back(conflict.uas_ids.at(0));
-                traj_msg.request.UAV_ids.push_back(conflict.uas_ids.at(1));
+                traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
+                traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
                 if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
                 {
                     ROS_ERROR("Failed to read a trajectory");
@@ -243,8 +243,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 gauss_msgs::Waypoint wp1,wp2;
                 gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
                 gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);
-                int UAV1=req.threat.uas_ids.at(0);
-                int UAV2=req.threat.uas_ids.at(1);
+                int UAV1=req.threat.uav_ids.at(0);
+                int UAV2=req.threat.uav_ids.at(1);
 
                 while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>dT);
                 wp1=traj1.waypoints.at(j);
@@ -271,8 +271,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 check_msg.request.deconflicted_wp.push_back(newwp1);
                 check_msg.request.deconflicted_wp.push_back(newwp2);
                 check_msg.request.threat.threat_id=check_msg.request.threat.LOSS_OF_SEPARATION;
-                check_msg.request.threat.uas_ids.push_back(UAV1);
-                check_msg.request.threat.uas_ids.push_back(UAV2);
+                check_msg.request.threat.uav_ids.push_back(UAV1);
+                check_msg.request.threat.uav_ids.push_back(UAV2);
                 check_msg.request.threat.times.push_back(newwp1.stamp);
                 check_msg.request.threat.times.push_back(newwp2.stamp);
                 if (!check_client_.call(check_msg) || !check_msg.response.success)
@@ -291,8 +291,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // incluir nuevos flight plans en
 
             gauss_msgs::ReadFlightPlan plan_msg;
-            for (int i=0;i<res.UAV_ids.size();i++)
-                plan_msg.request.uav_ids.push_back(res.UAV_ids.at(i));
+            for (int i=0;i<res.uav_ids.size();i++)
+                plan_msg.request.uav_ids.push_back(res.uav_ids.at(i));
             if (!read_flightplan_client_.call(plan_msg) || !plan_msg.response.success)
             {
                 ROS_ERROR("Failed to read a flight plan");
@@ -309,7 +309,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         else if (req.threat.threat_id==req.threat.GEOFENCE_CONFLICT)
         {
             gauss_msgs::ReadFlightPlan plan_msg;
-            plan_msg.request.uav_ids.push_back(req.threat.uas_ids.front());
+            plan_msg.request.uav_ids.push_back(req.threat.uav_ids.front());
             if (!read_flightplan_client_.call(plan_msg) || !plan_msg.response.success)
             {
                 ROS_ERROR("Failed to read a flight plan");

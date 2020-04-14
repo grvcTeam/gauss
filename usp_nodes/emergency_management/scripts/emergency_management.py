@@ -127,8 +127,12 @@ class EmergencyManagement():
 # tienen porqué cambiar nada.
 
         if threat_severity == 3:
+<<<<<<< HEAD
             # We define and send the notification.
             uav_ids = self._threats2solve.threats[0].uav_ids # Esto sería la lista de uavs implicados.
+=======
+            UAV_id = self._threats2solve.Threat.uav_ids[0]
+>>>>>>> master
             action = 'URGENT: Land as soon as possible.'  
             notification = self.declare_notification_parameters(uav_ids, action)
             self.send_notification(notification)
