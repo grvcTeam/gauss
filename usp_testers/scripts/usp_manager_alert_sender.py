@@ -36,19 +36,19 @@ class UspManager():
         alert.threat_id = alert_id
         
         if alert_id == Threat.ALERT_WARNING:
-            self._alerted_uas = [1, 2, 3]
+            self._alerted_uas = [0, 1]
             self._alert_id = Threat.ALERT_WARNING
         if alert_id == Threat.TECHNICAL_FAILURE:
-            self._alerted_uas = [1, 2, 3]
+            self._alerted_uas = [0]
             self._alert_id = Threat.TECHNICAL_FAILURE
         if alert_id == Threat.COMMUNICATION_FAILURE:
             self._alerted_uas = [1]
             self._alert_id = Threat.COMMUNICATION_FAILURE
         if alert_id == Threat.LACK_OF_BATTERY:
-            self._alerted_uas = [3]
+            self._alerted_uas = [0]
             self._alert_id = Threat.LACK_OF_BATTERY
         if alert_id == Threat.JAMMING_ATTACK:
-            self._alerted_uas = [2]
+            self._alerted_uas = [1]
             self._alert_id = Threat.JAMMING_ATTACK
         if alert_id == Threat.SPOOFING_ATTACK:
             self._alerted_uas = [1]
