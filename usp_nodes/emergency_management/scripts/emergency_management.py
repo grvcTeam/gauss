@@ -18,6 +18,10 @@ from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 #prioridad que tiene establecida cada misión. La función decision maker debe decidir que amenaza se resuelve primero y qué
 #acción se le manda a cada UAV.
 #Teniendo en cuenta los diferentes eventos que pueden ocurrir. 
+# COMMUNICATION FAILURE: Consideramos que se va la comunicación UTM-piloto. La operación pasará de 
+# autonoma a manual. La UTM con los datos que obtenga de posicionamiento del UAV estará encargada 
+# de crear corridor por los que nadie puede entrar.
+
 # JAMMING, crear una geofence, land asap
 # UAS OUT OV, go back to the FG, new trajectory
 # LOSS OF SEPARATION, new trajectory for both UAVs
@@ -127,12 +131,8 @@ class EmergencyManagement():
 # tienen porqué cambiar nada.
 
         if threat_severity == 3:
-<<<<<<< HEAD
             # We define and send the notification.
             uav_ids = self._threats2solve.threats[0].uav_ids # Esto sería la lista de uavs implicados.
-=======
-            UAV_id = self._threats2solve.Threat.uav_ids[0]
->>>>>>> master
             action = 'URGENT: Land as soon as possible.'  
             notification = self.declare_notification_parameters(uav_ids, action)
             self.send_notification(notification)
