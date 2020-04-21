@@ -1,0 +1,2 @@
+string icao
+string waypoints

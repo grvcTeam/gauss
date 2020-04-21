@@ -14,8 +14,8 @@
 	"timestamp": ,					
 	"jamming": ,					
 	"spoofing": ,					  
-	"GNSS Anomalous Position Drift": , 
-	"GNSS Signal to Noise Ratio": , 
-	"GNSS Received Power":  
+	"gnss_anomalous_position_drift": , 
+	"gnss_signal_to_noise_ratio": , 
+	"gnss_received_power":  
 }
 

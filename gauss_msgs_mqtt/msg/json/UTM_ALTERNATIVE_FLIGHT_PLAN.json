@@ -1,0 +1,10 @@
+{       
+	"icao": "",
+	"flight_plan_id": , // String like UUID{235232-6273-126212-172616}
+	"new_flight_plan": // [(longitud1, latitude1, altitude1, time1), (longitud2, latitude2, altitude2, time2), ….]
+}
+
+
+
+
+
