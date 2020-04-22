@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
     // tracking.writeDB();
     gauss_msgs::Deconfliction deconfliction;
     deconfliction.request.threat.geofence_ids.push_back(0);
-    deconfliction.request.threat.threat_id = deconfliction.request.threat.GEOFENCE_CONFLICT;
+    deconfliction.request.threat.threat_id = deconfliction.request.threat.GEOFENCE_INTRUSION;
     deconfliction.request.threat.times.push_back(ros::Time(0.0));
     deconfliction.request.threat.times.push_back(ros::Time(900.0));
     deconfliction.request.threat.uav_ids.push_back(0);
@@ -330,8 +330,8 @@ int main(int argc, char *argv[])
         ROS_ERROR("Call write deconfliction error");
         return false;
     } else {
-        for (auto i : deconfliction.response.deconflicted_plans.front().waypoints){
-            std::cout << i << std::endl;
+        for (auto plan : deconfliction.response.deconflicted_plans){
+            std::cout << plan << std::endl;
         }
     }
 

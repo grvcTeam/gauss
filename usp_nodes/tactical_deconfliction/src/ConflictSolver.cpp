@@ -198,6 +198,43 @@ geometry_msgs::Polygon ConflictSolver::circleToPolygon(float _x, float _y, float
     return out_polygon;
 }
 
+template<typename KeyType, typename ValueType> 
+std::pair<KeyType,ValueType> get_min( const std::map<KeyType,ValueType>& x ) {
+  using pairtype=std::pair<KeyType,ValueType>; 
+  return *std::min_element(x.begin(), x.end(), [] (const pairtype & p1, const pairtype & p2) {
+        return p1.second < p2.second;
+  }); 
+}
+
+std::pair<std::vector<double>, double> getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2){
+    std::vector<double> coordinates;
+    double distance = 1000000;
+    std::vector<double> point_xs, point_ys;
+    point_xs.push_back(_x1);
+    point_xs.push_back(_x2);
+    point_ys.push_back(_y1);
+    point_ys.push_back(_y2);
+    // Get abc -> ax + by + c = 0 
+    double a = _y2 - _y1;
+    double b = _x1 - _x2;
+    double c = - (a*_x1 + b*_y1);
+    // get XY outpoint
+    coordinates.push_back((b*(b*_x0-a*_y0) - a*c) / (a*a + b*b)); 
+    coordinates.push_back((a*(a*_y0-b*_x0) - b*c) / (a*a + b*b)); 
+    // check if xy is between p1 and p2
+    double max_x = *std::max_element(point_xs.begin(), point_xs.end());
+    double min_x = *std::min_element(point_xs.begin(), point_xs.end());
+    double max_y = *std::max_element(point_ys.begin(), point_ys.end());
+    double min_y = *std::min_element(point_ys.begin(), point_ys.end());
+    if (max_x >= coordinates.front() && coordinates.front() >= min_x && max_y >= coordinates.back() && coordinates.back() >= min_y){
+        // get distance
+        distance = (double)(abs((_y2-_y1)*_x0 - (_x2-_x1)*_y0 + _x2*_y1 - _y2*_x1) / 
+                   sqrt(pow(_y2-_y1, 2) + pow(_x2-_x1, 2)));   
+    }
+    // std::cout << max_x << ">" << coordinates.front() << ">" << min_x << " | " << max_y << ">" << coordinates.back() << ">" << min_y << " | d = " << distance << std::endl;
+    return std::make_pair(coordinates, distance);
+} 
+
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res)
 {
@@ -377,6 +414,92 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
 
             res.deconflicted_plans.push_back(temp_wp_list);
             res.success = true;
+        } 
+        else if (req.threat.threat_id==req.threat.GEOFENCE_INTRUSION) 
+        {
+            gauss_msgs::ReadFlightPlan plan_msg;
+            plan_msg.request.uav_ids.push_back(req.threat.uav_ids.front());
+            if (!read_flightplan_client_.call(plan_msg) || !plan_msg.response.success)
+            {
+                ROS_ERROR("Failed to read a flight plan");
+                res.success=false;
+                return false;
+            }
+            nav_msgs::Path res_path;
+            std::vector<double> res_times;
+            for (int i = 0; i < plan_msg.response.plans.front().waypoints.size(); i++){
+                geometry_msgs::PoseStamped temp_pose;
+                temp_pose.pose.position.x = plan_msg.response.plans.front().waypoints.at(i).x;
+                temp_pose.pose.position.y = plan_msg.response.plans.front().waypoints.at(i).y;
+                temp_pose.pose.position.z = plan_msg.response.plans.front().waypoints.at(i).z;
+                res_path.poses.push_back(temp_pose);
+                res_times.push_back(plan_msg.response.plans.front().waypoints.at(i).stamp.toSec());
+            }
+            gauss_msgs::ReadGeofences geofence_msg;
+            geofence_msg.request.geofences_ids.push_back(req.threat.geofence_ids.front());
+            if (!read_geofence_client_.call(geofence_msg) || !geofence_msg.response.success)
+            {
+                ROS_ERROR("Failed to read a geofence");
+                res.success=false;
+                return false;
+            }
+            geometry_msgs::Polygon res_polygon;
+            if (geofence_msg.response.geofences.front().cylinder_shape){
+                res_polygon = circleToPolygon(geofence_msg.response.geofences.front().circle.x_center, 
+                                              geofence_msg.response.geofences.front().circle.y_center,
+                                              geofence_msg.response.geofences.front().circle.radius);
+            } else {
+                for (int i = 0; i < geofence_msg.response.geofences.front().polygon.x.size(); i++){
+                    geometry_msgs::Point32 temp_points;
+                    temp_points.x = geofence_msg.response.geofences.front().polygon.x.at(i);
+                    temp_points.y = geofence_msg.response.geofences.front().polygon.y.at(i);
+                    res_polygon.points.push_back(temp_points);
+                }
+            }
+            // Get min distance to polygon border
+            geometry_msgs::Point32 conflict_point;
+            conflict_point.x = 5.5;
+            conflict_point.y = 4.0;
+            conflict_point.z = 1.0;
+            std::map <std::vector<double> , double> point_and_distance;
+            for (auto vertex : res_polygon.points){
+                std::vector<double> point;
+                point.push_back(vertex.x);
+                point.push_back(vertex.y);
+                point_and_distance.insert(std::make_pair(point, sqrt(pow(vertex.x - conflict_point.x, 2) + 
+                                                                     pow(vertex.y - conflict_point.y, 2))));
+            }
+            for (int i = 0; i < res_polygon.points.size() - 1; i++){
+                point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y, 
+                                                                    res_polygon.points.at(i).x, res_polygon.points.at(i).y, 
+                                                                    res_polygon.points.at(i+1).x, res_polygon.points.at(+1).y));
+            }
+            point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y, 
+                                                    res_polygon.points.front().x, res_polygon.points.front().y, 
+                                                    res_polygon.points.back().x, res_polygon.points.back().y));
+            // for (auto i : point_and_distance){
+            //     std::cout << "x: " << i.first.front() << " y: " << i.first.back() << " d: " << i.second << std::endl;
+            // }
+            auto min_distance = get_min(point_and_distance);
+            // std::cout << " -- " << std::endl;
+            // std::cout << "x: " << min_distance.first.front() << " y: " << min_distance.first.back() << " d: " << min_distance.second << std::endl;
+
+            res.success = true;
+            res.message = "Conflict solved";
+            gauss_msgs::Waypoint temp_wp;
+            gauss_msgs::WaypointList temp_wp_list;
+            temp_wp.x = conflict_point.x;
+            temp_wp.y = conflict_point.y;
+            temp_wp.z = conflict_point.z;
+            temp_wp.stamp = ros::Time(0.0);
+            temp_wp_list.waypoints.push_back(temp_wp);
+            res.deconflicted_plans.push_back(temp_wp_list);
+            temp_wp.x = min_distance.first.front();
+            temp_wp.y = min_distance.first.back();
+            temp_wp.z = conflict_point.z;
+            temp_wp.stamp = ros::Time(0.0);
+            temp_wp_list.waypoints.push_back(temp_wp);
+            res.deconflicted_plans.push_back(temp_wp_list);                
         }
     }
 
