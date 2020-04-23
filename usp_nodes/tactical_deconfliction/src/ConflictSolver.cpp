@@ -27,7 +27,7 @@ private:
     int pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy);
     std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, geometry_msgs::Point _init_point, geometry_msgs::Point _goal_point);
     geometry_msgs::Polygon circleToPolygon(float _x, float _y, float _radius, float _nVertices = 8);
-
+    std::pair<std::vector<double>, double> getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2);
     // Auxilary variables
     double rate;
     double dX,dY,dZ,dT;
@@ -206,7 +206,7 @@ std::pair<KeyType,ValueType> get_min( const std::map<KeyType,ValueType>& x ) {
   }); 
 }
 
-std::pair<std::vector<double>, double> getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2){
+std::pair<std::vector<double>, double> ConflictSolver::getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2){
     std::vector<double> coordinates;
     double distance = 1000000;
     std::vector<double> point_xs, point_ys;
@@ -483,23 +483,63 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             auto min_distance = get_min(point_and_distance);
             // std::cout << " -- " << std::endl;
             // std::cout << "x: " << min_distance.first.front() << " y: " << min_distance.first.back() << " d: " << min_distance.second << std::endl;
-
-            res.success = true;
-            res.message = "Conflict solved";
+            Eigen::Vector2f p_conflict, p_min_distance, unit_vec, p_out_polygon;
+            p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
+            p_min_distance = Eigen::Vector2f(min_distance.first.front(), min_distance.first.back()); 
+            unit_vec = (p_min_distance - p_conflict) / (p_min_distance - p_conflict).norm();
+            double safety_distance = 1.0;
+            p_out_polygon = unit_vec * safety_distance;
+            geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
+            init_astar_point.x = min_distance.first.front() + p_out_polygon(0);
+            init_astar_point.y = min_distance.first.back() + p_out_polygon(1);
+            int init_astar_pos, goal_astar_pos;
+            // init_astar_point.x = min_distance.first.front();
+            // init_astar_point.y = min_distance.first.back();
+            goal_astar_point = findGoalAStarPoint(res_polygon, res_path, goal_astar_pos);
+            std::vector<double> grid_borders = findGridBorders(res_polygon, res_path, init_astar_point, goal_astar_point);
+            min_grid_point.x = grid_borders[0];
+            min_grid_point.y = grid_borders[1];
+            max_grid_point.x = grid_borders[2];
+            max_grid_point.y = grid_borders[3];
+            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, res_polygon, min_grid_point, max_grid_point);
+            nav_msgs::Path a_star_path_res = path_finder.findNewPath();
+            static upat_follower::Generator generator(1.0, 1.0, 1.0);
+            std::vector<double> interp_times, a_star_times_res;
+            interp_times.push_back(0.0); // init astar pos time
+            interp_times.push_back(res_times.at(goal_astar_pos));
+            a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
+            a_star_times_res.push_back(res_times.at(goal_astar_pos));
+            // Solutions of conflict solver are a_star_path_res and a_star_times_res
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::WaypointList temp_wp_list;
-            temp_wp.x = conflict_point.x;
-            temp_wp.y = conflict_point.y;
-            temp_wp.z = conflict_point.z;
-            temp_wp.stamp = ros::Time(0.0);
-            temp_wp_list.waypoints.push_back(temp_wp);
-            res.deconflicted_plans.push_back(temp_wp_list);
-            temp_wp.x = min_distance.first.front();
-            temp_wp.y = min_distance.first.back();
-            temp_wp.z = conflict_point.z;
-            temp_wp.stamp = ros::Time(0.0);
-            temp_wp_list.waypoints.push_back(temp_wp);
-            res.deconflicted_plans.push_back(temp_wp_list);                
+            for (int i = 0; i < a_star_path_res.poses.size(); i++){
+                temp_wp.x = a_star_path_res.poses.at(i).pose.position.x;
+                temp_wp.y = a_star_path_res.poses.at(i).pose.position.y;
+                temp_wp.z = a_star_path_res.poses.at(i).pose.position.z;
+                temp_wp.stamp = ros::Time(a_star_times_res.at(i));
+                temp_wp_list.waypoints.push_back(temp_wp);
+            }
+
+            res.deconflicted_plans.push_back(temp_wp_list);            
+
+            
+            res.success = true;
+            res.message = "Conflict solved";
+
+            // gauss_msgs::Waypoint temp_wp;
+            // gauss_msgs::WaypointList temp_wp_list;
+            // temp_wp.x = conflict_point.x;
+            // temp_wp.y = conflict_point.y;
+            // temp_wp.z = conflict_point.z;
+            // temp_wp.stamp = ros::Time(0.0);
+            // temp_wp_list.waypoints.push_back(temp_wp);
+            // res.deconflicted_plans.push_back(temp_wp_list);
+            // temp_wp.x = min_distance.first.front();
+            // temp_wp.y = min_distance.first.back();
+            // temp_wp.z = conflict_point.z;
+            // temp_wp.stamp = ros::Time(0.0);
+            // temp_wp_list.waypoints.push_back(temp_wp);
+            // res.deconflicted_plans.push_back(temp_wp_list);                
         }
     }
 
