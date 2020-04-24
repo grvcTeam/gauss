@@ -10,7 +10,7 @@
 #include <gauss_msgs/WriteGeofences.h>
 #include <gauss_msgs/ReadGeofences.h>
 #include <gauss_msgs/Deconfliction.h>
-#include <geometry_msgs/Polygon.h>
+#include <geometry_msgs/PolygonStamped.h>
 #include <nav_msgs/Path.h>
 
 
@@ -44,7 +44,7 @@ Tester::Tester()
     // Read parameters
     // Initialization
     // Publish
-    pub_geofence_ = nh_.advertise<geometry_msgs::Polygon>("/gauss/tester/geofence", 1);
+    pub_geofence_ = nh_.advertise<geometry_msgs::PolygonStamped>("/gauss/tester/geofence", 1);
     pub_flight_plan_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/flight_plan", 1);
     pub_astar_plan_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/astar_plan", 1);
     // Subscribe
@@ -72,6 +72,7 @@ int main(int argc, char *argv[])
         return false;
     }
     nav_msgs::Path res_path;
+    res_path.header.frame_id = "world";
     std::vector<double> res_times;
     for (int i = 0; i < plan_msg.response.plans.front().waypoints.size(); i++){
         geometry_msgs::PoseStamped temp_pose;
@@ -88,7 +89,8 @@ int main(int argc, char *argv[])
         ROS_ERROR("Failed to read a geofence");
         return false;
     }
-    geometry_msgs::Polygon res_polygon;
+    geometry_msgs::PolygonStamped res_polygon;
+    res_polygon.header.frame_id = "world";
     if (geofence_msg.response.geofences.front().cylinder_shape){
         // res_polygon = circleToPolygon(geofence_msg.response.geofences.front().circle.x_center, 
         //                                 geofence_msg.response.geofences.front().circle.y_center,
@@ -98,7 +100,7 @@ int main(int argc, char *argv[])
             geometry_msgs::Point32 temp_points;
             temp_points.x = geofence_msg.response.geofences.front().polygon.x.at(i);
             temp_points.y = geofence_msg.response.geofences.front().polygon.y.at(i);
-            res_polygon.points.push_back(temp_points);
+            res_polygon.polygon.points.push_back(temp_points);
         }
     }
 
@@ -120,6 +122,7 @@ int main(int argc, char *argv[])
     }
 
     nav_msgs::Path astar_path;
+    astar_path.header.frame_id = "world";
     for (auto wps : deconfliction.response.deconflicted_plans.front().waypoints){
         geometry_msgs::PoseStamped temp_pose;
         temp_pose.pose.position.x = wps.x;

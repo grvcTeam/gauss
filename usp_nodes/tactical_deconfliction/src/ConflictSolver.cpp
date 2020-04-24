@@ -14,6 +14,8 @@ class ConflictSolver
 {
 public:
     ConflictSolver();
+    // ros::Publisher pub_path_tester_;
+    // nav_msgs::Path path_tester;
 
 private:
     // Topic Callbacks
@@ -64,7 +66,7 @@ ConflictSolver::ConflictSolver()
     dT=1.0/rate;
 
     // Publish
-
+    // pub_path_tester_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/center_polygon_path", 1);
     // Subscribe
 
     // Server
@@ -231,6 +233,7 @@ std::pair<std::vector<double>, double> ConflictSolver::getCoordinatesAndDistance
         distance = (double)(abs((_y2-_y1)*_x0 - (_x2-_x1)*_y0 + _x2*_y1 - _y2*_x1) / 
                    sqrt(pow(_y2-_y1, 2) + pow(_x2-_x1, 2)));   
     }
+    // if (distance < 1.0) distance = 1000000;
     // std::cout << max_x << ">" << coordinates.front() << ">" << min_x << " | " << max_y << ">" << coordinates.back() << ">" << min_y << " | d = " << distance << std::endl;
     return std::make_pair(coordinates, distance);
 } 
@@ -526,20 +529,22 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.success = true;
             res.message = "Conflict solved";
 
-            // gauss_msgs::Waypoint temp_wp;
-            // gauss_msgs::WaypointList temp_wp_list;
-            // temp_wp.x = conflict_point.x;
-            // temp_wp.y = conflict_point.y;
-            // temp_wp.z = conflict_point.z;
-            // temp_wp.stamp = ros::Time(0.0);
-            // temp_wp_list.waypoints.push_back(temp_wp);
-            // res.deconflicted_plans.push_back(temp_wp_list);
-            // temp_wp.x = min_distance.first.front();
-            // temp_wp.y = min_distance.first.back();
-            // temp_wp.z = conflict_point.z;
-            // temp_wp.stamp = ros::Time(0.0);
-            // temp_wp_list.waypoints.push_back(temp_wp);
-            // res.deconflicted_plans.push_back(temp_wp_list);                
+            // path_tester.header.frame_id = "world";
+            // geometry_msgs::PoseStamped temp_pose;
+            // temp_pose.pose.position.x = conflict_point.x;
+            // temp_pose.pose.position.y = conflict_point.y;
+            // temp_pose.pose.position.z = conflict_point.z;
+            // path_tester.poses.push_back(temp_pose);
+            // temp_pose.pose.position.x = min_distance.first.front();
+            // temp_pose.pose.position.y = min_distance.first.back();
+            // temp_pose.pose.position.z = conflict_point.z;
+            // path_tester.poses.push_back(temp_pose);
+            // temp_pose.pose.position.x = init_astar_point.x;
+            // temp_pose.pose.position.y = init_astar_point.y;
+            // temp_pose.pose.position.z = conflict_point.z;
+            // path_tester.poses.push_back(temp_pose);
+
+            // pub_path_tester_.publish(path_tester);             
         }
     }
 
@@ -557,6 +562,14 @@ int main(int argc, char *argv[])
 
     // Create a ConflictSolver object
     ConflictSolver *conflict_solver = new ConflictSolver();
+    // ConflictSolver conflic_solver;
+    
+    // ros::Rate rate(30);
+    // while(ros::ok){
+    //     conflic_solver.pub_path_tester_.publish(conflic_solver.path_tester);
+    //     ros::spinOnce();
+    //     rate.sleep();
+    // }
 
     ros::spin();
 }
