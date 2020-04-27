@@ -28,7 +28,7 @@ private:
     geometry_msgs::Point findGoalAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, int &_goal_astar_pos);
     int pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy);
     std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, geometry_msgs::Point _init_point, geometry_msgs::Point _goal_point);
-    geometry_msgs::Polygon circleToPolygon(float _x, float _y, float _radius, float _nVertices = 8);
+    geometry_msgs::Polygon circleToPolygon(float _x, float _y, float _radius, float _nVertices = 9);
     std::pair<std::vector<double>, double> getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2);
     // Auxilary variables
     double rate;
@@ -475,7 +475,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             for (int i = 0; i < res_polygon.points.size() - 1; i++){
                 point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y, 
                                                                     res_polygon.points.at(i).x, res_polygon.points.at(i).y, 
-                                                                    res_polygon.points.at(i+1).x, res_polygon.points.at(+1).y));
+                                                                    res_polygon.points.at(i+1).x, res_polygon.points.at(i+1).y));
             }
             point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y, 
                                                     res_polygon.points.front().x, res_polygon.points.front().y, 
@@ -483,21 +483,19 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // for (auto i : point_and_distance){
             //     std::cout << "x: " << i.first.front() << " y: " << i.first.back() << " d: " << i.second << std::endl;
             // }
-            auto min_distance = get_min(point_and_distance);
+            auto min_distance_coordinate = get_min(point_and_distance);
             // std::cout << " -- " << std::endl;
-            // std::cout << "x: " << min_distance.first.front() << " y: " << min_distance.first.back() << " d: " << min_distance.second << std::endl;
-            Eigen::Vector2f p_conflict, p_min_distance, unit_vec, p_out_polygon;
+            // std::cout << "x: " << min_distance_coordinate.first.front() << " y: " << min_distance_coordinate.first.back() << " d: " << min_distance_coordinate.second << std::endl;
+            Eigen::Vector2f p_conflict, p_min_distance, unit_vec, v_out_polygon;
             p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
-            p_min_distance = Eigen::Vector2f(min_distance.first.front(), min_distance.first.back()); 
+            p_min_distance = Eigen::Vector2f(min_distance_coordinate.first.front(), min_distance_coordinate.first.back()); 
             unit_vec = (p_min_distance - p_conflict) / (p_min_distance - p_conflict).norm();
             double safety_distance = 1.0;
-            p_out_polygon = unit_vec * safety_distance;
+            v_out_polygon = unit_vec * safety_distance;
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
-            init_astar_point.x = min_distance.first.front() + p_out_polygon(0);
-            init_astar_point.y = min_distance.first.back() + p_out_polygon(1);
+            init_astar_point.x = min_distance_coordinate.first.front() + v_out_polygon(0);
+            init_astar_point.y = min_distance_coordinate.first.back() + v_out_polygon(1);
             int init_astar_pos, goal_astar_pos;
-            // init_astar_point.x = min_distance.first.front();
-            // init_astar_point.y = min_distance.first.back();
             goal_astar_point = findGoalAStarPoint(res_polygon, res_path, goal_astar_pos);
             std::vector<double> grid_borders = findGridBorders(res_polygon, res_path, init_astar_point, goal_astar_point);
             min_grid_point.x = grid_borders[0];
@@ -508,7 +506,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
-            interp_times.push_back(0.0); // init astar pos time
+            interp_times.push_back(ros::Time::now().toSec()); // init astar pos time
             interp_times.push_back(res_times.at(goal_astar_pos));
             a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
             a_star_times_res.push_back(res_times.at(goal_astar_pos));
@@ -535,8 +533,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // temp_pose.pose.position.y = conflict_point.y;
             // temp_pose.pose.position.z = conflict_point.z;
             // path_tester.poses.push_back(temp_pose);
-            // temp_pose.pose.position.x = min_distance.first.front();
-            // temp_pose.pose.position.y = min_distance.first.back();
+            // temp_pose.pose.position.x = min_distance_coordinate.first.front();
+            // temp_pose.pose.position.y = min_distance_coordinate.first.back();
             // temp_pose.pose.position.z = conflict_point.z;
             // path_tester.poses.push_back(temp_pose);
             // temp_pose.pose.position.x = init_astar_point.x;
@@ -562,14 +560,6 @@ int main(int argc, char *argv[])
 
     // Create a ConflictSolver object
     ConflictSolver *conflict_solver = new ConflictSolver();
-    // ConflictSolver conflic_solver;
-    
-    // ros::Rate rate(30);
-    // while(ros::ok){
-    //     conflic_solver.pub_path_tester_.publish(conflic_solver.path_tester);
-    //     ros::spinOnce();
-    //     rate.sleep();
-    // }
 
     ros::spin();
 }

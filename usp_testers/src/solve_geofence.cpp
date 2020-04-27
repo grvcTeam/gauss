@@ -12,6 +12,7 @@
 #include <gauss_msgs/Deconfliction.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <nav_msgs/Path.h>
+#include <Eigen/Eigen>
 
 
 
@@ -23,6 +24,7 @@ public:
     bool writeDB();
     ros::ServiceClient write_deconfliction_client_, read_plan_client_, read_geofence_client_;
     ros::Publisher pub_geofence_, pub_flight_plan_, pub_astar_plan_;
+    geometry_msgs::PolygonStamped circleToPolygon(float _x, float _y, float _radius, float _nVertices = 9);
 
 private:
     // Topic Callbacks
@@ -55,6 +57,23 @@ Tester::Tester()
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
 
     ROS_INFO("Started Tester node!");
+}
+
+geometry_msgs::PolygonStamped Tester::circleToPolygon(float _x, float _y, float _radius, float _nVertices){
+    geometry_msgs::PolygonStamped out_polygon;
+    out_polygon.header.frame_id = "world";
+    Eigen::Vector2d centerToVertex(_radius, 0.0), centerToVertexTemp;
+    for (int i = 0; i < _nVertices; i++) {
+        double theta = i * 2 * M_PI / (_nVertices - 1);
+        Eigen::Rotation2D<double> rot2d(theta);
+        centerToVertexTemp = rot2d.toRotationMatrix() * centerToVertex;
+        geometry_msgs::Point32 temp_point;
+        temp_point.x = _x + centerToVertexTemp[0];
+        temp_point.y = _y + centerToVertexTemp[1];
+        out_polygon.polygon.points.push_back(temp_point);
+    }
+
+    return out_polygon;
 }
 
 // MAIN function
@@ -92,9 +111,9 @@ int main(int argc, char *argv[])
     geometry_msgs::PolygonStamped res_polygon;
     res_polygon.header.frame_id = "world";
     if (geofence_msg.response.geofences.front().cylinder_shape){
-        // res_polygon = circleToPolygon(geofence_msg.response.geofences.front().circle.x_center, 
-        //                                 geofence_msg.response.geofences.front().circle.y_center,
-        //                                 geofence_msg.response.geofences.front().circle.radius);
+        res_polygon = tester.circleToPolygon(geofence_msg.response.geofences.front().circle.x_center, 
+                                             geofence_msg.response.geofences.front().circle.y_center,
+                                             geofence_msg.response.geofences.front().circle.radius);
     } else {
         for (int i = 0; i < geofence_msg.response.geofences.front().polygon.x.size(); i++){
             geometry_msgs::Point32 temp_points;
