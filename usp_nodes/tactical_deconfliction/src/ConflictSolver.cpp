@@ -14,8 +14,6 @@ class ConflictSolver
 {
 public:
     ConflictSolver();
-    // ros::Publisher pub_path_tester_;
-    // nav_msgs::Path path_tester;
 
 private:
     // Topic Callbacks
@@ -66,7 +64,6 @@ ConflictSolver::ConflictSolver()
     dT=1.0/rate;
 
     // Publish
-    // pub_path_tester_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/center_polygon_path", 1);
     // Subscribe
 
     // Server
@@ -246,10 +243,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
     if (req.tactical)
     {
         gauss_msgs::Threat conflict;
+        conflict=req.threat;
         if (req.threat.threat_id==req.threat.LOSS_OF_SEPARATION)
         {
             gauss_msgs::Waypoint newwp1,newwp2;
-            conflict=req.threat;
 
 
             int num_conflicts=1;
@@ -459,11 +456,19 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     res_polygon.points.push_back(temp_points);
                 }
             }
+            gauss_msgs::ReadTraj traj_msg;
+            traj_msg.request.uav_ids.push_back(conflict.uav_ids.front());
+            if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
+            {
+                ROS_ERROR("Failed to read a trajectory");
+                res.success=false;
+                return false;
+            }
             // Get min distance to polygon border
             geometry_msgs::Point32 conflict_point;
-            conflict_point.x = 5.5;
-            conflict_point.y = 4.0;
-            conflict_point.z = 1.0;
+            conflict_point.x = traj_msg.response.tracks.front().waypoints.front().x;
+            conflict_point.y = traj_msg.response.tracks.front().waypoints.front().y;
+            conflict_point.z = traj_msg.response.tracks.front().waypoints.front().z;
             std::map <std::vector<double> , double> point_and_distance;
             for (auto vertex : res_polygon.points){
                 std::vector<double> point;
@@ -480,12 +485,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y, 
                                                     res_polygon.points.front().x, res_polygon.points.front().y, 
                                                     res_polygon.points.back().x, res_polygon.points.back().y));
-            // for (auto i : point_and_distance){
-            //     std::cout << "x: " << i.first.front() << " y: " << i.first.back() << " d: " << i.second << std::endl;
-            // }
             auto min_distance_coordinate = get_min(point_and_distance);
-            // std::cout << " -- " << std::endl;
-            // std::cout << "x: " << min_distance_coordinate.first.front() << " y: " << min_distance_coordinate.first.back() << " d: " << min_distance_coordinate.second << std::endl;
             Eigen::Vector2f p_conflict, p_min_distance, unit_vec, v_out_polygon;
             p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
             p_min_distance = Eigen::Vector2f(min_distance_coordinate.first.front(), min_distance_coordinate.first.back()); 
@@ -521,28 +521,9 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_list.waypoints.push_back(temp_wp);
             }
 
-            res.deconflicted_plans.push_back(temp_wp_list);            
-
-            
             res.success = true;
-            res.message = "Conflict solved";
-
-            // path_tester.header.frame_id = "world";
-            // geometry_msgs::PoseStamped temp_pose;
-            // temp_pose.pose.position.x = conflict_point.x;
-            // temp_pose.pose.position.y = conflict_point.y;
-            // temp_pose.pose.position.z = conflict_point.z;
-            // path_tester.poses.push_back(temp_pose);
-            // temp_pose.pose.position.x = min_distance_coordinate.first.front();
-            // temp_pose.pose.position.y = min_distance_coordinate.first.back();
-            // temp_pose.pose.position.z = conflict_point.z;
-            // path_tester.poses.push_back(temp_pose);
-            // temp_pose.pose.position.x = init_astar_point.x;
-            // temp_pose.pose.position.y = init_astar_point.y;
-            // temp_pose.pose.position.z = conflict_point.z;
-            // path_tester.poses.push_back(temp_pose);
-
-            // pub_path_tester_.publish(path_tester);             
+            res.message = "Conflict solved";    
+            res.deconflicted_plans.push_back(temp_wp_list);                        
         }
     }
 

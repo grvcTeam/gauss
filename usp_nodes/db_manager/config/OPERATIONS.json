@@ -84,22 +84,8 @@
 			"estimated_trajectory": {
 				"waypoints": [
 					{
-						"x": 0,
-						"y": 0,
-						"z": 1,
-						"stamp": 1,
-						"mandatory": 0
-					},
-					{
-						"x": 0,
-						"y": 0,
-						"z": 1,
-						"stamp": 1,
-						"mandatory": 0
-					},
-					{
-						"x": 0,
-						"y": 0,
+						"x": 5,
+						"y": 4,
 						"z": 1,
 						"stamp": 1,
 						"mandatory": 0
