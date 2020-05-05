@@ -3,16 +3,10 @@
 		{
 			"uav_id": 0,
 			"icao_address": "1234",
-			"frame": 0,
-			"autonomy": 100,
+			"frame": "",
+			"autonomy": 10,
 			"priority": 0,
-			"current_wp": {
-							"x": 1,
-						    "y": 4,
-							"z": 1,
-							"stamp": 0.0
-							
-							},
+			"current_wp": 0,
 			"flight_plan": {
 				"waypoints": [
 					{
@@ -112,45 +106,39 @@
 					}
 				]
 			},
-			"flight_geometry": 1.0,
-			"operational_volume": 1.5,
+			"flight_geometry": 0.0,
+			"operational_volume": 0.0,
 			"conop": "conop1234"
 		},
 		{
 			"uav_id": 1,
 			"icao_address": "4321",
-			"frame": 1,
-			"autonomy": 100,
-			"priority": 1,
-			"current_wp": 
-				{
-						"x": 4,
-						"y": 0,
-						"z": 3,
-						"stamp": 0.0
-				},
+			"frame": "",
+			"autonomy": 20,
+			"priority": 0,
+			"current_wp": 0,
 			"flight_plan": {
 				"waypoints": [
 					{
-						"x": 4,
-						"y": 2,
-						"z": 3,
-						"stamp": 5.0,
-						"mandatory": 0
+						"x": 1,
+						"y": 1,
+						"z": 0,
+						"stamp": 2,
+						"mandatory": 1
 					},
 					{
-						"x": 4,
-						"y": 4,
-						"z": 3,
-						"stamp": 10.0,
-						"mandatory": 0
+						"x": 1,
+						"y": 1,
+						"z": 0,
+						"stamp": 2,
+						"mandatory": 1
 					},
 					{
-						"x": 4,
-						"y": 6,
-						"z": 3,
-						"stamp": 15.0,
-						"mandatory": 0
+						"x": 1,
+						"y": 1,
+						"z": 0,
+						"stamp": 2,
+						"mandatory": 1
 					}
 				]
 			},
@@ -207,8 +195,8 @@
 					}
 				]
 			},
-			"flight_geometry": 1.0,
-			"operational_volume": 1.5,
+			"flight_geometry": 0.0,
+			"operational_volume": 0.0,
 			"conop": "conop4321"
 		}
 	]

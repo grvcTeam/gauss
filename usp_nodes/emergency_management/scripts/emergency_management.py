@@ -19,7 +19,7 @@ class EmergencyManagement():
     def __init__(self): 
         
         # Initialization
-        self.threats2solve = ThreatsRequest()        
+        self._threats2solve = ThreatsRequest()        
 
         # Publish
 
@@ -42,7 +42,6 @@ class EmergencyManagement():
         print("Ready to add a threat request")
     
     #TODO link Threats severity/probability with the SoA references.
-        #self._threats2solve = ThreatsRequest()
     
     def assign_threat_severity(self):
         self._threats_definition = {
@@ -109,22 +108,18 @@ class EmergencyManagement():
         rospy.loginfo("New threat received:") 
         response = ThreatsResponse()
         response.success = True
-        self.threats2solve = request # ThreatsRequest
+        self._threats2solve = request # ThreatsRequest
         self.action_decision_maker(self.threats2solve)      
         return response        
 
    ## Since a Threat has been received. It is request operation info of the UAV linked to
    # the Threat. 
 
-    def read_operations_info(self):
+    def send_uav_ids(self):
         request = ReadOperationRequest()
-        request.uav_ids = self._threats2solve.threats[0].uav_ids
-        self._operation_info_from_db = self._readOperation_service_handle(request)
+        request.uav_ids = self._threats2solve.uav_ids
         response = self._readOperation_service_handle(request)
-        print(response)
         return response
-        # almacena la info de las dos operaciones definidas en la DataBase en esa variable global.
-        # debiera ser un diccionario.
 
     ## This function decide what is the fittest action to take.
     #def declare_notification_parameters(self, uav_id, action):
@@ -188,7 +183,7 @@ if __name__=='__main__':
     while not rospy.is_shutdown():
         
         e.assign_threat_severity()
-        e.read_operations_info()
+        e.send_uav_ids()
                     
         time.sleep(0.1)
 
