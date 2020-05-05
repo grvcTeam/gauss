@@ -9,7 +9,7 @@ import rospy
 import time
 from math import sqrt
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
-#from gauss_msgs.srv import ReadOperation, ReadOperationRequest
+from gauss_msgs.srv import ReadOperation, ReadOperationRequest
 #from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest
 from gauss_msgs.msg import Threat, Notification, Waypoint, WaypointList, Operation, Geofence
 #from gauss_msgs.srv import Deconfliction, DeconflictionRequest
@@ -19,6 +19,7 @@ class EmergencyManagement():
     def __init__(self): 
         
         # Initialization
+        self.threats2solve = ThreatsRequest()        
 
         # Publish
 
@@ -26,11 +27,11 @@ class EmergencyManagement():
         
         # Wait until service is available and creat connection
         
-        #rospy.wait_for_service('gauss/deconfliction')                    
-        #self._requestDeconfliction_service_handle = rospy.ServiceProxy('gauss/deconfliction', Deconfliction) 
+        #rospy.wait_for_service('/gauss/deconfliction')                    
+        #self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/deconfliction', Deconfliction) 
 
-        #rospy.wait_for_service('gauss/read_operation')                    
-        #self._readOperation_service_handle = rospy.ServiceProxy('gauss/read_operation', ReadOperation) 
+        rospy.wait_for_service('/gauss/read_operation')                    
+        self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
 
         #rospy.wait_for_service('gauss/write_geofences')                    
         #self._writeGeofences_service_handle = rospy.ServiceProxy('gauss/write_geofences', WriteGeofences) 
@@ -108,17 +109,20 @@ class EmergencyManagement():
         rospy.loginfo("New threat received:") 
         response = ThreatsResponse()
         response.success = True
-        threats2solve = request # ThreatsRequest
-        self.action_decision_maker(threats2solve)      
+        self.threats2solve = request # ThreatsRequest
+        self.action_decision_maker(self.threats2solve)      
         return response        
 
    ## Since a Threat has been received. It is request operation info of the UAV linked to
    # the Threat. 
 
-    #def read_operations_info(self):
-    #    request = ReadOperationRequest()
-    #    request.uav_ids = self._threats2solve.threats[0].uav_ids
-    #    self._operation_info_from_db = self._readOperation_service_handle(request)
+    def read_operations_info(self):
+        request = ReadOperationRequest()
+        request.uav_ids = self._threats2solve.threats[0].uav_ids
+        self._operation_info_from_db = self._readOperation_service_handle(request)
+        response = self._readOperation_service_handle(request)
+        print(response)
+        return response
         # almacena la info de las dos operaciones definidas en la DataBase en esa variable global.
         # debiera ser un diccionario.
 
@@ -184,7 +188,7 @@ if __name__=='__main__':
     while not rospy.is_shutdown():
         
         e.assign_threat_severity()
-        #e.service_threats_cb()
+        e.read_operations_info()
                     
         time.sleep(0.1)
 
