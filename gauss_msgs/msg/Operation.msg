@@ -1,4 +1,4 @@
-uint8 uav_id
+int8 uav_id
 string icao_address
 uint8 frame
 float64 autonomy			# distance (meters)

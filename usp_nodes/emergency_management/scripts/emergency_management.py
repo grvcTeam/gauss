@@ -9,7 +9,7 @@ import rospy
 import time
 from math import sqrt
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
-from gauss_msgs.srv import ReadOperation, ReadOperationRequest
+from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
 #from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest
 from gauss_msgs.msg import Threat, Notification, Waypoint, WaypointList, Operation, Geofence
 #from gauss_msgs.srv import Deconfliction, DeconflictionRequest
@@ -69,6 +69,11 @@ class EmergencyManagement():
         if threat_severity == 3:
             # We define and send the notification.
             uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
+            response = ReadOperationResponse()
+            response = self.send_uav_ids()
+            print(response.message)
+            print(response.success)
+            print(response.operation)
             action = 'URGENT: Land as soon as possible.'  
             #notification = self.declare_notification_parameters(uav_ids, action)
             #self.send_notification(notification)
@@ -109,17 +114,15 @@ class EmergencyManagement():
         response = ThreatsResponse()
         response.success = True
         self._threats2solve = request # ThreatsRequest
-        self.action_decision_maker(self.threats2solve)      
+        self._threats2solve.uav_ids = list(request.uav_ids) 
+        self.action_decision_maker(self._threats2solve)      
         return response        
 
    ## Since a Threat has been received. It is request operation info of the UAV linked to
    # the Threat. 
 
-    def send_uav_ids(self):
-        request = ReadOperationRequest()
-        request.uav_ids = self._threats2solve.uav_ids
-        response = self._readOperation_service_handle(request)
-        return response
+    def send_uav_ids(self): 
+        return self._readOperation_service_handle(self._threats2solve.uav_ids)
 
     ## This function decide what is the fittest action to take.
     #def declare_notification_parameters(self, uav_id, action):
@@ -179,11 +182,8 @@ if __name__=='__main__':
 
     rospy.init_node('emergency_management')
     e = EmergencyManagement()
+    e.assign_threat_severity()
+    rospy.spin()   
 
-    while not rospy.is_shutdown():
-        
-        e.assign_threat_severity()
-        e.send_uav_ids()
-                    
-        time.sleep(0.1)
 
+    
