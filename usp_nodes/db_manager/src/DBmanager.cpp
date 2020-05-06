@@ -224,6 +224,7 @@ bool DataBase::returnDBsizeCB(gauss_msgs::DB_size::Request &req, gauss_msgs::DB_
 
     res.message="Database sizes";
     res.success=true;
+    return true;
 }
 
 bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_msgs::ReadOperation::Response &res)
@@ -251,6 +252,7 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
         res.success = false;
         res.message = "Request ids size can not be larger than operation_db size!";
     }
+    return true;
 }
 
 bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res)
@@ -277,6 +279,7 @@ bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_
     }
     size_plans = operation_db.size();
     res.message="All requested operations were written on the DataBase";
+    return true;
 }
 
 bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msgs::ReadGeofences::Response &res)
@@ -304,6 +307,7 @@ bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msg
         res.success = false;
         res.message = "Request ids size can not be larger than geofence_db size!";
     }
+    return true;
 }
 
 bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_msgs::WriteGeofences::Response &res)
@@ -330,6 +334,7 @@ bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_m
     }
     size_geofences = geofence_db.size();
     res.message="All requested geofences were written on the DataBase";
+    return true;
 }
 
 bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::ReadFlightPlan::Response &res)
@@ -357,6 +362,7 @@ bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::
         res.success = false;
         res.message = "Request ids size can not be larger than operation_db size!";
     }
+    return true;
 }
 
 bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs::WriteFlightPlan::Response &res)
@@ -384,6 +390,7 @@ bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs
     }
     size_plans = operation_db.size();
     res.message = message;
+    return true;
 }
 
 bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::ReadTracks::Response &res)
@@ -411,6 +418,7 @@ bool DataBase::readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::Rea
         res.success = false;
         res.message = "Request ids size can not be larger than operation_db size!";
     }
+    return true;
 }
 
 bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::WriteTracks::Response &res)
@@ -438,6 +446,7 @@ bool DataBase::writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::W
     }
     size_plans = operation_db.size();
     res.message = message;
+    return true;
 }
 
 bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::ReadTraj::Response &res)
@@ -464,6 +473,7 @@ bool DataBase::readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::
     } else {
         res.message = "Request ids size can not be larger than operation_db size!";
     }
+    return true;
 }
 
 bool DataBase::writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs::WriteTraj::Response &res)
@@ -491,6 +501,7 @@ bool DataBase::writeTrajectoryCB(gauss_msgs::WriteTraj::Request &req, gauss_msgs
     }
     size_plans = operation_db.size();
     res.message = message;
+    return true;
 }
 
 
