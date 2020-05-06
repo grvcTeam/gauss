@@ -23,7 +23,7 @@ class EmergencyManagement():
 
         # Publish
 
-        #self._notification_publisher = rospy.Publisher("notification", Notification, queue_size=1)
+        self._notification_publisher = rospy.Publisher('notification', Notification, queue_size=1)
         
         # Wait until service is available and creat connection
         
@@ -58,6 +58,7 @@ class EmergencyManagement():
                                     Threat.SPOOFING_ATTACK: {'type': 'alert', 'severity': 3}
                                     }
    
+       
     def action_decision_maker(self,threats2solve):
         events = threats2solve.threats
         threat_id = events[0].threat_id
@@ -69,14 +70,18 @@ class EmergencyManagement():
         if threat_severity == 3:
             # We define and send the notification.
             uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
+            #TODO coger todos los el uav_id de la operación implicados para resolver y mandar una notificación?
+            uav_id = uav_ids[0]
             response = ReadOperationResponse()
             response = self.send_uav_ids()
-            print(response.message)
-            print(response.success)
-            print(response.operation)
-            action = 'URGENT: Land as soon as possible.'  
-            #notification = self.declare_notification_parameters(uav_ids, action)
-            #self.send_notification(notification)
+            print(response) 
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.description = 'URGENT: Land as soon as possible.'
+            notification.uav_id = uav_id
+            self._notification_publisher.publish(notification)
+
+            
             # We define and write a geofence.
             #self.send_geofence_creation()
                     
@@ -107,7 +112,7 @@ class EmergencyManagement():
             
             if threat_id == 8: #LACK_OF_BATTERY
                 action = 'Please, land in the defined landing spot.'         
-        print(action)
+        #print(action)
 
     def service_threats_cb(self, request):
         rospy.loginfo("New threat received:") 
@@ -124,15 +129,6 @@ class EmergencyManagement():
     def send_uav_ids(self): 
         return self._readOperation_service_handle(self._threats2solve.uav_ids)
 
-    ## This function decide what is the fittest action to take.
-    #def declare_notification_parameters(self, uav_id, action):
-    #    notification = Notification()
-    #    notification.uav_id = uav_id
-    #    notification.action = action
-    #    return notification
-
-    #def send_notification(self, message): 
-    #    self._notification_publisher.publish(message)
     
     #def declare_geofence_parameters(self):
     #    geofence = Geofence()
