@@ -10,7 +10,7 @@ import time
 from math import sqrt
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
-#from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest
+from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
 from gauss_msgs.msg import Threat, Notification, Waypoint, WaypointList, Operation, Geofence
 #from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 
@@ -33,8 +33,8 @@ class EmergencyManagement():
         rospy.wait_for_service('/gauss/read_operation')                    
         self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
 
-        #rospy.wait_for_service('gauss/write_geofences')                    
-        #self._writeGeofences_service_handle = rospy.ServiceProxy('gauss/write_geofences', WriteGeofences) 
+        rospy.wait_for_service('/gauss/write_geofences')                    
+        self._writeGeofences_service_handle = rospy.ServiceProxy('/gauss/write_geofences', WriteGeofences) 
                
     # Server     
 
@@ -68,22 +68,32 @@ class EmergencyManagement():
         #second_operation_priority = self._operation_info_from_db['operations'][1]['priority']
     
         if threat_severity == 3:
-            # We define and send the notification.
             uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
             #TODO coger todos los el uav_id de la operación implicados para resolver y mandar una notificación?
             uav_id = uav_ids[0]
+            request = ReadOperationRequest()
+            request.uav_ids = uav_id
             response = ReadOperationResponse()
-            response = self.send_uav_ids()
+            response = self.send_uav_ids(request)
             print(response) 
             #Publish the action which the UAV has to make.
             notification = Notification()
             notification.description = 'URGENT: Land as soon as possible.'
             notification.uav_id = uav_id
-            self._notification_publisher.publish(notification)
-
-            
-            # We define and write a geofence.
-            #self.send_geofence_creation()
+            self._notification_publisher.publish(notification)           
+            # We create a geofence.
+            geofence = Geofence()
+            geofence.id = 3
+            geofence.min_altitude = 0.0
+            geofence.max_altitude = 100.0
+            # We write a geofence.
+            request = WriteGeofencesRequest()
+            request.geofence_ids = [geofence.id]
+            request.geofences = [geofence]
+            response = WriteGeofencesResponse()
+            response = self._writeGeofences_service_handle(request)
+            response.message = "Geofence stored in the Data Base"
+            print(response.message)
                     
         if threat_severity == 2:
 
@@ -126,7 +136,7 @@ class EmergencyManagement():
    ## Since a Threat has been received. It is request operation info of the UAV linked to
    # the Threat. 
 
-    def send_uav_ids(self): 
+    def send_uav_ids(self, request): 
         return self._readOperation_service_handle(self._threats2solve.uav_ids)
 
     
