@@ -67,7 +67,7 @@ class EmergencyManagement():
         #first_operation_priority = self._operation_info_from_db['operations'][0]['priority']
         #second_operation_priority = self._operation_info_from_db['operations'][1]['priority']
         
-        #We send a message to the UAV in conflict.
+        #We send a message for going back to the FG to the UAV in conflict.
         if threat_id == Threat.UAS_IN_CV: #UAS IN CV
             uav_ids = events[0].uav_ids
             uav_id = uav_ids[0]
@@ -76,17 +76,28 @@ class EmergencyManagement():
             notification.description = 'Go back to your flight plan.'
             notification.uav_id = uav_id
             self._notification_publisher.publish(notification) 
-            
+        
+        #We 
         if threat_id == Threat.UAS_OUT_OV: #UAS_OUT_OV
             action = 'URGENT: Land as soon as possible.'  
+        
+        #We 
         if threat_id == Threat.LOSS_OF_SEPARATION: #LOSS_OF_SEPARATION
             action = 'Send new trajectories recommendations to the UAS involved in the conflict.'     
+
+        #We
         if threat_id == Threat.ALERT_WARNING: #ALERT_WARNING
             action = 'Ask for a Geofence creation and send an alert report to all the pilots.' 
+
+        #We
         if threat_id == Threat.GEOFENCE_INTRUSION: #GEOFENCE_INTRUSION
             action = 'Ask for leaving the geofence asap and continue its operation.' 
+
+        #We
         if threat_id == Threat.GEOFENCE_CONFLICT: #GEOFENCE_CONFLICT
             action = 'Send new trajectory recommendation to the UAS involved in the conflict.'     
+        
+        #We send a message for landing now to the UAV in conflict.
         if threat_id == Threat.TECHNICAL_FAILURE: #TECHNICAL_FAILURE
             uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
             #TODO coger todos los el uav_id de la operación implicados para resolver y mandar una notificación?
@@ -94,11 +105,10 @@ class EmergencyManagement():
             request = ReadOperationRequest()
             request.uav_ids = uav_id
             response = ReadOperationResponse()
-            response = self.send_uav_ids(request)
-            print(response) 
+            response = self.send_uav_ids(request) 
             #Publish the action which the UAV has to make.
             notification = Notification()
-            notification.description = 'URGENT: Land as soon as possible.'
+            notification.description = 'URGENT: Land now.'
             notification.uav_id = uav_id
             self._notification_publisher.publish(notification)           
             # We create a geofence.
@@ -115,12 +125,20 @@ class EmergencyManagement():
             response.message = "Geofence stored in the Data Base"
             print(response.message)
             action = 'Send new trajectory recommendation to the UAS involved in the conflict.'     
+        
+        #We
         if threat_id == Threat.COMMUNICATION_FAILURE: #COMMUNICATION_FAILURE
             action = 'URGENT: Land as soon as possible.' 
+
+        #We    
         if threat_id == Threat.LACK_OF_BATTERY: #LACK_OF_BATTERY
             action = 'URGENT: Land as soon as possible.' 
+        
+        #We
         if threat_id == Threat.JAMMING_ATTACK: #JAMMING_ATTACK
             action = 'URGENT: Land as soon as possible.'  
+        
+        #We
         if threat_id == Threat.SPOOFING_ATTACK: #SPOOFING_ATTACK
             action = 'URGENT: Land as soon as possible.'  
 
