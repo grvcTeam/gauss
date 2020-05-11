@@ -7,12 +7,11 @@
 import os, sys
 import rospy
 import time
-from math import sqrt
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
 from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
 from gauss_msgs.msg import Threat, Notification, Waypoint, WaypointList, Operation, Geofence
-#from gauss_msgs.srv import Deconfliction, DeconflictionRequest
+#from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
 
 class EmergencyManagement():
 
@@ -46,7 +45,7 @@ class EmergencyManagement():
     #def assign_threat_severity(self):
         #self._threats_definition = {
         #                            Threat.UAS_IN_CV: {'type': 'conflict', 'severity': 1},
-        #              	            Threat.UAS_OUT_OV: {'type': 'conflict', 'severity': 2},
+        #              	             Threat.UAS_OUT_OV: {'type': 'conflict', 'severity': 2},
         #                            Threat.LOSS_OF_SEPARATION: {'type': 'conflict', 'severity': 2},
         #                            Threat.ALERT_WARNING: {'type': 'alert', 'severity': 2},
         #                            Threat.GEOFENCE_INTRUSION: {'type': 'conflict', 'severity': 2},
@@ -124,24 +123,72 @@ class EmergencyManagement():
             response = self._writeGeofences_service_handle(request)
             response.message = "Geofence stored in the Data Base"
             print(response.message)
-            action = 'Send new trajectory recommendation to the UAS involved in the conflict.'     
+            action = 'URGENT: Land now.'     
         
-        #We
+        #EM can not do anything if there is a lost of the link communication between the GCS and/or the
+        #UAV and USP
         if threat_id == Threat.COMMUNICATION_FAILURE: #COMMUNICATION_FAILURE
-            action = 'URGENT: Land as soon as possible.' 
-
+            uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
+            uav_id = uav_ids[0]
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.description = 'Change UAV control mode from autonomous to manual.'
+            notification.uav_id = uav_id
+            self._notification_publisher.publish(notification) 
+            action = 'Change UAV control mode from autonomous to manual.'
         #We    
         if threat_id == Threat.LACK_OF_BATTERY: #LACK_OF_BATTERY
             action = 'URGENT: Land as soon as possible.' 
         
-        #We
+        #We send a message for landing within the geofence created around the UAV.
         if threat_id == Threat.JAMMING_ATTACK: #JAMMING_ATTACK
-            action = 'URGENT: Land as soon as possible.'  
+            uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
+            #TODO coger todos los el uav_id de la operación implicados para resolver y mandar una notificación?
+            uav_id = uav_ids[0]
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.description = 'Land within the geofence created around the UAV'
+            notification.uav_id = uav_id
+            self._notification_publisher.publish(notification)           
+            # We create a geofence.
+            geofence = Geofence()
+            geofence.id = 3
+            geofence.min_altitude = 0.0
+            geofence.max_altitude = 100.0
+            # We write a geofence.
+            request = WriteGeofencesRequest()
+            request.geofence_ids = [geofence.id]
+            request.geofences = [geofence]
+            response = WriteGeofencesResponse()
+            response = self._writeGeofences_service_handle(request)
+            response.message = "Geofence stored in the Data Base"
+            print(response.message)         
+            action = 'Ask to Tactical routes for landing as soon as possible withing the geofence created.'  
         
-        #We
+        #We send a recommendation to the pilot to activate the FTS and we create a Geofence.
         if threat_id == Threat.SPOOFING_ATTACK: #SPOOFING_ATTACK
-            action = 'URGENT: Land as soon as possible.'  
-
+            action = 'Activate the Flight Termination System (FTS) of the UAV.'  
+            uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
+            #TODO coger todos los el uav_id de la operación implicados para resolver y mandar una notificación?
+            uav_id = uav_ids[0]
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.description = 'Activate the Flight Termination System (FTS) of the UAV.'
+            notification.uav_id = uav_id
+            self._notification_publisher.publish(notification)           
+            # We create a geofence.
+            geofence = Geofence()
+            geofence.id = 3
+            geofence.min_altitude = 0.0
+            geofence.max_altitude = 100.0
+            # We write a geofence.
+            request = WriteGeofencesRequest()
+            request.geofence_ids = [geofence.id]
+            request.geofences = [geofence]
+            response = WriteGeofencesResponse()
+            response = self._writeGeofences_service_handle(request)
+            response.message = "Geofence stored in the Data Base"   
+        print(action)
     def service_threats_cb(self, request):
         rospy.loginfo("New threat received:") 
         response = ThreatsResponse()
