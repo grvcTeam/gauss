@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# this Python file uses the following encoding: utf-8
 '''This script is a usp manager simulator developed to send alerts one by one'''
 import rospy
 import time
 from os import system
 from gauss_msgs.srv import Threats, ThreatsRequest
-from gauss_msgs.msg import Threat
+from gauss_msgs.msg import Threat, Waypoint
 
 ''' It is defined a class with all functionabilities'''
 
@@ -37,6 +38,10 @@ class UspManager():
         
         if alert_id == Threat.ALERT_WARNING:
             self._alerted_uas = [0, 1]
+            self._location = Waypoint()
+            self._location.x = 4
+            self._location.y = 5
+            #TODO añadir el tiempo.
             self._alert_id = Threat.ALERT_WARNING
         if alert_id == Threat.TECHNICAL_FAILURE:
             self._alerted_uas = [0]
@@ -53,7 +58,11 @@ class UspManager():
         if alert_id == Threat.SPOOFING_ATTACK:
             self._alerted_uas = [1]
             self._alert_id = Threat.SPOOFING_ATTACK
+        if alert_id == Threat.GNSS_DEGRADATION:
+            self._alerted_uas = [0]
+            self._alert_id = Threat.GNSS_DEGRADATION
         alert.uav_ids = self._alerted_uas
+        alert.location = self._location
         self._alert_flaged.append(alert)  
 
     # This method is an HMI in order to check different conflicts configurations.
@@ -61,12 +70,13 @@ class UspManager():
     def main_menu(self):
 
         print "\nMain menu of the USP Manager Alert sender. Please choose the conflict to send to Emergency Manager:"
-        print "1. Alert warning (fire detected, authorities notification)"
+        print "1. Alert warning (Fire, bad weather or No Drone zones detection)"
         print "2. Technical failure"
         print "3. Communication failure"
         print "4. Lack of battery"
         print "5. Jamming attack"
         print "6. Spoofing attack"
+        print "7. GNSS degradation signal"
         
         selected = raw_input(" >> ")
         system("clear")
@@ -82,6 +92,8 @@ class UspManager():
             self.alert_definition_menu(Threat.JAMMING_ATTACK)
         elif selected == "6":
             self.alert_definition_menu(Threat.SPOOFING_ATTACK)
+        elif selected == "7":
+            self.alert_definition_menu(Threat.GNSS_DEGRADATION)
         else:
             system("clear")
             print "Not a valid option."

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# this Python file uses the following encoding: utf-8
 '''This script is a monitoring simulator developed to send conflicts one by one'''
 import rospy
 import time

@@ -10,7 +10,7 @@ import time
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
 from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
-from gauss_msgs.msg import Threat, Notification, Waypoint, WaypointList, Operation, Geofence
+from gauss_msgs.msg import Threat, Circle, Notification, Waypoint, WaypointList, Operation, Geofence
 #from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
 
 class EmergencyManagement():
@@ -56,8 +56,7 @@ class EmergencyManagement():
         #                            Threat.JAMMING_ATTACK: {'type': 'alert', 'severity': 2},
         #                            Threat.SPOOFING_ATTACK: {'type': 'alert', 'severity': 3}
         #                            }
-   
-       
+          
     def action_decision_maker(self,threats2solve):
         events = threats2solve.threats
         threat_id = events[0].threat_id
@@ -84,9 +83,36 @@ class EmergencyManagement():
         if threat_id == Threat.LOSS_OF_SEPARATION: #LOSS_OF_SEPARATION
             action = 'Send new trajectories recommendations to the UAS involved in the conflict.'     
 
-        #We
+        #We create a geofence cilindrical with center "location", we notifies to all UAVs the alert.
         if threat_id == Threat.ALERT_WARNING: #ALERT_WARNING
-            action = 'Ask for a Geofence creation and send an alert report to all the pilots.' 
+            uav_ids = events[0].uav_ids # Esto sería la lista de uavs implicados.
+            action = 'Alert Warning: Bad weather Fire or NDZ detected in the zone.' 
+            #Notify to the UAS the alert.
+            for uav in uav_ids:
+                notification = Notification()
+                notification.description = 'Alert Warning: Bad weather Fire or NDZ detected in the zone.'
+                notification.uav_id = uav_ids[uav]
+                self._notification_publisher.publish(notification)
+            #Creation of the NDZ.
+            geofence_base = Circle()
+            center_alarm = events[0].location
+
+            geofence_base.x_center = center_alarm.x
+            geofence_base.y_center = center_alarm.y
+            geofence = Geofence()          
+            geofence.id = 3
+            geofence.min_altitude = 0.0
+            geofence.max_altitude = 50.0
+            geofence.circle = geofence_base
+
+            # We write a geofence.
+            request = WriteGeofencesRequest()
+            request.geofence_ids = [geofence.id]
+            request.geofences = [geofence]
+            response = WriteGeofencesResponse()
+            response = self._writeGeofences_service_handle(request)
+            response.message = "Geofence stored in the Data Base"
+            print(response.message)
 
         #We
         if threat_id == Threat.GEOFENCE_INTRUSION: #GEOFENCE_INTRUSION
