@@ -17,8 +17,12 @@ class UspManager():
         
         # Wait until service is available and creat connection
         
-        rospy.wait_for_service('gauss/threats')         
-        self._threats_service = rospy.ServiceProxy('gauss/threats', Threats) 
+        rospy.wait_for_service('/gauss/threats')         
+        self._threats_service = rospy.ServiceProxy('/gauss/threats', Threats) 
+
+        # Reference time
+
+        self._reference_time = rospy.Time.now()
                               
     # This method sends a subscrition to the threats.srv service.
 
@@ -35,36 +39,49 @@ class UspManager():
         self._alert_flaged = []
         alert = Threat()
         alert.threat_id = alert_id
+        reference_time = rospy.Time.now()
+        alert.header.stamp = reference_time
+        self._location = Waypoint()
+        print(alert.header.stamp)
         
+        
+
         if alert_id == Threat.ALERT_WARNING:
             self._alerted_uas = [0, 1]
-            self._location = Waypoint()
             self._location.x = 4
             self._location.y = 5
             #TODO añadir el tiempo.
             self._alert_id = Threat.ALERT_WARNING
+            
+
         if alert_id == Threat.TECHNICAL_FAILURE:
             self._alerted_uas = [0]
             self._alert_id = Threat.TECHNICAL_FAILURE
+            
         if alert_id == Threat.COMMUNICATION_FAILURE:
             self._alerted_uas = [1]
             self._alert_id = Threat.COMMUNICATION_FAILURE
+            
         if alert_id == Threat.LACK_OF_BATTERY:
             self._alerted_uas = [0]
             self._alert_id = Threat.LACK_OF_BATTERY
+            
         if alert_id == Threat.JAMMING_ATTACK:
             self._alerted_uas = [1]
             self._alert_id = Threat.JAMMING_ATTACK
+            
         if alert_id == Threat.SPOOFING_ATTACK:
             self._alerted_uas = [1]
             self._alert_id = Threat.SPOOFING_ATTACK
+        
         if alert_id == Threat.GNSS_DEGRADATION:
             self._alerted_uas = [0]
             self._alert_id = Threat.GNSS_DEGRADATION
+        
         alert.uav_ids = self._alerted_uas
         alert.location = self._location
         self._alert_flaged.append(alert)  
-
+        
     # This method is an HMI in order to check different conflicts configurations.
         
     def main_menu(self):

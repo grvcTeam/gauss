@@ -17,8 +17,8 @@ class Monitoring():
         
         # Wait until service is available and creat connection
         
-        rospy.wait_for_service('gauss/threats')         
-        self._threats_service = rospy.ServiceProxy('gauss/threats', Threats) 
+        rospy.wait_for_service('/gauss/threats')         
+        self._threats_service = rospy.ServiceProxy('/gauss/threats', Threats) 
                               
     # This method sends a subscrition to the threats.srv service.
 
