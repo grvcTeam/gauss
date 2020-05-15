@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # This Python file uses the following encoding: utf-8
 
-## This script is the emergency manager node developed to decide what is the best action 
-# to take in the U-space when some Threats are showed up.
+'''This script is the emergency manager node developed to decide what is the best action 
+to take in the U-space when some Threats are showed up.'''
 
 import os, sys
 import rospy
@@ -11,7 +11,7 @@ from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
 from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
 from gauss_msgs.msg import Threat, Circle, Notification, Waypoint, WaypointList, Operation, Geofence
-#from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
+from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
 
 class EmergencyManagement():
 
@@ -26,8 +26,8 @@ class EmergencyManagement():
         
         # Wait until services are available and create connection
         
-        # rospy.wait_for_service('/gauss/deconfliction')                    
-        # self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/deconfliction', Deconfliction) 
+        rospy.wait_for_service('/gauss/deconfliction')                    
+        self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/deconfliction', Deconfliction) 
 
         rospy.wait_for_service('/gauss/read_operation')                    
         self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
@@ -60,6 +60,13 @@ class EmergencyManagement():
     def select_optimal_trajectory ():
         pass
 
+    def send_threat2deconfliction (self,threat2deconflicted): 
+        request = DeconflictionRequest()
+        request.tactical = True
+        request.threat = threat2deconflicted
+        response = self._requestDeconfliction_service_handle(request)        
+        return response 
+
     def action_decision_maker(self,threats2solve):
         events = threats2solve.threats # List of Threat.msg
         threat_id = events[0].threat_id # We solve the first Threat in this SW version
@@ -80,17 +87,17 @@ class EmergencyManagement():
             notification.description = 'Go back to your flight plan.'
             notification.uav_id = uav_threatened
             self._notification_publisher.publish(notification) 
-        
+            action = 'Go back to your flight plan.'
         '''Threat UAS OUT OV: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.UAS_OUT_OV: 
             action = 'URGENT: Land as soon as possible.'  
-        
+            self.send_threat2deconfliction(events[0])
         ''' Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.LOSS_OF_SEPARATION: 
             action = 'Send new trajectories recommendations to the UAS involved in the conflict.'     
-
+            self.send_threat2deconfliction(events[0])
         ''' Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides,
         we notifies to all UAVs the alert detected.'''
         
@@ -129,12 +136,12 @@ class EmergencyManagement():
 
         if threat_id == Threat.GEOFENCE_INTRUSION: 
             action = 'Ask for leaving the geofence asap and continue its operation.' 
-
+            self.send_threat2deconfliction(events[0])
         '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.GEOFENCE_CONFLICT:
             action = 'Send new trajectory recommendation to the UAS involved in the conflict.'     
-        
+            self.send_threat2deconfliction(events[0])
         '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
 
         if threat_id == Threat.TECHNICAL_FAILURE: 
@@ -185,7 +192,7 @@ class EmergencyManagement():
 
         if threat_id == Threat.LACK_OF_BATTERY: 
             action = 'URGENT: Land as soon as possible.' 
-        
+            self.send_threat2deconfliction(events[0])
         ''' Threat JAMMING ATTACK: We send a message for landing within the geofence created
         around the UAV.'''
 
@@ -242,7 +249,11 @@ class EmergencyManagement():
             response = WriteGeofencesResponse()
             response = self._writeGeofences_service_handle(request)
             response.message = "Geofence stored in the Data Base."   
-        
+        ''' Threat LACK OF BATTERY: we ask to tactical possible solution trajectories'''
+
+        if threat_id == Threat.GNSS_DEGRADATION: 
+            action = 'Land in a landing spot' 
+            self.send_threat2deconfliction(events[0])
         print(action)
 
     def service_threats_cb(self, request):
@@ -260,10 +271,12 @@ class EmergencyManagement():
     def send_uavs_threatened(self, request): 
         return self._readOperation_service_handle(self._threats2solve.uav_ids)
   
-    #def request_deconfliction_plans(self):
-    #    request = DeconflictionRequest()
-    #    #TODO, rellenar la info necesaria para que me envien una nueva trayectoria.
-    #    pass
+    def request_deconfliction_plans(self):
+        request = DeconflictionRequest()
+        request.threat = self._
+        
+        #TODO, rellenar la info necesaria para que me envien una nueva trayectoria.
+        
     
     #TODO, definir los parametros para usar esta función. 
 
