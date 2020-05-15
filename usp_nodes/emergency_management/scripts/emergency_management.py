@@ -102,8 +102,11 @@ class EmergencyManagement():
         ''' Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.LOSS_OF_SEPARATION: 
-            
-            action = 'Send new trajectories recommendations to the UAS involved in the conflict.'     
+            for uav in uavs_threatened:
+                notification = Notification()
+                notification.description = 'Send new trajectories recommendations to the UAS involved in the conflict.'
+                notification.uav_id = uavs_threatened[uav]
+                self._notification_publisher.publish(notification)
             self.send_threat2deconfliction(events[0])
         
         ''' Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides,

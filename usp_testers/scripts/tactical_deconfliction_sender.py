@@ -7,7 +7,7 @@ import rospy
 import time
 from os import system
 from gauss_msgs.srv import Threats, ThreatsRequest, ThreatsResponse
-from gauss_msgs.msg import Threat, Deconflictionplan, Waypoint, WaypointList
+from gauss_msgs.msg import Threat, DeconflictionPlan, Waypoint, WaypointList
 from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
 
 ''' It is defined a class with all functionabilities'''
