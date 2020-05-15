@@ -71,39 +71,45 @@ class EmergencyManagement():
         events = threats2solve.threats # List of Threat.msg
         threat_id = events[0].threat_id # We solve the first Threat in this SW version
         threat_time = events[0].header.stamp
-        print("The Threat has been notified at the second since epoch:", threat_time)
+        uavs_threatened = events[0].uav_ids
+        uav_threatened = uavs_threatened[0]
+        #print("The Threat has been notified at the second since epoch:", threat_time)
         #threat_severity = self._threats_definition[threat_id]['severity']
         #first_operation_priority = self._operation_info_from_db['operations'][0]['priority']
         #second_operation_priority = self._operation_info_from_db['operations'][1]['priority']
         
         ''' Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
 
-        if threat_id == Threat.UAS_IN_CV: 
-            uavs_threatened = events[0].uav_ids
-            uav_threatened = uavs_threatened[0]
-            
+        if threat_id == Threat.UAS_IN_CV:   
+
             #Publish the action which the UAV has to make.
             notification = Notification()
             notification.description = 'Go back to your flight plan.'
             notification.uav_id = uav_threatened
             self._notification_publisher.publish(notification) 
-            action = 'Go back to your flight plan.'
+            
         '''Threat UAS OUT OV: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.UAS_OUT_OV: 
-            action = 'URGENT: Land as soon as possible.'  
+            
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.uav_id = uav_threatened
+            notification.description = 'URGENT: Land as soon as possible.'   
             self.send_threat2deconfliction(events[0])
+            #notification.waypoints
+
         ''' Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.LOSS_OF_SEPARATION: 
+            
             action = 'Send new trajectories recommendations to the UAS involved in the conflict.'     
             self.send_threat2deconfliction(events[0])
+        
         ''' Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides,
         we notifies to all UAVs the alert detected.'''
         
-        if threat_id == Threat.ALERT_WARNING: 
-            uavs_threatened = events[0].uav_ids
-            action = 'Alert Warning: Bad weather Fire or NDZ detected in the zone.' 
+        if threat_id == Threat.ALERT_WARNING:             
             
             #We send a notification for every UAV.
             for uav in uavs_threatened:
@@ -135,18 +141,28 @@ class EmergencyManagement():
         ''' Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.GEOFENCE_INTRUSION: 
-            action = 'Ask for leaving the geofence asap and continue its operation.' 
+            
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.uav_id = uav_threatened
+            notification.description = 'Ask for leaving the geofence asap and continue its operation.'   
             self.send_threat2deconfliction(events[0])
+            #notification.waypoints
+            
         '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.GEOFENCE_CONFLICT:
-            action = 'Send new trajectory recommendation to the UAS involved in the conflict.'     
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.uav_id = uav_threatened
+            notification.description = 'Send new trajectory recommendation to the UAS involved in the conflict.'   
             self.send_threat2deconfliction(events[0])
+            #notification.waypoints
+            
         '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
 
         if threat_id == Threat.TECHNICAL_FAILURE: 
-            uavs_threatened = events[0].uav_ids 
-            uav_threatened = uavs_threatened[0]
+            
             #request = ReadOperationRequest()
             #request.uav_ids = uav_threatened
             #response = ReadOperationResponse()
@@ -178,27 +194,26 @@ class EmergencyManagement():
         UAV and USP.'''
 
         if threat_id == Threat.COMMUNICATION_FAILURE: 
-            uavs_threatened = events[0].uav_ids 
-            uav_threatened = uavs_threatened[0]
             
             #Publish the action which the UAV has to make.
             notification = Notification()
             notification.description = 'Change UAV control mode from autonomous to manual.'
             notification.uav_id = uav_threatened
             self._notification_publisher.publish(notification) 
-            action = 'Change UAV control mode from autonomous to manual.'
         
         ''' Threat LACK OF BATTERY: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.LACK_OF_BATTERY: 
-            action = 'URGENT: Land as soon as possible.' 
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.description = 'Land in a landing spot'
+            notification.uav_id = uav_threatened
             self.send_threat2deconfliction(events[0])
+        
         ''' Threat JAMMING ATTACK: We send a message for landing within the geofence created
         around the UAV.'''
 
         if threat_id == Threat.JAMMING_ATTACK: 
-            uavs_threatened = events[0].uav_ids 
-            uav_threatened = uavs_threatened[0]
             
             #Publish the action which the UAV has to make.
             notification = Notification()
@@ -220,16 +235,12 @@ class EmergencyManagement():
             response = self._writeGeofences_service_handle(request)
             response.message = "Geofence stored in the Data Base."
             print(response.message)         
-            action = 'Ask to Tactical routes for landing as soon as possible withing the geofence created.'  
-        
+                
         ''' Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
         and we create a geofence around the UAV.'''
 
         if threat_id == Threat.SPOOFING_ATTACK: 
-            action = 'Activate the Flight Termination System (FTS) of the UAV.'  
-            uavs_threatened = events[0].uav_ids 
-            uav_threatened = uavs_threatened[0]
-
+        
             #Publish the action which the UAV has to make.
             notification = Notification()
             notification.description = 'Activate the Flight Termination System (FTS) of the UAV.'
@@ -249,12 +260,17 @@ class EmergencyManagement():
             response = WriteGeofencesResponse()
             response = self._writeGeofences_service_handle(request)
             response.message = "Geofence stored in the Data Base."   
+        
         ''' Threat LACK OF BATTERY: we ask to tactical possible solution trajectories'''
 
         if threat_id == Threat.GNSS_DEGRADATION: 
-            action = 'Land in a landing spot' 
+            #Publish the action which the UAV has to make.
+            notification = Notification()
+            notification.description = 'Land in a landing spot'
+            notification.uav_id = uav_threatened
             self.send_threat2deconfliction(events[0])
-        print(action)
+            
+        print(notification.description)
 
     def service_threats_cb(self, request):
         rospy.loginfo("New threat received:") 
