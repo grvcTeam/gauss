@@ -135,14 +135,14 @@ int main(int argc, char *argv[])
         ROS_ERROR("Call write deconfliction error");
         return false;
     } else {
-        for (auto plan : deconfliction.response.deconflicted_plans){
-            // std::cout << plan << std::endl;
+        for (auto plan : deconfliction.response.deconfliction_plans){
+            std::cout << plan << std::endl;
         }
     }
 
     nav_msgs::Path astar_path;
     astar_path.header.frame_id = "world";
-    for (auto wps : deconfliction.response.deconflicted_plans.front().waypoints){
+    for (auto wps : deconfliction.response.deconfliction_plans.front().waypoint_list){
         geometry_msgs::PoseStamped temp_pose;
         temp_pose.pose.position.x = wps.x;
         temp_pose.pose.position.y = wps.y;
