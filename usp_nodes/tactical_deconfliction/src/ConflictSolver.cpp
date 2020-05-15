@@ -6,6 +6,7 @@
 #include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/ReadFlightPlan.h>
 #include <gauss_msgs/ReadGeofences.h>
+#include <gauss_msgs/DeconflictionPlan.h>
 #include <tactical_deconfliction/path_finder.h>
 #include <Eigen/Eigen>
 
@@ -28,6 +29,7 @@ private:
     std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, geometry_msgs::Point _init_point, geometry_msgs::Point _goal_point);
     geometry_msgs::Polygon circleToPolygon(float _x, float _y, float _radius, float _nVertices = 9);
     std::pair<std::vector<double>, double> getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2);
+    double pathDistance(gauss_msgs::DeconflictionPlan &_wp_list);
     // Auxilary variables
     double rate;
     double dX,dY,dZ,dT;
@@ -235,6 +237,17 @@ std::pair<std::vector<double>, double> ConflictSolver::getCoordinatesAndDistance
     return std::make_pair(coordinates, distance);
 } 
 
+double ConflictSolver::pathDistance(gauss_msgs::DeconflictionPlan &_wp_list){
+    double distance = 0;
+    for (int i = 0; i < _wp_list.waypoint_list.size()-1; i++){
+        Eigen::Vector3f p1 = Eigen::Vector3f(_wp_list.waypoint_list.at(i).x, _wp_list.waypoint_list.at(i).y, _wp_list.waypoint_list.at(i).z);
+        Eigen::Vector3f p2 = Eigen::Vector3f(_wp_list.waypoint_list.at(i+1).x, _wp_list.waypoint_list.at(i+1).y, _wp_list.waypoint_list.at(i+1).z);
+        distance = distance + (p2 - p1).norm();
+    }
+
+    return distance;
+}
+
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res)
 {
@@ -246,101 +259,101 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         conflict=req.threat;
         if (req.threat.threat_id==req.threat.LOSS_OF_SEPARATION)
         {
-            gauss_msgs::Waypoint newwp1,newwp2;
+            // gauss_msgs::Waypoint newwp1,newwp2;
 
 
-            int num_conflicts=1;
-            while (num_conflicts>0)
-            {
-                bool included1=false;
-                bool included2=false;
-                for (int i=0;i<res.uav_ids.size();i++)
-                {
-                    if (conflict.uav_ids.at(0)==res.uav_ids.at(i))
-                        included1=true;
-                    if (conflict.uav_ids.at(1)==res.uav_ids.at(i))
-                        included2=true;
-                }
-                if (included1=false)
-                    res.uav_ids.push_back(conflict.uav_ids.at(0));
-                if (included2=false)
-                    res.uav_ids.push_back(conflict.uav_ids.at(1));
+            // int num_conflicts=1;
+            // while (num_conflicts>0)
+            // {
+            //     bool included1=false;
+            //     bool included2=false;
+            //     for (int i=0;i<res.uav_ids.size();i++)
+            //     {
+            //         if (conflict.uav_ids.at(0)==res.uav_ids.at(i))
+            //             included1=true;
+            //         if (conflict.uav_ids.at(1)==res.uav_ids.at(i))
+            //             included2=true;
+            //     }
+            //     if (included1=false)
+            //         res.uav_ids.push_back(conflict.uav_ids.at(0));
+            //     if (included2=false)
+            //         res.uav_ids.push_back(conflict.uav_ids.at(1));
 
-                num_conflicts=0;
-                gauss_msgs::ReadTraj traj_msg;
-                traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
-                traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
-                if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
-                {
-                    ROS_ERROR("Failed to read a trajectory");
-                    res.success=false;
-                    return false;
-                }
-                int j=0;
-                gauss_msgs::Waypoint wp1,wp2;
-                gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
-                gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);
-                int UAV1=req.threat.uav_ids.at(0);
-                int UAV2=req.threat.uav_ids.at(1);
+            //     num_conflicts=0;
+            //     gauss_msgs::ReadTraj traj_msg;
+            //     traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
+            //     traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
+            //     if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
+            //     {
+            //         ROS_ERROR("Failed to read a trajectory");
+            //         res.success=false;
+            //         return false;
+            //     }
+            //     int j=0;
+            //     gauss_msgs::Waypoint wp1,wp2;
+            //     gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
+            //     gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);
+            //     int UAV1=req.threat.uav_ids.at(0);
+            //     int UAV2=req.threat.uav_ids.at(1);
 
-                while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>dT);
-                wp1=traj1.waypoints.at(j);
-                j=0;
-                while (abs(traj2.waypoints.at(j).stamp.toSec()-conflict.times.at(1).toSec())>dT);
-                wp2=traj2.waypoints.at(j);
+            //     while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>dT);
+            //     wp1=traj1.waypoints.at(j);
+            //     j=0;
+            //     while (abs(traj2.waypoints.at(j).stamp.toSec()-conflict.times.at(1).toSec())>dT);
+            //     wp2=traj2.waypoints.at(j);
 
-                double distance=sqrt(pow(wp2.x-wp1.x,2)+pow(wp2.y-wp1.y,2)+pow(wp2.z-wp1.z,2));
-                double separation=0;
-                double mod1=sqrt(pow(wp1.x,2)+pow(wp1.y,2)+pow(wp1.z,2));
-                double mod2=sqrt(pow(wp2.x,2)+pow(wp2.y,2)+pow(wp2.z,2));
-                if (distance<dX)
-                    separation=(dX-distance)/2;
-                newwp1.x=wp1.x+separation*(wp1.x-wp2.x)/distance;
-                newwp1.y=wp1.y+separation*(wp1.y-wp2.y)/distance;
-                newwp1.z=wp1.z+separation*(wp1.z-wp2.z)/distance;
-                newwp1.stamp=wp1.stamp;
-                newwp2.x=wp2.x-separation*(wp1.x-wp2.x)/distance;
-                newwp2.y=wp2.y-separation*(wp1.y-wp2.y)/distance;
-                newwp2.z=wp2.z-separation*(wp1.z-wp2.z)/distance;
-                newwp2.stamp=wp2.stamp;
+            //     double distance=sqrt(pow(wp2.x-wp1.x,2)+pow(wp2.y-wp1.y,2)+pow(wp2.z-wp1.z,2));
+            //     double separation=0;
+            //     double mod1=sqrt(pow(wp1.x,2)+pow(wp1.y,2)+pow(wp1.z,2));
+            //     double mod2=sqrt(pow(wp2.x,2)+pow(wp2.y,2)+pow(wp2.z,2));
+            //     if (distance<dX)
+            //         separation=(dX-distance)/2;
+            //     newwp1.x=wp1.x+separation*(wp1.x-wp2.x)/distance;
+            //     newwp1.y=wp1.y+separation*(wp1.y-wp2.y)/distance;
+            //     newwp1.z=wp1.z+separation*(wp1.z-wp2.z)/distance;
+            //     newwp1.stamp=wp1.stamp;
+            //     newwp2.x=wp2.x-separation*(wp1.x-wp2.x)/distance;
+            //     newwp2.y=wp2.y-separation*(wp1.y-wp2.y)/distance;
+            //     newwp2.z=wp2.z-separation*(wp1.z-wp2.z)/distance;
+            //     newwp2.stamp=wp2.stamp;
 
-                gauss_msgs::CheckConflicts check_msg;
-                check_msg.request.deconflicted_wp.push_back(newwp1);
-                check_msg.request.deconflicted_wp.push_back(newwp2);
-                check_msg.request.threat.threat_id=check_msg.request.threat.LOSS_OF_SEPARATION;
-                check_msg.request.threat.uav_ids.push_back(UAV1);
-                check_msg.request.threat.uav_ids.push_back(UAV2);
-                check_msg.request.threat.times.push_back(newwp1.stamp);
-                check_msg.request.threat.times.push_back(newwp2.stamp);
-                if (!check_client_.call(check_msg) || !check_msg.response.success)
-                {
-                    ROS_ERROR("Failed checking new conflicts");
-                    res.success=false;
-                    return false;
-                }
+            //     gauss_msgs::CheckConflicts check_msg;
+            //     check_msg.request.deconflicted_wp.push_back(newwp1);
+            //     check_msg.request.deconflicted_wp.push_back(newwp2);
+            //     check_msg.request.threat.threat_id=check_msg.request.threat.LOSS_OF_SEPARATION;
+            //     check_msg.request.threat.uav_ids.push_back(UAV1);
+            //     check_msg.request.threat.uav_ids.push_back(UAV2);
+            //     check_msg.request.threat.times.push_back(newwp1.stamp);
+            //     check_msg.request.threat.times.push_back(newwp2.stamp);
+            //     if (!check_client_.call(check_msg) || !check_msg.response.success)
+            //     {
+            //         ROS_ERROR("Failed checking new conflicts");
+            //         res.success=false;
+            //         return false;
+            //     }
 
-                num_conflicts=check_msg.response.threats.size();
+            //     num_conflicts=check_msg.response.threats.size();
 
-                if (num_conflicts>0)
-                    conflict=check_msg.response.threats.at(0);
-            }
-            // Leer flight plans, modificarlo (tiempo y posicion) segun los newwp1 y newwp2
-            // incluir nuevos flight plans en
+            //     if (num_conflicts>0)
+            //         conflict=check_msg.response.threats.at(0);
+            // }
+            // // Leer flight plans, modificarlo (tiempo y posicion) segun los newwp1 y newwp2
+            // // incluir nuevos flight plans en
 
-            gauss_msgs::ReadFlightPlan plan_msg;
-            for (int i=0;i<res.uav_ids.size();i++)
-                plan_msg.request.uav_ids.push_back(res.uav_ids.at(i));
-            if (!read_flightplan_client_.call(plan_msg) || !plan_msg.response.success)
-            {
-                ROS_ERROR("Failed to read a flight plan");
-                res.success=false;
-                return false;
-            }
+            // gauss_msgs::ReadFlightPlan plan_msg;
+            // for (int i=0;i<res.uav_ids.size();i++)
+            //     plan_msg.request.uav_ids.push_back(res.uav_ids.at(i));
+            // if (!read_flightplan_client_.call(plan_msg) || !plan_msg.response.success)
+            // {
+            //     ROS_ERROR("Failed to read a flight plan");
+            //     res.success=false;
+            //     return false;
+            // }
 
-            res.deconflicted_plans.at(0);
-            res.deconflicted_plans.at(1);
+            // res.deconfliction_plans.at(0);
+            // res.deconfliction_plans.at(1);
 
-            res.success=true;
+            // res.success=true;
 
         }
         else if (req.threat.threat_id==req.threat.GEOFENCE_CONFLICT)
@@ -384,6 +397,16 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     res_polygon.points.push_back(temp_points);
                 }
             }
+            gauss_msgs::ReadTraj traj_msg;
+            traj_msg.request.uav_ids.push_back(conflict.uav_ids.front());
+            if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
+            {
+                ROS_ERROR("Failed to read a trajectory");
+                res.success=false;
+                return false;
+            }
+            
+            // [1] Ruta a mi destino evitando una geofence
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
             int init_astar_pos, goal_astar_pos;
             init_astar_point = findInitAStarPoint(res_polygon, res_path, init_astar_pos);
@@ -403,16 +426,62 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             a_star_times_res.push_back(res_times.at(goal_astar_pos));
             // Solutions of conflict solver are a_star_path_res and a_star_times_res
             gauss_msgs::Waypoint temp_wp;
-            gauss_msgs::WaypointList temp_wp_list;
+            gauss_msgs::DeconflictionPlan temp_wp_list;
             for (int i = 0; i < a_star_path_res.poses.size(); i++){
                 temp_wp.x = a_star_path_res.poses.at(i).pose.position.x;
                 temp_wp.y = a_star_path_res.poses.at(i).pose.position.y;
                 temp_wp.z = a_star_path_res.poses.at(i).pose.position.z;
                 temp_wp.stamp = ros::Time(a_star_times_res.at(i));
-                temp_wp_list.waypoints.push_back(temp_wp);
+                temp_wp_list.waypoint_list.push_back(temp_wp);
             }
+            temp_wp_list.maneuver_type = 1;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            res.deconfliction_plans.push_back(temp_wp_list);
 
-            res.deconflicted_plans.push_back(temp_wp_list);
+            // [3] Ruta que me manda devuelta a casa
+            temp_wp_list.waypoint_list.clear();
+            temp_wp_list.cost.clear();
+            temp_wp_list.riskiness.clear();
+            temp_wp.x = traj_msg.response.tracks.front().waypoints.front().x;
+            temp_wp.y = traj_msg.response.tracks.front().waypoints.front().y;
+            temp_wp.z = traj_msg.response.tracks.front().waypoints.front().z;
+            temp_wp.stamp = traj_msg.response.tracks.front().waypoints.front().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp.x = plan_msg.response.plans.front().waypoints.front().x;
+            temp_wp.y = plan_msg.response.plans.front().waypoints.front().y;
+            temp_wp.z = plan_msg.response.plans.front().waypoints.front().z;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp_list.maneuver_type = 3;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            res.deconfliction_plans.push_back(temp_wp_list);
+
+            // [4] Ruta que have hovering durante un tiempo esperando a que la geofence se desactive // Hovering en init_astar_point
+            temp_wp_list.waypoint_list.clear();
+            temp_wp_list.cost.clear();
+            temp_wp_list.riskiness.clear();
+            temp_wp.x = traj_msg.response.tracks.front().waypoints.front().x;
+            temp_wp.y = traj_msg.response.tracks.front().waypoints.front().y;
+            temp_wp.z = traj_msg.response.tracks.front().waypoints.front().z;
+            temp_wp.stamp = traj_msg.response.tracks.front().waypoints.front().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp.x = a_star_path_res.poses.front().pose.position.x;
+            temp_wp.y = a_star_path_res.poses.front().pose.position.y;
+            temp_wp.z = a_star_path_res.poses.front().pose.position.z;
+            temp_wp.stamp = ros::Time(a_star_times_res.front());
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            double diff_time = geofence_msg.response.geofences.front().end_time.toSec() - traj_msg.response.tracks.front().waypoints.front().stamp.toSec();
+            temp_wp.stamp = ros::Time(diff_time);
+            for (int i = init_astar_pos; i < plan_msg.response.plans.front().waypoints.size(); i++){
+                temp_wp.x = plan_msg.response.plans.front().waypoints.at(i).x;
+                temp_wp.y = plan_msg.response.plans.front().waypoints.at(i).y;
+                temp_wp.z = plan_msg.response.plans.front().waypoints.at(i).z;
+                temp_wp.stamp = ros::Time(plan_msg.response.plans.front().waypoints.at(i).stamp.toSec() + diff_time);
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+            }
+            temp_wp_list.maneuver_type = 4;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            res.deconfliction_plans.push_back(temp_wp_list);
+            res.message = "Conflict solved";    
             res.success = true;
         } 
         else if (req.threat.threat_id==req.threat.GEOFENCE_INTRUSION) 
@@ -485,6 +554,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y, 
                                                     res_polygon.points.front().x, res_polygon.points.front().y, 
                                                     res_polygon.points.back().x, res_polygon.points.back().y));
+            // [6] Ruta a mi destino saliendo lo antes posible de la geofence
             auto min_distance_coordinate = get_min(point_and_distance);
             Eigen::Vector2f p_conflict, p_min_distance, unit_vec, v_out_polygon;
             p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
@@ -506,24 +576,93 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
-            interp_times.push_back(ros::Time::now().toSec()); // init astar pos time
+            interp_times.push_back(traj_msg.response.tracks.front().waypoints.front().stamp.toSec()); // init astar pos time
             interp_times.push_back(res_times.at(goal_astar_pos));
             a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
             a_star_times_res.push_back(res_times.at(goal_astar_pos));
             // Solutions of conflict solver are a_star_path_res and a_star_times_res
             gauss_msgs::Waypoint temp_wp;
-            gauss_msgs::WaypointList temp_wp_list;
+            gauss_msgs::DeconflictionPlan temp_wp_list;
+            temp_wp.x = conflict_point.x;
+            temp_wp.y = conflict_point.y;
+            temp_wp.z = conflict_point.z;
+            temp_wp.stamp = traj_msg.response.tracks.front().waypoints.front().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
             for (int i = 0; i < a_star_path_res.poses.size(); i++){
                 temp_wp.x = a_star_path_res.poses.at(i).pose.position.x;
                 temp_wp.y = a_star_path_res.poses.at(i).pose.position.y;
                 temp_wp.z = a_star_path_res.poses.at(i).pose.position.z;
                 temp_wp.stamp = ros::Time(a_star_times_res.at(i));
-                temp_wp_list.waypoints.push_back(temp_wp);
+                temp_wp_list.waypoint_list.push_back(temp_wp);
             }
-
-            res.success = true;
+            temp_wp_list.maneuver_type = 6;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            res.deconfliction_plans.push_back(temp_wp_list);                        
+            
+            // [2] Ruta a mi destino por el camino mas corto
+            temp_wp_list.waypoint_list.clear();
+            temp_wp_list.cost.clear();
+            temp_wp_list.riskiness.clear();
+            temp_wp.x = conflict_point.x;
+            temp_wp.y = conflict_point.y;
+            temp_wp.z = conflict_point.z;
+            temp_wp.stamp = traj_msg.response.tracks.front().waypoints.front().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp.x = plan_msg.response.plans.front().waypoints.back().x;
+            temp_wp.y = plan_msg.response.plans.front().waypoints.back().y;
+            temp_wp.z = plan_msg.response.plans.front().waypoints.back().z;
+            temp_wp.stamp = plan_msg.response.plans.front().waypoints.back().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp_list.maneuver_type = 2;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            res.deconfliction_plans.push_back(temp_wp_list);                        
+            
+            // [3] Ruta que me manda de vuelta a casa
+            temp_wp_list.waypoint_list.clear();
+            temp_wp_list.cost.clear();
+            temp_wp_list.riskiness.clear();
+            temp_wp.x = traj_msg.response.tracks.front().waypoints.front().x;
+            temp_wp.y = traj_msg.response.tracks.front().waypoints.front().y;
+            temp_wp.z = traj_msg.response.tracks.front().waypoints.front().z;
+            temp_wp.stamp = traj_msg.response.tracks.front().waypoints.front().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp.x = plan_msg.response.plans.front().waypoints.front().x;
+            temp_wp.y = plan_msg.response.plans.front().waypoints.front().y;
+            temp_wp.z = plan_msg.response.plans.front().waypoints.front().z;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp_list.maneuver_type = 3;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            res.deconfliction_plans.push_back(temp_wp_list);
+            
+            // [4] Ruta que hace hovering durante un tiempo esperando a que la geofence se desactive
+            temp_wp_list.waypoint_list.clear();
+            temp_wp_list.cost.clear();
+            temp_wp_list.riskiness.clear();
+            temp_wp.x = traj_msg.response.tracks.front().waypoints.front().x;
+            temp_wp.y = traj_msg.response.tracks.front().waypoints.front().y;
+            temp_wp.z = traj_msg.response.tracks.front().waypoints.front().z;
+            temp_wp.stamp = traj_msg.response.tracks.front().waypoints.front().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp.x = a_star_path_res.poses.front().pose.position.x;
+            temp_wp.y = a_star_path_res.poses.front().pose.position.y;
+            temp_wp.z = a_star_path_res.poses.front().pose.position.z;
+            temp_wp.stamp = ros::Time(a_star_times_res.front());
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            double diff_time = geofence_msg.response.geofences.front().end_time.toSec() - traj_msg.response.tracks.front().waypoints.front().stamp.toSec();
+            temp_wp.stamp = ros::Time(diff_time);
+            for (int i = init_astar_pos; i < plan_msg.response.plans.front().waypoints.size(); i++){
+                temp_wp.x = plan_msg.response.plans.front().waypoints.at(i).x;
+                temp_wp.y = plan_msg.response.plans.front().waypoints.at(i).y;
+                temp_wp.z = plan_msg.response.plans.front().waypoints.at(i).z;
+                temp_wp.stamp = ros::Time(plan_msg.response.plans.front().waypoints.at(i).stamp.toSec() + diff_time);
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+            }
+            temp_wp_list.maneuver_type = 4;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            res.deconfliction_plans.push_back(temp_wp_list);
+            
             res.message = "Conflict solved";    
-            res.deconflicted_plans.push_back(temp_wp_list);                        
+            res.success = true;
         }
     }
 

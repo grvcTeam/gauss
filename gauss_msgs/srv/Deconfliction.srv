@@ -3,4 +3,4 @@ Threat threat
 ---
 bool success
 string message
-Deconflictionplan[] deconfliction_plans
+DeconflictionPlan[] deconfliction_plans
