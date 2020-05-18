@@ -26,8 +26,8 @@ class EmergencyManagement():
         
         # Wait until services are available and create connection
         
-        rospy.wait_for_service('/gauss/deconfliction')                    
-        self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/deconfliction', Deconfliction) 
+        rospy.wait_for_service('/gauss/tactical_deconfliction')                    
+        self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/tactical_deconfliction', Deconfliction) 
 
         rospy.wait_for_service('/gauss/read_operation')                    
         self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
@@ -38,6 +38,7 @@ class EmergencyManagement():
         # Server     
 
         self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
+        
         print("Ready to add a threat request")
     
     #TODO link Threats severity/probability with the SoA references.
@@ -64,7 +65,7 @@ class EmergencyManagement():
         request = DeconflictionRequest()
         request.tactical = True
         request.threat = threat2deconflicted
-        response = self._requestDeconfliction_service_handle(request)        
+        response = self._requestDeconfliction_service_handle(request) 
         return response 
 
     def action_decision_maker(self,threats2solve):
@@ -107,7 +108,7 @@ class EmergencyManagement():
                 notification.description = 'Send new trajectories recommendations to the UAS involved in the conflict.'
                 notification.uav_id = uavs_threatened[uav]
                 self._notification_publisher.publish(notification)
-            self.send_threat2deconfliction(events[0])
+                self.send_threat2deconfliction(events[0])
         
         ''' Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides,
         we notifies to all UAVs the alert detected.'''
@@ -149,7 +150,8 @@ class EmergencyManagement():
             notification = Notification()
             notification.uav_id = uav_threatened
             notification.description = 'Ask for leaving the geofence asap and continue its operation.'   
-            self.send_threat2deconfliction(events[0])
+            result = self.send_threat2deconfliction(events[0])
+            print(result)
             #notification.waypoints
             
         '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''

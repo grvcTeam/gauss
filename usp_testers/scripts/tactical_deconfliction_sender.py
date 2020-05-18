@@ -26,15 +26,16 @@ class TacticalDeconfliction():
     
         # Server
 
-        self._deconfliction_service = rospy.Service('/gauss/deconfliction', Deconfliction, self.service_deconfliction_cb) 
+        self._deconfliction_service = rospy.Service('/gauss/tactical_deconfliction', Deconfliction, self.service_deconfliction_cb) 
         print("Ready to get a Deconfliction request")
 
     def service_deconfliction_cb(self,request):
         rospy.loginfo("New deconfliction request received:")
-        response = DeconflictionResponse()
-        response.success = True
         self._deconflictionreq = request # DeconflictionRequest()       
         print(self._deconflictionreq.threat)
+        response = DeconflictionResponse()
+        response.success = True
+        print(response.message)
         return response     
     
 ''' The node and the TacticalDeconfliction class are initialized'''

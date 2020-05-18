@@ -36,6 +36,7 @@ class Monitoring():
         conflict = Threat()
         conflict.threat_id = conflict_id
         
+        
         if conflict_id == Threat.UAS_IN_CV:
             self._conflicted_uas = [0]
             self._conflict_id = Threat.UAS_IN_CV
@@ -48,9 +49,11 @@ class Monitoring():
         if conflict_id == Threat.GEOFENCE_INTRUSION:
             self._conflicted_uas = [0]
             self._conflict_id = Threat.GEOFENCE_INTRUSION
+            conflict.geofence_ids =[0]
         if conflict_id == Threat.GEOFENCE_CONFLICT:
-            self._conflicted_uas = [1]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.GEOFENCE_CONFLICT
+            conflict.geofence_ids =[0]
         conflict.uav_ids = self._conflicted_uas
         self._conflict_flaged.append(conflict)   
     # This method is an HMI in order to check different conflicts configurations.
