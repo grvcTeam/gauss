@@ -1,4 +1,4 @@
-uint8[] geofence_ids
+int8[] geofence_ids
 Geofence[] geofences
 ---
 bool success

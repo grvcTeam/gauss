@@ -1,8 +1,8 @@
 Header header
 uint8 threat_id
-uint8[] uav_ids
+int8[] uav_ids
 time[] times
-uint8[] geofence_ids
+int8[] geofence_ids
 Waypoint location
 
 uint8 UAS_IN_CV = 0
