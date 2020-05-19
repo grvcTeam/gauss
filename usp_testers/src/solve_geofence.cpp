@@ -23,7 +23,7 @@ public:
     Tester();
     bool writeDB();
     ros::ServiceClient write_deconfliction_client_, read_plan_client_, read_geofence_client_;
-    ros::Publisher pub_geofence_, pub_flight_plan_, pub_astar_plan_;
+    ros::Publisher pub_geofence_, pub_flight_plan_, pub_astar_plan_1_, pub_astar_plan_2_, pub_astar_plan_3_;
     geometry_msgs::PolygonStamped circleToPolygon(float _x, float _y, float _radius, float _nVertices = 9);
 
 private:
@@ -48,7 +48,9 @@ Tester::Tester()
     // Publish
     pub_geofence_ = nh_.advertise<geometry_msgs::PolygonStamped>("/gauss/tester/geofence", 1);
     pub_flight_plan_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/flight_plan", 1);
-    pub_astar_plan_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/astar_plan", 1);
+    pub_astar_plan_1_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/astar_plan_1", 1);
+    pub_astar_plan_2_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/astar_plan_2", 1);
+    pub_astar_plan_3_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/astar_plan_3", 1);
     // Subscribe
     // Server
     // Client
@@ -82,9 +84,10 @@ int main(int argc, char *argv[])
     ros::init(argc,argv,"Tester");
     Tester tester;
     ros::Rate rate(30);
-
+    int test_geofence_id = 0;
+    int test_uav_id = 0;
     gauss_msgs::ReadFlightPlan plan_msg;
-    plan_msg.request.uav_ids.push_back(0);
+    plan_msg.request.uav_ids.push_back(test_uav_id);
     if (!tester.read_plan_client_.call(plan_msg) || !plan_msg.response.success)
     {
         ROS_ERROR("Failed to read a flight plan");
@@ -102,7 +105,7 @@ int main(int argc, char *argv[])
         res_times.push_back(plan_msg.response.plans.front().waypoints.at(i).stamp.toSec());
     }
     gauss_msgs::ReadGeofences geofence_msg;
-    geofence_msg.request.geofences_ids.push_back(0);
+    geofence_msg.request.geofences_ids.push_back(test_geofence_id);
     if (!tester.read_geofence_client_.call(geofence_msg) || !geofence_msg.response.success)
     {
         ROS_ERROR("Failed to read a geofence");
@@ -124,11 +127,11 @@ int main(int argc, char *argv[])
     }
 
     gauss_msgs::Deconfliction deconfliction;
-    deconfliction.request.threat.geofence_ids.push_back(0);
+    deconfliction.request.threat.geofence_ids.push_back(test_geofence_id);
     deconfliction.request.threat.threat_id = deconfliction.request.threat.GEOFENCE_INTRUSION;
     deconfliction.request.threat.times.push_back(ros::Time(0.0));
     deconfliction.request.threat.times.push_back(ros::Time(900.0));
-    deconfliction.request.threat.uav_ids.push_back(0);
+    deconfliction.request.threat.uav_ids.push_back(test_uav_id);
     deconfliction.request.tactical = true;
     if (!tester.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
     {
@@ -140,20 +143,32 @@ int main(int argc, char *argv[])
         }
     }
 
-    nav_msgs::Path astar_path;
-    astar_path.header.frame_id = "world";
-    for (auto wps : deconfliction.response.deconfliction_plans.front().waypoint_list){
-        geometry_msgs::PoseStamped temp_pose;
-        temp_pose.pose.position.x = wps.x;
-        temp_pose.pose.position.y = wps.y;
-        temp_pose.pose.position.z = wps.z;
-        astar_path.poses.push_back(temp_pose);
+    int change_path_to_pub = 1;
+    nav_msgs::Path astar_path_1, astar_path_2, astar_path_3;
+    astar_path_1.header.frame_id = astar_path_2.header.frame_id = astar_path_3.header.frame_id = "world";
+    for (auto plans : deconfliction.response.deconfliction_plans){
+        for (auto wps : plans.waypoint_list){
+            geometry_msgs::PoseStamped temp_pose;
+            temp_pose.pose.position.x = wps.x;
+            temp_pose.pose.position.y = wps.y;
+            temp_pose.pose.position.z = wps.z;
+            if (change_path_to_pub == 3){
+                astar_path_3.poses.push_back(temp_pose);
+            } else if (change_path_to_pub == 2){
+                astar_path_2.poses.push_back(temp_pose);
+            } else if (change_path_to_pub == 1){
+                astar_path_1.poses.push_back(temp_pose);
+            }
+        }
+        change_path_to_pub++;
     }
 
     while(ros::ok()){
         tester.pub_flight_plan_.publish(res_path);
         tester.pub_geofence_.publish(res_polygon);
-        tester.pub_astar_plan_.publish(astar_path);
+        tester.pub_astar_plan_1_.publish(astar_path_1);
+        tester.pub_astar_plan_2_.publish(astar_path_2);
+        tester.pub_astar_plan_3_.publish(astar_path_3);
         rate.sleep();
         ros::spinOnce();
     }
