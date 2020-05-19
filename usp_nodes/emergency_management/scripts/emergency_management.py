@@ -73,7 +73,7 @@ class EmergencyManagement():
              if deconfliction_plan.uav_id == 0:
                  alfa = 0.25 # Peso de coste
                  beta = 0.75 # Peso de peligrosidad
-                 value = alfa*deconfliction_plan.cost[0] + beta*10
+                 value = alfa*deconfliction_plan.cost[0] + beta*deconfliction_plan.riskiness[0]
                  values.append(value)
                  value_min = min(values)
                  pos_min = values.index(min(values))
