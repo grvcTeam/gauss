@@ -184,11 +184,11 @@ class EmergencyManagement():
             #Publish the action which the UAV has to make.
               
             print(self.send_threat2deconfliction(events[0]))
-            best_solution = self.select_optimal_route()
-            notification.uav_id = best_solution.uav_id
-            notification.action = best_solution.maneuver_type
-            notification.waypoints = best_solution.waypoint_list
-            self._notification_publisher.publish(notification)
+            #best_solution = self.select_optimal_route()
+            #notification.uav_id = best_solution.uav_id
+            #notification.action = best_solution.maneuver_type
+            #notification.waypoints = best_solution.waypoint_list
+            #self._notification_publisher.publish(notification)
 
         '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
 
