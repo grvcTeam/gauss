@@ -42,7 +42,7 @@ class UspManager():
         reference_time = rospy.Time.now()
         alert.header.stamp = reference_time
         self._location = Waypoint()
-        print(alert.header.stamp)
+        #print(alert.header.stamp)
         
         
 
