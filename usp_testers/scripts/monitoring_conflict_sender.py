@@ -49,7 +49,7 @@ class Monitoring():
         if conflict_id == Threat.GEOFENCE_INTRUSION:
             self._conflicted_uas = [0]
             self._conflict_id = Threat.GEOFENCE_INTRUSION
-            conflict.geofence_ids =[0]
+            conflict.geofence_ids =[1]
         if conflict_id == Threat.GEOFENCE_CONFLICT:
             self._conflicted_uas = [0]
             self._conflict_id = Threat.GEOFENCE_CONFLICT
