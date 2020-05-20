@@ -32,6 +32,7 @@ private:
     std::pair<std::vector<double>, double> getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2);
     double pathDistance(gauss_msgs::DeconflictionPlan &_wp_list);
     double pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2);
+    double minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &_wp_list, geometry_msgs::Polygon &_polygon);
     // Auxilary variables
     double rate;
     double dX,dY,dZ,dT;
@@ -315,6 +316,42 @@ double ConflictSolver::pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Way
     return distance;
 }
 
+double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &_wp_list, geometry_msgs::Polygon &_polygon){
+    double min_distance = 1000000;
+    for (auto wp : _wp_list){
+        Eigen::Vector2f wp_p = Eigen::Vector2f(wp.x, wp.y);
+        // for (auto vertex : _polygon.points){
+        //     Eigen::Vector2f vertex_p = Eigen::Vector2f(vertex.x, vertex.y);
+        //     double temp_distance = (vertex_p - wp_p).norm();
+        //     if (temp_distance < min_distance) {
+        //         min_distance = temp_distance;
+        //     }
+        // }
+        std::map <std::vector<double> , double> point_and_distance;
+        for (int i = 0; i < _polygon.points.size() - 1; i++){
+            Eigen::Vector2f vertex_p = Eigen::Vector2f(_polygon.points.at(i).x, _polygon.points.at(i).y);
+            double temp_distance = (vertex_p - wp_p).norm();
+            if (temp_distance < min_distance) min_distance = temp_distance;
+            point_and_distance.insert(getCoordinatesAndDistance(wp.x, wp.y, 
+                                                                _polygon.points.at(i).x, _polygon.points.at(i).y, 
+                                                                _polygon.points.at(i+1).x, _polygon.points.at(i+1).y));
+        }
+        Eigen::Vector2f vertex_p = Eigen::Vector2f(_polygon.points.back().x, _polygon.points.back().y);
+        double temp_distance = (vertex_p - wp_p).norm();
+        if (temp_distance < min_distance) min_distance = temp_distance;
+        point_and_distance.insert(getCoordinatesAndDistance(wp.x, wp.y, 
+                                                            _polygon.points.front().x, _polygon.points.front().y, 
+                                                            _polygon.points.back().x, _polygon.points.back().y));
+    
+        auto min_distance_coordinate = get_min(point_and_distance);
+        // Check != 0 (if 0 the path collide with the geofence)
+        if (min_distance_coordinate.second < min_distance && min_distance_coordinate.second != 0) min_distance = min_distance_coordinate.second;
+    }
+
+    return min_distance;
+}
+
+
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res)
 {
@@ -503,6 +540,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             temp_wp_list.maneuver_type = 1;
             temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            temp_wp_list.riskiness.push_back(minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon));
             res.deconfliction_plans.push_back(temp_wp_list);
 
             // [3] Ruta que me manda devuelta a casa
@@ -520,6 +558,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 3;
             temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            temp_wp_list.riskiness.push_back(minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon));
             res.deconfliction_plans.push_back(temp_wp_list);
 
             // [4] Ruta que have hovering durante un tiempo esperando a que la geofence se desactive // Hovering en init_astar_point
