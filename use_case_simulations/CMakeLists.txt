@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 2.8.3)
 project(use_case_simulations)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -15,11 +15,31 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   upat_follower
+  mavros
+  mavros_msgs
+  uav_abstraction_layer
+
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+# Check for mavros version for compatibility with older versions
+execute_process(COMMAND rosversion mavros
+		OUTPUT_VARIABLE mavros_version
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+if ("${mavros_version}" VERSION_LESS "0.20.0")
+  add_definitions("-DMAVROS_VERSION_BELOW_0_20_0=\"${mavros_version}\"")
+else()
+  find_file(geographiclib_file "egm96-5.pgm" "/usr/share/GeographicLib/geoids/")
+  if ("${geographiclib_file}" STREQUAL "geographiclib_file-NOTFOUND")
+    message(FATAL_ERROR "GeographicLib exception: File not readable /usr/share/GeographicLib/geoids/egm96-5.pgm \n Run install_geographiclib_dataset.sh script in order to install Geoid Model dataset! \n Or run: $ sudo geographiclib-get-geoids egm96-5")
+  endif()
+endif()
+if ("${mavros_version}" VERSION_LESS "0.29.0")
+  add_definitions("-DMAVROS_VERSION_BELOW_0_29_0=\"${mavros_version}\"")
+endif()
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -107,9 +127,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES use_case_simulations
-#  CATKIN_DEPENDS gauss_msgs geometry_msgs nav_msgs roscpp rospy std_msgs upat_follower
+  INCLUDE_DIRS include
+  LIBRARIES ual_backend_mavros_fw
+  CATKIN_DEPENDS gauss_msgs geometry_msgs nav_msgs roscpp rospy std_msgs upat_follower mavros mavros_msgs uav_abstraction_layer
 #  DEPENDS system_lib
 )
 
@@ -120,24 +140,28 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/use_case_simulations.cpp
-# )
+add_library(${PROJECT_NAME}
+  src/ual_backend_mavros_fw.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  yaml-cpp
+)
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/use_case_simulations_node.cpp)
+add_executable(${PROJECT_NAME}_server src/server.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -148,12 +172,16 @@ include_directories(
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-
+target_link_libraries(${PROJECT_NAME}_server
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+)
 #############
 ## Install ##
 #############
