@@ -55,9 +55,6 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>mavros</build_depend>
-  <build_depend>mavros_msgs</build_depend>
-  <build_depend>uav_abstraction_layer</build_depend>
   <build_depend>upat_follower</build_depend>
   <build_export_depend>gauss_msgs</build_export_depend>
   <build_export_depend>geometry_msgs</build_export_depend>
@@ -65,9 +62,6 @@
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
-  <build_export_depend>mavros</build_export_depend>
-  <build_export_depend>mavros_msgs</build_export_depend>
-  <build_export_depend>uav_abstraction_layer</build_export_depend>
   <build_export_depend>upat_follower</build_export_depend>
   <exec_depend>gauss_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
@@ -75,9 +69,6 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <exec_depend>mavros</exec_depend>
-  <exec_depend>mavros_msgs</exec_depend>
-  <exec_depend>uav_abstraction_layer</exec_depend>
   <exec_depend>upat_follower</exec_depend>
 
 
