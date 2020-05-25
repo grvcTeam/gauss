@@ -163,6 +163,17 @@ bool DataBase::operationsFromJson(std::string _file_name)
             wp_list.waypoints.push_back(wp);
         } 
         operation.estimated_trajectory = wp_list;
+        wp_list.waypoints.clear();
+        for(const auto& it : item.value()["landing_spots"].front().items()){
+            gauss_msgs::Waypoint wp;
+            wp.x = it.value()["x"].get<double>();
+            wp.y = it.value()["y"].get<double>();
+            wp.z = it.value()["z"].get<double>();
+            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+            wp.mandatory = it.value()["mandatory"].get<double>();
+            wp_list.waypoints.push_back(wp);
+        } 
+        operation.landing_spots = wp_list;
         json_operation.request.operation.push_back(operation);
         json_operation.request.uav_ids.push_back(operation.uav_id);
     }
