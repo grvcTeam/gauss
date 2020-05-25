@@ -5,6 +5,7 @@
 #include <gauss_msgs/CheckConflicts.h>
 #include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/ReadFlightPlan.h>
+#include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/ReadGeofences.h>
 #include <gauss_msgs/DeconflictionPlan.h>
 #include <tactical_deconfliction/path_finder.h>
@@ -27,7 +28,7 @@ private:
     geometry_msgs::Point findGoalAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, int &_goal_astar_pos);
     int pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy);
     std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, geometry_msgs::Point _init_point, geometry_msgs::Point _goal_point);
-    geometry_msgs::Polygon circleToPolygon(float _x, float _y, float _radius, float _nVertices = 9);
+    geometry_msgs::Polygon circleToPolygon(double &_x, double &_y, double &_radius, double _nVertices = 9);
     gauss_msgs::Waypoint intersectingPoint(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2, geometry_msgs::Polygon &_polygon);
     std::pair<std::vector<double>, double> getCoordinatesAndDistance(double _x0, double _y0, double _x1, double _y1, double _x2, double _y2);
     double pathDistance(gauss_msgs::DeconflictionPlan &_wp_list);
@@ -52,6 +53,7 @@ private:
     ros::ServiceClient read_trajectory_client_;
     ros::ServiceClient read_flightplan_client_;
     ros::ServiceClient read_geofence_client_;
+    ros::ServiceClient read_operation_client_;
 
 };
 
@@ -79,6 +81,7 @@ ConflictSolver::ConflictSolver()
     read_trajectory_client_ = nh_.serviceClient<gauss_msgs::ReadTraj>("/gauss/read_estimated_trajectory");
     read_flightplan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/read_flight_plan");
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
+    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
 
     ROS_INFO("Started ConflictSolver node!");
 }
@@ -186,7 +189,7 @@ std::vector<double> ConflictSolver::findGridBorders(geometry_msgs::Polygon &_pol
     return out_grid_borders;
 }
 
-geometry_msgs::Polygon ConflictSolver::circleToPolygon(float _x, float _y, float _radius, float _nVertices){
+geometry_msgs::Polygon ConflictSolver::circleToPolygon(double &_x, double &_y, double &_radius, double _nVertices){
     geometry_msgs::Polygon out_polygon;
     Eigen::Vector2d centerToVertex(_radius, 0.0), centerToVertexTemp;
     for (int i = 0; i < _nVertices; i++) {
@@ -280,7 +283,7 @@ gauss_msgs::Waypoint ConflictSolver::intersectingPoint(gauss_msgs::Waypoint &_p1
             temp_y = m1 * temp_x + c1;
             // std::cout << "[1] " << max_x << " > " << temp_x << " > " << min_x << " | " << max_y << " > " << temp_y << " > " << min_y << std::endl;
             if (max_x >= temp_x && temp_x >= min_x && max_y >= temp_y && temp_y >= min_y){
-            // std::cout << "[2] " << max_x1 << " > " << temp_x << " > " << min_x1 << " | " << max_y1 << " > " << temp_y << " > " << min_y1 << std::endl;
+                // std::cout << "[2] " << max_x1 << " > " << temp_x << " > " << min_x1 << " | " << max_y1 << " > " << temp_y << " > " << min_y1 << std::endl;
                 if (max_x1 >= temp_x && temp_x >= min_x1 && max_y1 >= temp_y && temp_y >= min_y1){
                     out_point.x = temp_x;
                     out_point.y = temp_y;
@@ -320,13 +323,6 @@ double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &
     double min_distance = 1000000;
     for (auto wp : _wp_list){
         Eigen::Vector2f wp_p = Eigen::Vector2f(wp.x, wp.y);
-        // for (auto vertex : _polygon.points){
-        //     Eigen::Vector2f vertex_p = Eigen::Vector2f(vertex.x, vertex.y);
-        //     double temp_distance = (vertex_p - wp_p).norm();
-        //     if (temp_distance < min_distance) {
-        //         min_distance = temp_distance;
-        //     }
-        // }
         std::map <std::vector<double> , double> point_and_distance;
         for (int i = 0; i < _polygon.points.size() - 1; i++){
             Eigen::Vector2f vertex_p = Eigen::Vector2f(_polygon.points.at(i).x, _polygon.points.at(i).y);
@@ -641,7 +637,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             // [6] Ruta a mi destino saliendo lo antes posible de la geofence
             // Get min distance to polygon border
-            geometry_msgs::Point32 conflict_point;
+            gauss_msgs::Waypoint conflict_point;
             conflict_point.x = traj_msg.response.tracks.front().waypoints.front().x;
             conflict_point.y = traj_msg.response.tracks.front().waypoints.front().y;
             conflict_point.z = traj_msg.response.tracks.front().waypoints.front().z;
@@ -774,6 +770,55 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
             // res.deconfliction_plans.push_back(temp_wp_list);
             
+            res.message = "Conflict solved";    
+            res.success = true;
+        }
+        else if (req.threat.threat_id==req.threat.UAS_OUT_OV)
+        {
+            gauss_msgs::ReadOperation operation_msg;
+            operation_msg.request.uav_ids.push_back(req.threat.uav_ids.front());
+            if(!read_operation_client_.call(operation_msg) || !operation_msg.response.success)
+            {
+                ROS_ERROR("Failed to read an operation");
+                res.success = false;
+                return false;
+            }
+            gauss_msgs::Waypoint temp_wp;
+            gauss_msgs::DeconflictionPlan temp_wp_list;
+            // [9] Ruta para volver lo antes posible al flight geometry y seguir el plan de vuelo.
+            std::map <std::vector<double> , double> point_and_distance;
+            for (int i = 0; i < operation_msg.response.operation.front().flight_plan.waypoints.size() - 1; i++){
+                point_and_distance.insert(getCoordinatesAndDistance(operation_msg.response.operation.front().track.waypoints.back().x,
+                                                                    operation_msg.response.operation.front().track.waypoints.back().y,
+                                                                    operation_msg.response.operation.front().flight_plan.waypoints.at(i).x, 
+                                                                    operation_msg.response.operation.front().flight_plan.waypoints.at(i).y,
+                                                                    operation_msg.response.operation.front().flight_plan.waypoints.at(i+1).x, 
+                                                                    operation_msg.response.operation.front().flight_plan.waypoints.at(i+1).y));
+            }
+            auto min_distance_coordinate = get_min(point_and_distance);
+            temp_wp.x = min_distance_coordinate.first.front();
+            temp_wp.y = min_distance_coordinate.first.back();
+            temp_wp.z = operation_msg.response.operation.front().track.waypoints.back().z;
+            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().track.waypoints.back());
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp_list.maneuver_type = 9;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            temp_wp_list.riskiness.push_back(pathDistance(temp_wp_list) - operation_msg.response.operation.front().operational_volume);
+            res.deconfliction_plans.push_back(temp_wp_list);
+            double dist_out_ov = temp_wp_list.riskiness.front();
+            double min_dist_to_path = temp_wp_list.cost.front();
+            // [10] Ruta para seguir con el plan de vuelo, da igual que esté más tiempo fuera del Operational Volume.
+            temp_wp_list.waypoint_list.clear();
+            temp_wp_list.cost.clear();
+            temp_wp_list.riskiness.clear();
+            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().track.waypoints.back());
+            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().flight_plan.waypoints.at(operation_msg.response.operation.front().current_wp + 1));
+            temp_wp_list.maneuver_type = 10;
+            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            double alpha = acos(min_dist_to_path / temp_wp_list.cost.front());
+            temp_wp_list.riskiness.push_back(dist_out_ov / cos(alpha));
+            res.deconfliction_plans.push_back(temp_wp_list);
+
             res.message = "Conflict solved";    
             res.success = true;
         }
