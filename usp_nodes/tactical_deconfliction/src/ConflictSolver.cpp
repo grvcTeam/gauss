@@ -822,6 +822,70 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";    
             res.success = true;
         }
+        else if (req.threat.threat_id==req.threat.LACK_OF_BATTERY)
+        {
+            gauss_msgs::ReadOperation operation_msg;
+            operation_msg.request.uav_ids.push_back(req.threat.uav_ids.front());
+            if(!read_operation_client_.call(operation_msg) || !operation_msg.response.success)
+            {
+                ROS_ERROR("Failed to read an operation");
+                res.success = false;
+                return false;
+            }
+            gauss_msgs::Waypoint temp_wp;
+            gauss_msgs::DeconflictionPlan temp_wp_list;
+            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp_list.maneuver_type = 5;
+            double distance = 100000;
+            for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
+                double temp_distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
+                if (temp_distance < distance) {
+                    distance = temp_distance;
+                    temp_wp = wp_land;
+                }
+            }
+            temp_wp_list.cost.push_back(distance);
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.back();
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            res.deconfliction_plans.push_back(temp_wp_list);
+
+            res.message = "Conflict solved";    
+            res.success = true;
+        }
+        else if (req.threat.threat_id==req.threat.GNSS_DEGRADATION)
+        {
+            gauss_msgs::ReadOperation operation_msg;
+            operation_msg.request.uav_ids.push_back(req.threat.uav_ids.front());
+            if(!read_operation_client_.call(operation_msg) || !operation_msg.response.success)
+            {
+                ROS_ERROR("Failed to read an operation");
+                res.success = false;
+                return false;
+            }
+            gauss_msgs::Waypoint temp_wp;
+            gauss_msgs::DeconflictionPlan temp_wp_list;
+            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp_list.maneuver_type = 5;
+            double distance = 100000;
+            for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
+                double temp_distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
+                if (temp_distance < distance) {
+                    distance = temp_distance;
+                    temp_wp = wp_land;
+                }
+            }
+            temp_wp_list.cost.push_back(distance);
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.back();
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            res.deconfliction_plans.push_back(temp_wp_list);
+
+            res.message = "Conflict solved";    
+            res.success = true;
+        }
     }
 
 
