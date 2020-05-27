@@ -16,62 +16,84 @@ from uav_abstraction_layer.srv import *
 from uav_abstraction_layer.msg import *
 
 class MissionLoader():
-
     def __init__(self):
        
         # Wait until service is available and creat connection
         
         rospy.wait_for_service('/ual/set_mission')         
         self._setmission_service = rospy.ServiceProxy('/ual/set_mission', SetMission) 
-               
+        
+        mission_wps = self.define_mission()
+        self.send_mission(mission_wps)
     
     def define_mission(self): 
-        #header_empty = std_msgs.msg.Header()
-        #header_custom = std_msgs.msg.Header(header_empty.seq, header_empty.stamp, "map")
-        self._mission_wps = []
+        reference = "map" ### Change to test different reference frames and geo: empty, custom, geo
+        wps = []
+        header_map = std_msgs.msg.Header()
 
         '''TAKE OFF POSE'''
         take_off_phase = MissionElement()
         take_off_phase.type = MissionElement.TAKEOFF_POSE
-        point = Point()
-        point.x = 50.0
-        point.y = 0.0
-        point.z = 5.0
-        pose = Pose()
-        pose.position = point
-        destination = PoseStamped()
-        destination.pose = pose
-        take_off_phase.waypoints = [destination]
-        self._mission_wps.append(take_off_phase.waypoints)
+        if reference == "map":
+            take_off_phase.waypoints = [PoseStamped(header_map,Pose(Point(100,0,10),Quaternion(0,0,0,1)))]
+        
+        take_off_phase.params = self.dictToListOfParamFloat({"minimum_pitch": 0.0})
+        wps.append(take_off_phase)
+
+        '''PASS'''
+        pass_phase = MissionElement()
+        pass_phase.type = MissionElement.PASS
+        if reference == "map":
+            pass_phase.waypoints = [PoseStamped(header_map,Pose(Point(150,-150,20),Quaternion(0,0,0,1)))]
+            pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-150,-150,20),Quaternion(0,0,0,1))))
+            pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-150,150,20),Quaternion(0,0,0,1))))
+  
+        pass_phase.params = self.dictToListOfParamFloat({"acceptance_radius": 10.0,"orbit_distance": 0.0, "speed" : 10.0})
+        wps.append(pass_phase)
 
         '''LOITER HEIGHT'''
-        loiter_phase = MissionElement()
-        loiter_phase.type = MissionElement.LOITER_HEIGHT
-        point = Point()
-        point.x = 50.0
-        point.y = 50.0
-        point.z = 5.0
-        pose = Pose()
-        pose.position = point
-        destination = PoseStamped()
-        destination.pose = pose
-        loiter_phase.waypoints = [destination]
-        #loiter_phase.params = self.dictToListOfParamFloat({"heading": 0.0,"radius": 10.0, "forward_moving" : 1.0})
-        self._mission_wps.append(loiter_phase.waypoints)
+        loiter_height_phase = MissionElement()
+        loiter_height_phase.type = MissionElement.LOITER_HEIGHT
+        if reference == "map":
+            loiter_height_phase.waypoints = [PoseStamped(header_map,Pose(Point(150,150,100),Quaternion(0,0,0,1)))]
+            loiter_height_phase.waypoints.append(PoseStamped(header_map,Pose(Point(150,150,20),Quaternion(0,0,0,1))))
         
-        return self._mission_wps
+        loiter_height_phase.params = self.dictToListOfParamFloat({"heading": 0.0,"radius": 10.0, "forward_moving" : 1.0})
+        wps.append(loiter_height_phase)
 
-    def send_mission(self):
+        '''LAND POSE'''
+        landing_phase = MissionElement()
+        landing_phase.type = MissionElement.LAND_POSE
+
+        if reference == "map":
+            landing_phase.waypoints = [PoseStamped(header_map,Pose(Point(100,0,10),Quaternion(0,0,0,1)))]
+            landing_phase.waypoints.append(PoseStamped(header_map,Pose(Point(0,0,0),Quaternion(0,0,0,1))))
+
+        landing_phase.params = self.dictToListOfParamFloat({"loit_heading": 0.0, "loit_radius": 0.0,
+                                                       "loit_forward_moving": 1.0,"abort_alt": 0.0, "precision_mode": 0.0})
+        wps.append(landing_phase)
+
+        return wps
+
+    def send_mission(self, wps):
         request = SetMissionRequest()
-        request.mission_elements = self._mission_wps
-        #request.blocking = True
+        request.mission_elements = wps
+        request.blocking = True
         response = self._setmission_service(request)        
         return response 
+
+    def dictToListOfParamFloat(self, dict):
+
+        paramfloat_list = []
+        for key in dict.keys():
+            paramfloat_list.append(ParamFloat(key, dict[key]))
+
+        return paramfloat_list
 
 ''' The node and the MissionLoader class are initialized'''
 
 if __name__=='__main__':
 
-    rospy.init_node('mission_loader')
+    rospy.init_node('mission_loader', anonymous=True)
     m = MissionLoader()
     #rospy.spin()   
