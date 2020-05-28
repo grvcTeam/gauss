@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 2.8.3)
 project(use_case_simulations)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -8,18 +8,36 @@ project(use_case_simulations)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  cmake_modules
+  gazebo_msgs
+  roscpp
+  sensor_msgs
+  eigen_conversions
+  tf
+  uav_abstraction_layer
   gauss_msgs
   geometry_msgs
   nav_msgs
-  roscpp
   rospy
   std_msgs
   upat_follower
 )
 
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Eigen3 REQUIRED)
 
+# Check for mavros version for compatibility with older versions
+execute_process(COMMAND rosversion mavros
+		OUTPUT_VARIABLE mavros_version
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+if ("${mavros_version}" VERSION_LESS "0.25.0")
+  add_definitions("-DMAVROS_VERSION_BELOW_0_25_0=\"${mavros_version}\"")
+endif()
+
+catkin_package(
+    INCLUDE_DIRS #${Eigen3_INCLUDE_DIRS}
+    CATKIN_DEPENDS gazebo_msgs roscpp sensor_msgs eigen_conversions tf uav_abstraction_layer gauss_msgs geometry_msgs nav_msgs rospy std_msgs upat_follower
+)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -116,13 +134,16 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} -std=c++11 -Wno-deprecated-declarations")
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+    ${Eigen3_INCLUDE_DIRS}
 )
+
+
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
