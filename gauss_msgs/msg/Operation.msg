@@ -10,6 +10,7 @@ float64 time_tracked			# time (seconds) saving tracks
 WaypointList track			
 float64 time_horizon			# time (seconds)
 WaypointList estimated_trajectory
+WaypointList landing_spots
 float64 flight_geometry			# meters
 float64 operational_volume		# meters
 string conop

@@ -41,7 +41,7 @@ class Monitoring():
             self._conflicted_uas = [0]
             self._conflict_id = Threat.UAS_IN_CV
         if conflict_id == Threat.UAS_OUT_OV:
-            self._conflicted_uas = [1]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.UAS_OUT_OV
         if conflict_id == Threat.LOSS_OF_SEPARATION:
             self._conflicted_uas = [0, 1]
