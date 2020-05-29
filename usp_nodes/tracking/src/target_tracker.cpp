@@ -63,6 +63,7 @@ void TargetTracker::initialize(Candidate* z)
 		pose_(3,0) = z->speed(0);
 		pose_(4,0) = z->speed(1);
 		pose_(5,0) = z->speed(2);
+		std::cout << "\n## INITIALIZE STEP USING SPEED INFO #########\n";
 	}
 	else
 	{
@@ -70,9 +71,9 @@ void TargetTracker::initialize(Candidate* z)
 		pose_(3,0) = 0.0; 
 		pose_(4,0) = 0.0;
 		pose_(5,0) = 0.0;
+		std::cout << "\n## INITIALIZE STEP NOT USING SPEED INFO ########\n";
 	}
 	
-	std::cout << "\n## INITIALIZE STEP #########\n";
 	std::cout << "TARGET ID: " << this->id_ << "\n";
 	std::cout << "position (x,y,z): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
 	std::cout << ") in meters\n";
@@ -121,7 +122,7 @@ void TargetTracker::predict(ros::Time &prediction_time)
 	std::cout << ") in m/s" << std::endl;
 	// State vector prediction
 	std::cout << "dt: " << dt << std::endl;
-	std::cout << "reference timer: " << update_timer_.referenceTime().toSec() << std::endl;
+	//std::cout << "reference timer: " << update_timer_.referenceTime().toSec() << std::endl;
 	pose_(0,0) += pose_(3,0)*dt;
 	pose_(1,0) += pose_(4,0)*dt;
 	pose_(2,0) += pose_(5,0)*dt;
@@ -253,6 +254,8 @@ bool TargetTracker::update(Candidate* z)
 		// Compute update jacobian
 		Eigen::Matrix<double, 6, 6> H;
 		H.setIdentity(6,6);
+		//std::cout << "H matrix\n";
+		//std::cout << H << "\n\n";
 		// Compute update noise matrix
 		Eigen::Matrix<double, 6, 6> R;
 		R.setZero(6,6);
@@ -276,13 +279,20 @@ bool TargetTracker::update(Candidate* z)
 		R(5,4) = z->speed_covariance(2,1);
 		R(5,5) = z->speed_covariance(2,2);
 
+		//std::cout << "R matrix\n";
+		//std::cout << R << "\n\n";
+
 		// Calculate innovation matrix
 		Eigen::Matrix<double, 6, 6> S;
 		S = H * pose_cov_ * H.transpose() + R;
+		//std::cout << "S matrix\n";
+		//std::cout << S << "\n\n";
 
 		// Calculate kalman gain
 		Eigen::Matrix<double, 6, 6> K;
 		K = pose_cov_ * H.transpose() * S.inverse();
+		//std::cout << "K matrix\n";
+		//std::cout << K << "\n\n";
 
 		// Calculate innovation vector
 		Eigen::Matrix<double, 6, 1> y;
@@ -294,6 +304,8 @@ bool TargetTracker::update(Candidate* z)
 		y(4,0) = z->speed(1) - y(4,0);
 		y(5,0) = z->speed(2) - y(5,0);
 
+		//std::cout << "y vector\n";
+		//std::cout << y <<"\n\n";
 		// Calculate new state vector
 		pose_ = pose_ + K*y;
 		std::cout << "New position and speed after update" << std::endl;

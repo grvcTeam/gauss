@@ -283,7 +283,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
 void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
 {
     gauss_msgs::ReadOperation read_operation_msg;
-    ROS_INFO_STREAM("Received position report from uav_id: " << msg->uav_id);
+    ROS_INFO_STREAM("Received position report from uav_id: " << (int)msg->uav_id);
     // TODO: At first we only consider messages whose source is the RPAStateInfo and not those coming from ADSB
     if (use_only_position_report_ && msg->source == msg->SOURCE_RPA)
     {
@@ -295,11 +295,10 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
         candidate_aux_ptr->location(2) = msg->position.z;
         // TODO: Fill covariances properly
         candidate_aux_ptr->location_covariance(0,0) = 1.0;//msg->confidence;
-	    candidate_aux_ptr->location_covariance(0,0) = 0.0;//msg->confidence;
 	    candidate_aux_ptr->location_covariance(0,1) = 0.0;//msg->confidence;
 	    candidate_aux_ptr->location_covariance(0,2) = 0.0;//msg->confidence;       	        
-        candidate_aux_ptr->location_covariance(1,0) = 1.0;//msg->confidence;
-	    candidate_aux_ptr->location_covariance(1,1) = 0.0;//msg->confidence;
+        candidate_aux_ptr->location_covariance(1,0) = 0.0;//msg->confidence;
+	    candidate_aux_ptr->location_covariance(1,1) = 1.0;//msg->confidence;
 	    candidate_aux_ptr->location_covariance(1,2) = 0.0;//msg->confidence;      	        
         candidate_aux_ptr->location_covariance(2,0) = 0.0;//msg->confidence;
 	    candidate_aux_ptr->location_covariance(2,1) = 0.0;//msg->confidence;
@@ -314,9 +313,9 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
         candidate_aux_ptr->speed_covariance(2,1) = 0.0;
 	    candidate_aux_ptr->speed_covariance(2,2) = 0.001;//msg->confidence;
         candidate_aux_ptr->source = Candidate::POSITIONREPORT;
-        candidate_aux_ptr->speed_available = true;
+        candidate_aux_ptr->speed_available = false;
         // TODO: Fill those speed values with real info from uav
-        candidate_aux_ptr->speed(0) = 1.0;
+        candidate_aux_ptr->speed(0) = 0.0;
         candidate_aux_ptr->speed(1) = 0.0;
         candidate_aux_ptr->speed(2) = 0.0;
         candidate_aux_ptr->timestamp = msg->header.stamp;
@@ -353,6 +352,8 @@ bool Tracking::writeOperationsToDatabase()
         {
             write_operation_msg_.request.uav_ids.push_back(it->first);
             write_operation_msg_.request.operation.push_back(it->second);
+            std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
+            std::cout << "Estimated trajectory waypoint count: " << it->second.estimated_trajectory.waypoints.size() << std::endl;
             modified_operations_flags_[it->first] = false;
         }
 	}
@@ -415,7 +416,11 @@ void Tracking::fillTrackingWaypointList()
         gauss_msgs::Waypoint waypoint_aux;
         waypoint_aux.stamp = it->second->currentPositionTimestamp();
         it->second->getPose(waypoint_aux.x,waypoint_aux.y,waypoint_aux.z);
-        operations_[it->first].track.waypoints.push_back(waypoint_aux);
+        operations_[it->first].track.waypoints.push_back(waypoint_aux); // If the target has no associated operation already
+        // downloaded because it was not registered in the database, this sentence will create an empty operation for that uav_id
+        // which should already be considered a non cooperative one.
+        operations_[it->first].uav_id = it->first; // Equal operation uav_id to target uav_id. Only needed for the empty operation
+        // created for non-cooperative uav
         if (operations_[it->first].track.waypoints.size() > 1)
         {
             auto it_last_element = operations_[it->first].track.waypoints.rbegin();
@@ -450,62 +455,85 @@ void Tracking::estimateTrajectory()
         double distance_to_wp;
         // For each tracked uav, find the closest waypoint of its flight plan to its current estimated position
         uint32_t flight_plan_wp_index = this->findClosestWaypointIndex(flight_plan_ref, current_waypoint, distance_to_wp);
-        operation_aux.current_wp = flight_plan_wp_index;
-        
-        // If this distance is smaller than a threshold, the estimated trajectory will be exactly the next waypoints of the flight plan
-        double distance_wp_threshold = 10.0; // TODO: as parameter
-        double dt = operation_aux.dT;
-        if (dt == 0) 
-        {
-            operation_aux.dT = 1.0; 
-            dt = 1.0;
-        }
-        uint32_t number_estimated_wps = operation_aux.time_horizon/dt;
-        std::cout << "n_wp: " << number_estimated_wps << std::endl;
-        std::cout << "Current waypoint: " << current_waypoint.x << "," << current_waypoint.y << "," << current_waypoint.z << std::endl;
-        std::cout << "Flight plan waypoint index: " << flight_plan_wp_index << std::endl;
-        std::cout << "Flight plan waypoint: " << flight_plan_ref.waypoints[flight_plan_wp_index].x << ",";
-        std::cout << flight_plan_ref.waypoints[flight_plan_wp_index].y << ",";
-        std::cout << flight_plan_ref.waypoints[flight_plan_wp_index].z << std::endl;
-        std::cout << "Distance to waypoint: " << distance_to_wp << std::endl;
 
-        int remaining_flight_plan_wps = (flight_plan_ref.waypoints.size()-1) - flight_plan_wp_index;
-        
-        std::cout << "time_horizon: " << operation_aux.time_horizon << std::endl;
-
-        if (remaining_flight_plan_wps < number_estimated_wps)
+        // If the operation correspond to an untracked uav_id, the returned waypoint index will be -1
+        if (flight_plan_wp_index == -1)
         {
-            std::cout << "Remaining flight plan waypoints are less than desired estimated trajectory waypoints number" << std::endl;
-            // If flight plan remaining waypoints span a period of time shorter than the estimated trajectory time_horizon
-            // equal that time horizon to the timespan of the remaining flight plan
-            number_estimated_wps = remaining_flight_plan_wps;
-            operation_aux.time_horizon = number_estimated_wps*dt;
-            operation_aux.time_horizon = 400;
-        }
-        if (distance_to_wp <= distance_wp_threshold)
-        {
-            std::cout << "Using flight plan" << std::endl;
-            std::cout << "flight plan size: " << flight_plan_ref.waypoints.size() << std::endl;
-            // If distance from current estimated position is close enough to flight plan, the estimated trajectory
-            // will be composed of the immediately following waypoints.
-            gauss_msgs::Waypoint aux_waypoint;
-            for(int i=0; i < number_estimated_wps; ++i)
-            {
-                aux_waypoint = flight_plan_ref.waypoints[flight_plan_wp_index+1+i];
-                ros::Duration aux_duration;
-                aux_waypoint.stamp = current_waypoint.stamp + aux_duration.fromSec((1+i)*dt);
-                estimated_trajectory.waypoints.push_back(aux_waypoint);
-            }
+            // Trajectory estimation for non-cooperative uav
+            std::cout << "Trajectory estimation for non-cooperative uav\n";
+            operation_aux.dT = 1.0;
+            operation_aux.time_horizon = 100;
+            std::cout << "Using n prediction steps" << std::endl;
+            uint32_t number_estimated_wps = operation_aux.time_horizon/operation_aux.dT;
+            std::cout << "n_wp: " << number_estimated_wps << "\n";
+            targets_[uav_id]->predictNTimes(number_estimated_wps, operation_aux.dT, estimated_trajectory);
         }
         else
         {
-            std::cout << "Using n prediction steps" << std::endl;
-            // If distance from current estimated position is too far from the flight plan, the estimated trajectory
-            // will be composed of waypoints predicted based on the current estimated speed and position of the uav
-            targets_[uav_id]->predictNTimes(number_estimated_wps, dt, estimated_trajectory);
+            // Trajectory estimation for cooperative uav
+            operation_aux.current_wp = flight_plan_wp_index;
+            std::cout << "Trajectory estimation for cooperative uav\n";
+            // If this distance is smaller than a threshold, the estimated trajectory will be exactly the next waypoints of the flight plan
+            double distance_wp_threshold = 10.0; // TODO: as parameter
+            double dt = operation_aux.dT;
+            if (dt == 0) 
+            {
+                operation_aux.dT = 1.0; 
+                dt = 1.0;
+            }
+            if (operation_aux.time_horizon == 0)
+            {
+                ROS_WARN("Trajectory estimation time horizon is 0");
+                operation_aux.time_horizon = 100;
+            }
+            uint32_t number_estimated_wps = operation_aux.time_horizon/dt;
+            
+            std::cout << "n_wp: " << number_estimated_wps << "\n";
+            std::cout << "Current waypoint: " << current_waypoint.x << "," << current_waypoint.y << "," << current_waypoint.z << "\n";
+            std::cout << "Flight plan waypoint index: " << flight_plan_wp_index << "\n";
+            std::cout << "Flight plan waypoint: " << flight_plan_ref.waypoints[flight_plan_wp_index].x << ",";
+            std::cout << flight_plan_ref.waypoints[flight_plan_wp_index].y << ",";
+            std::cout << flight_plan_ref.waypoints[flight_plan_wp_index].z << "\n";
+            std::cout << "Distance to waypoint: " << distance_to_wp << "\n";
+
+            int remaining_flight_plan_wps = (flight_plan_ref.waypoints.size()-1) - flight_plan_wp_index;
+        
+            std::cout << "Remaining waypoints count: " << remaining_flight_plan_wps << "\n"; 
+
+            std::cout << "time_horizon: " << operation_aux.time_horizon << std::endl;
+
+            if (remaining_flight_plan_wps < number_estimated_wps)
+            {
+                std::cout << "Remaining flight plan waypoints are less than desired estimated trajectory waypoints number" << std::endl;
+                // If flight plan remaining waypoints span a period of time shorter than the estimated trajectory time_horizon
+                // equal that time horizon to the timespan of the remaining flight plan
+                number_estimated_wps = remaining_flight_plan_wps;
+                operation_aux.time_horizon = number_estimated_wps*dt;
+            }
+            if (distance_to_wp <= distance_wp_threshold)
+            {
+                std::cout << "Using flight plan" << std::endl;
+                std::cout << "flight plan size: " << flight_plan_ref.waypoints.size() << std::endl;
+                // If distance from current estimated position is close enough to flight plan, the estimated trajectory
+                // will be composed of the immediately following waypoints.
+                gauss_msgs::Waypoint aux_waypoint;
+                for(int i=0; i < number_estimated_wps; ++i)
+                {
+                    aux_waypoint = flight_plan_ref.waypoints[flight_plan_wp_index+1+i];
+                    ros::Duration aux_duration;
+                    aux_waypoint.stamp = current_waypoint.stamp + aux_duration.fromSec((1+i)*dt);
+                    estimated_trajectory.waypoints.push_back(aux_waypoint);
+                }
+            }
+            else
+            {
+                std::cout << "Using n prediction steps" << std::endl;
+                // If distance from current estimated position is too far from the flight plan, the estimated trajectory
+                // will be composed of waypoints predicted based on the current estimated speed and position of the uav
+                targets_[uav_id]->predictNTimes(number_estimated_wps, dt, estimated_trajectory);
+            }
         }
     }
-
 }
 
 void Tracking::main()
@@ -534,6 +562,7 @@ void Tracking::main()
         bool new_targets = false;
         for(auto it=candidates_.begin(); it!=candidates_.end(); ++it)
         {
+            std::cout << "Traversing candidates list" << std::endl;
             // Check if we have the associated operation in memory for each uav_id from which position reports have been received
             if ( !this->checkTargetAlreadyExist((*it)->uav_id))
             {
@@ -541,10 +570,16 @@ void Tracking::main()
                 // the associated operation must be pulled from the database
                 // If there is no associated operation, the uav should be marked as a non cooperative one
 
+                std::cout << "uav_id : " << (int)(*it)->uav_id << " not already tracked" << std::endl;
                 // Read Operation from Database with a matching UAV id
                 read_operation_msg.request.uav_ids.push_back((*it)->uav_id);
                 new_targets = true;
             }
+            else
+            {
+                std::cout << "uav_id : " << (int)(*it)->uav_id << " already tracked" << std::endl;
+            }
+            
         }
         candidates_list_mutex_.unlock();
         if (new_targets)
@@ -560,9 +595,14 @@ void Tracking::main()
             else if (!read_operation_msg.response.success)
             {
                 // TODO: That may indicate that the uav has no associated operation an as such, should be treated as non cooperative one
+                // TODO: Database manager should return a boolean array for indicating individually if each operation has been retrieved
+                // succesfully
                 //cooperative_uavs_[msg->uav_id] = false;
                 //operations_[msg->uav_id] = gauss_msgs::Operation();
                 // TODO: Create operation for this UAV that is non cooperative
+
+                // TODO: Delete candidates_ that are non cooperative until implementation of new service message
+                std::cout << read_operation_msg.response.message << std::endl;
             }
             else
             {
@@ -579,11 +619,17 @@ void Tracking::main()
             }
         }
 
+        std::cout << "Operations size start of the loop: " << operations_.size() << std::endl;
+
         ros::Time now(ros::Time::now());
         this->predict(now); // Predict the position
         this->update(candidates_);
 
+        std::cout << "Operations size after update: " << operations_.size() << std::endl;
+
         this->fillTrackingWaypointList();
+
+        std::cout << "Operations size after fillTracking: " << operations_.size() << std::endl;
         this->estimateTrajectory();
         for(int i = 0; i < candidates_.size(); i++)
 			delete candidates_[i];
@@ -598,6 +644,7 @@ void Tracking::main()
             this->writeOperationsToDatabase();
         }
         rate.sleep();
+        std::cout << "Cycle time: " << rate.cycleTime() << std::endl;
     }
 }
 
