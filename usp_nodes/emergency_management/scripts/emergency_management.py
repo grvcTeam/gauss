@@ -57,10 +57,20 @@ class EmergencyManagement():
         #                            Threat.SPOOFING_ATTACK: {'type': 'alert', 'severity': 3}
         #                            }
     
+    def send_priority_ops(self, uav_ids):
+        request = ReadOperationRequest()
+        request.uav_ids = uav_ids
+        result = ReadOperationResponse()
+        result = self._readOperation_service_handle(request)
+        return result
+
     def send_threat2deconfliction (self,threat2deconflicted): 
         request = DeconflictionRequest()
         request.tactical = True
         request.threat = threat2deconflicted
+        uavs_threatened = threat2deconflicted.uav_ids
+        result = self.send_priority_ops(uavs_threatened)
+        print(result.operation)
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response 
