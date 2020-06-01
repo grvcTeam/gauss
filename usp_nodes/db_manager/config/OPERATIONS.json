@@ -77,6 +77,38 @@
 						"mandatory": 0
 					}
 				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+					{
+						"x": 10,
+						"y": 1,
+						"z": 1,
+						"stamp": 1,
+						"mandatory": 0
+					},
+					{
+						"x": -10,
+						"y": -10,
+						"z": 1,
+						"stamp": 1,
+						"mandatory": 0
+					},
+					{
+						"x": 6,
+						"y": -5,
+						"z": 1,
+						"stamp": 1,
+						"mandatory": 0
+					},
+					{
+						"x": 7,
+						"y": 3,
+						"z": 1,
+						"stamp": 1,
+						"mandatory": 0
+					}
+				]
 			},
 			"flight_geometry": 0.0,
 			"operational_volume": 1.0,
@@ -164,6 +196,17 @@
 						"z": 1,
 						"stamp": 2,
 						"mandatory": 1
+					}
+				]
+			},
+			"landing_spots": {
+				"waypoints": [
+					{
+						"x": 1,
+						"y": 1,
+						"z": 1,
+						"stamp": 1,
+						"mandatory": 0
 					}
 				]
 			},
