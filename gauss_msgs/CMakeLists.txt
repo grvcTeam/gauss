@@ -81,6 +81,7 @@ find_package(catkin REQUIRED COMPONENTS
    WriteGeofences.srv
    Threats.srv	
    ReadOperation.srv
+   ReadIcao.srv
    WriteOperation.srv
    DB_size.srv
    CheckConflicts.srv
