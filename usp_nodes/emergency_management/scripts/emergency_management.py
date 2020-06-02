@@ -63,7 +63,6 @@ class EmergencyManagement():
             uav_priority = uav_operation.priority
             priority_ops.append(uav_priority)
         threat2deconflicted.priority_ops = priority_ops 
-        print(threat2deconflicted.priority_ops)       
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response 
