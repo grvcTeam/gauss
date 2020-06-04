@@ -1,2 +1,2 @@
-string icao
+uint32 icao
 string waypoints

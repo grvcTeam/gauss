@@ -8,3 +8,5 @@ uint8 SOURCE_ADSB = 1
 uint8 SOURCE_RPA = 2
 
 uint8 source
+float32 speed
+float32 heading

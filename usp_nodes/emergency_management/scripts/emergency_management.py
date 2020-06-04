@@ -41,30 +41,31 @@ class EmergencyManagement():
         print("Ready to add a threat request")
     
     #TODO link Threats severity/probability with the SoA references.
-    
-    #def assign_threat_severity(self):
-        #self._threats_definition = {
-        #                            Threat.UAS_IN_CV: {'type': 'conflict', 'severity': 1},
-        #              	             Threat.UAS_OUT_OV: {'type': 'conflict', 'severity': 2},
-        #                            Threat.LOSS_OF_SEPARATION: {'type': 'conflict', 'severity': 2},
-        #                            Threat.ALERT_WARNING: {'type': 'alert', 'severity': 2},
-        #                            Threat.GEOFENCE_INTRUSION: {'type': 'conflict', 'severity': 2},
-        #                            Threat.GEOFENCE_CONFLICT: {'type': 'conflict', 'severity': 1},
-        #                            Threat.TECHNICAL_FAILURE: {'type': 'alert', 'severity': 3},
-        #                            Threat.COMMUNICATION_FAILURE: {'type': 'alert', 'severity': 3},
-        #                            Threat.LACK_OF_BATTERY: {'type': 'conflict', 'severity': 1},
-        #                            Threat.JAMMING_ATTACK: {'type': 'alert', 'severity': 2},
-        #                            Threat.SPOOFING_ATTACK: {'type': 'alert', 'severity': 3}
-        #                            }
-    
+           
+    def send_priority_ops(self, uav_ids):
+        request = ReadOperationRequest()
+        request.uav_ids = uav_ids
+        result = ReadOperationResponse()
+        result = self._readOperation_service_handle(request)
+        return result
+
     def send_threat2deconfliction (self,threat2deconflicted): 
         request = DeconflictionRequest()
         request.tactical = True
         request.threat = threat2deconflicted
+        uavs_in_conflict = threat2deconflicted.uav_ids
+        self._readoperation_response = ReadOperationResponse()
+        self._readoperation_response = self._readOperation_service_handle(uavs_in_conflict)
+        priority_ops = []
+        for uav in uavs_in_conflict:
+            uav_operation = Operation()
+            uav_operation = self._readoperation_response.operation[uav]
+            uav_priority = uav_operation.priority
+            priority_ops.append(uav_priority)
+        threat2deconflicted.priority_ops = priority_ops 
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response 
-    
    
     def select_optimal_route (self):
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
@@ -92,9 +93,6 @@ class EmergencyManagement():
         uav_threatened = uavs_threatened[0]
         notification = Notification()
         #print("The Threat has been notified at the second since epoch:", threat_time)
-        #threat_severity = self._threats_definition[threat_id]['severity']
-        #first_operation_priority = self._operation_info_from_db['operations'][0]['priority']
-        #second_operation_priority = self._operation_info_from_db['operations'][1]['priority']
         
         '''Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
 
@@ -133,8 +131,7 @@ class EmergencyManagement():
                 #notification.waypoints = best_solution.waypoint_list
                 #self._notification_publisher.publish(notification)
 
-        '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides,
-        we notifies to all UAVs the alert detected.'''
+        '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
         
         if threat_id == Threat.ALERT_WARNING:             
             

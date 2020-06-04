@@ -1,4 +1,4 @@
-string icao
+uint32 icao
 float64 latitude
 float64 longitude
 float32 altitude
@@ -8,11 +8,17 @@ float32 roll
 float32 groundspeed
 float32 covariance_h
 float32 covariance_v
+float32 hpl
+float32 hal
+float32 hpe
+float32 vpl
+float32 val
+float32 vpe
 string solution_mode
-string integrity
 uint32 timestamp # UTC in ms
 bool jamming
 bool spoofing
-float32 gnss_anomalous_position_drift
-float32 gnss_signal_to_noise_ratio
-float32 gnss_received_power
+bool anomalous_clock_drift
+bool anomalous_pos_drift
+float32 signal_noise_ratio
+float32 received_power
