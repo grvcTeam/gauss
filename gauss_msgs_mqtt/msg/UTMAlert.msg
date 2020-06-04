@@ -1,4 +1,4 @@
-string icao
+uint32 icao
 string alert_title
 string alert_id
 string alert_message
