@@ -3,6 +3,7 @@ uint8 threat_id
 int8[] uav_ids
 time[] times
 int8[] geofence_ids
+int8[] priority_ops
 Waypoint location
 
 uint8 UAS_IN_CV = 0
