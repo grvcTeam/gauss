@@ -53,27 +53,55 @@
 					}
 				]
 			},
-			"dT": 0,
+			"dT": 5.0,
 			"time_tracked": 10,
 			"track": {
 				"waypoints": [
 					{
-						"x": 5.5,
-						"y": 6.5,
+						"x": 0,
+						"y": 4.5,
 						"z": 1,
-						"stamp": 1,
+						"stamp": 0.2,
+						"mandatory": 0
+					},
+					{
+						"x": 2.5,
+						"y": 4.4,
+						"z": 1,
+						"stamp": 5.2,
 						"mandatory": 0
 					}
 				]
 			},
-			"time_horizon": 100,
+			"time_horizon": 30,
 			"estimated_trajectory": {
 				"waypoints": [
 					{
-						"x": 5,
+						"x": 4.8,
+						"y": 4.1,
+						"z": 1,
+						"stamp": 10.1,
+						"mandatory": 0
+					},
+					{
+						"x": 7,
 						"y": 4,
 						"z": 1,
-						"stamp": 1,
+						"stamp": 15.0,
+						"mandatory": 0
+					},
+					{
+						"x": 9,
+						"y": 4,
+						"z": 1,
+						"stamp": 20.0,
+						"mandatory": 0
+					},
+					{
+						"x": 10,
+						"y": 4,
+						"z": 1,
+						"stamp": 25.0,
 						"mandatory": 0
 					}
 				]
@@ -110,7 +138,7 @@
 					}
 				]
 			},
-			"flight_geometry": 0.0,
+			"flight_geometry": 2.0,
 			"operational_volume": 1.0,
 			"conop": "conop1234"
 		},
@@ -126,75 +154,54 @@
 					{
 						"x": 1,
 						"y": 1,
-						"z": 0,
-						"stamp": 2,
+						"z": 1,
+						"stamp": 2.0,
 						"mandatory": 1
 					},
 					{
 						"x": 1,
-						"y": 1,
-						"z": 0,
-						"stamp": 2,
+						"y": 5,
+						"z": 1,
+						"stamp": 4.0,
 						"mandatory": 1
 					},
 					{
 						"x": 1,
-						"y": 1,
-						"z": 0,
-						"stamp": 2,
+						"y": 10,
+						"z": 1,
+						"stamp": 6.0,
 						"mandatory": 1
 					}
 				]
 			},
 			"dT": 0,
-			"time_tracked": 10,
+			"time_tracked": 0,
 			"track": {
 				"waypoints": [
-					{
-						"x": 1,
-						"y": 1,
-						"z": 0,
-						"stamp": 2,
-						"mandatory": 1
-					},
-					{
-						"x": 1,
-						"y": 1,
-						"z": 0,
-						"stamp": 2,
-						"mandatory": 1
-					},
-					{
-						"x": 1,
-						"y": 1,
-						"z": 0,
-						"stamp": 2,
-						"mandatory": 1
-					}
 				]
 			},
-			"time_horizon": 100,
+			"time_horizon": 30,
 			"estimated_trajectory": {
 				"waypoints": [
 					{
-						"x": 1,
+						"x": 4.5,
 						"y": 1,
 						"z": 1,
-						"stamp": 2,
+						"stamp": 10.0,
 						"mandatory": 1
 					},
 					{
 						"x": 1,
-						"y": 1,
+						"y": 5,
 						"z": 1,
-						"stamp": 2,
+						"stamp": 20.0,
 						"mandatory": 1
 					},
 					{
-						"x": 1,
-						"y": 1,
-						"z": 1,
-						"stamp": 2,
+						"x": 4,
+						"y": 10,
+						"z": 1.5,
+						"stamp": 30,
 						"mandatory": 1
 					}
 				]
@@ -202,7 +209,7 @@
 			"landing_spots": {
 				"waypoints": [
 					{
-						"x": 1,
+						"x": 4,
 						"y": 1,
 						"z": 1,
 						"stamp": 1,
@@ -210,8 +217,8 @@
 					}
 				]
 			},
-			"flight_geometry": 0.0,
-			"operational_volume": 0.0,
+			"flight_geometry": 1.0,
+			"operational_volume": 2.0,
 			"conop": "conop4321"
 		}
 	]
