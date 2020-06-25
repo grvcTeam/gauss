@@ -1,0 +1,24 @@
+<!-- Launch for gauss-utm-->
+<launch>
+
+	<arg name="rate" default="0.5" />
+
+	<node pkg="db_manager" type="DBmanager" name="db_manager" output="screen">
+	</node>
+
+	<node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen">
+	</node>
+
+	<node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen">
+	</node>
+
+	<node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen">
+	</node>
+
+	<node pkg="tracking" type="tracking" name="tracking" output="screen">
+	</node>
+
+	<node pkg="monitoring" type="monitoring" name="monitoring" output="screen">
+	</node>
+
+</launch>

@@ -855,6 +855,41 @@
       </link>
       <pose frame=''>500 -350 5 0 0 -0.785398</pose>
     </model>
+    <!--model name='Geofence_0'>
+      <static>1</static>
+      <link name='link'>
+        <visual name='visual'>
+          <transparency>0.5</transparency>
+          <geometry>
+            <box>
+              <size>4 3 10</size>
+            </box>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
+      </link>
+      <pose frame=''>6 4.5 5 0 0 0</pose>
+    </model-->
+    <model name='Geofence_1'>
+      <static>1</static>
+      <link name='link'>
+        <visual name='visual'>
+          <transparency>0.25</transparency>
+          <geometry>
+            <cylinder>
+              <radius>2</radius>
+              <length>10</length>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
+      </link>
+      <pose frame=''>6 4 5 0 0 0</pose>
+    </model>
     <model name='eve_CL_obs_0_0_0'>
       <static>1</static>
       <link name='link'>
