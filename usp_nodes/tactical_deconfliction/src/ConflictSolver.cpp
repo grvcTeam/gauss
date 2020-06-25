@@ -758,6 +758,30 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.back();
             temp_wp_list.waypoint_list.push_back(temp_wp);
+
+            static upat_follower::Generator generator(1.0, 1.0, 1.0);
+            nav_msgs::Path temp_path;
+            for (auto wp : temp_wp_list.waypoint_list){
+                geometry_msgs::PoseStamped temp_wp_stamped;
+                temp_wp_stamped.pose.position.x = wp.x;
+                temp_wp_stamped.pose.position.y = wp.y;
+                temp_wp_stamped.pose.position.z = wp.z;
+                temp_wp_stamped.header.stamp = wp.stamp;
+                temp_path.poses.push_back(temp_wp_stamped);
+            }
+            nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
+            gauss_msgs::CheckConflicts check_conflict;
+            for (auto wp : test.poses){
+                gauss_msgs::Waypoint temp_wp;
+                temp_wp.x = wp.pose.position.x;
+                temp_wp.y = wp.pose.position.y;
+                temp_wp.z = wp.pose.position.z;
+                check_conflict.request.deconflicted_wp.push_back(temp_wp);
+            }
+            if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
+                ROS_ERROR("Failed checking conflicts");
+                    
+            temp_wp_list.riskiness.push_back(100*check_conflict.response.threats.size()/test.poses.size());
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
@@ -782,6 +806,30 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.back();
             temp_wp_list.waypoint_list.push_back(temp_wp);
+
+            static upat_follower::Generator generator(1.0, 1.0, 1.0);
+            nav_msgs::Path temp_path;
+            for (auto wp : temp_wp_list.waypoint_list){
+                geometry_msgs::PoseStamped temp_wp_stamped;
+                temp_wp_stamped.pose.position.x = wp.x;
+                temp_wp_stamped.pose.position.y = wp.y;
+                temp_wp_stamped.pose.position.z = wp.z;
+                temp_wp_stamped.header.stamp = wp.stamp;
+                temp_path.poses.push_back(temp_wp_stamped);
+            }
+            nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
+            gauss_msgs::CheckConflicts check_conflict;
+            for (auto wp : test.poses){
+                gauss_msgs::Waypoint temp_wp;
+                temp_wp.x = wp.pose.position.x;
+                temp_wp.y = wp.pose.position.y;
+                temp_wp.z = wp.pose.position.z;
+                check_conflict.request.deconflicted_wp.push_back(temp_wp);
+            }
+            if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
+                ROS_ERROR("Failed checking conflicts");
+                    
+            temp_wp_list.riskiness.push_back(100*check_conflict.response.threats.size()/test.poses.size());
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
