@@ -39,6 +39,10 @@ class EmergencyManagement():
         self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
         
         print("Ready to add a threat request")
+
+        # Timer
+
+        rospy.Timer(rospy.Duration(5), self.timer_cb)
     
     #TODO link Threats severity/probability with the SoA references.
            
@@ -85,11 +89,10 @@ class EmergencyManagement():
         print("The best solution is", best_solution)
         return best_solution
 
-    def action_decision_maker(self,threats2solve):
-        events = threats2solve.threats 
-        threat_id = events[0].threat_id
-        threat_time = events[0].header.stamp
-        uavs_threatened = events[0].uav_ids
+    def action_decision_maker(self,threat2solve): 
+        threat_id = threat2solve.threat_id
+        threat_time = threat2solve.header.stamp
+        uavs_threatened = threat2solve.uav_ids
         uav_threatened = uavs_threatened[0]
         notification = Notification()
         #print("The Threat has been notified at the second since epoch:", threat_time)
@@ -111,7 +114,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(events[0]))
+            print(self.send_threat2deconfliction(threat2solve))
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -124,7 +127,7 @@ class EmergencyManagement():
 
         if threat_id == Threat.LOSS_OF_SEPARATION: 
             for uav in uavs_threatened:
-                print(self.send_threat2deconfliction(events[0]))
+                print(self.send_threat2deconfliction(threat2solve))
                 #best_solution = self.select_optimal_route()
                 #notification.uav_id = best_solution.uav_id
                 #notification.action = best_solution.maneuver_type
@@ -167,7 +170,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(events[0]))
+            print(self.send_threat2deconfliction(threat2solve))
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -180,7 +183,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
               
-            print(self.send_threat2deconfliction(events[0]))
+            print(self.send_threat2deconfliction(threat2solve))
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -230,12 +233,12 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(events[0]))
-            #best_solution = self.select_optimal_route()
-            #notification.uav_id = best_solution.uav_id
-            #notification.action = best_solution.maneuver_type
-            #notification.waypoints = best_solution.waypoint_list
-            #self._notification_publisher.publish(notification)
+            print(self.send_threat2deconfliction(threat2solve))
+            best_solution = self.select_optimal_route()
+            notification.uav_id = best_solution.uav_id
+            notification.action = best_solution.maneuver_type
+            notification.waypoints = best_solution.waypoint_list
+            self._notification_publisher.publish(notification)
         
         '''Threat JAMMING ATTACK: We send a message for landing within the geofence created
         around the UAV.'''
@@ -295,21 +298,32 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(events[0]))
-            #best_solution = self.select_optimal_route()
-            #notification.uav_id = best_solution.uav_id
-            #notification.action = best_solution.maneuver_type
-            #notification.waypoints = best_solution.waypoint_list
-            #self._notification_publisher.publish(notification)
+            print(self.send_threat2deconfliction(threat2solve))
+            best_solution = self.select_optimal_route()
+            notification.uav_id = best_solution.uav_id
+            notification.action = best_solution.maneuver_type
+            notification.waypoints = best_solution.waypoint_list
+            self._notification_publisher.publish(notification)
 
     def service_threats_cb(self, request):
         rospy.loginfo("New threat received:") 
         response = ThreatsResponse()
         response.success = True
-        self._threats2solve = request # ThreatsRequest
-        self._threats2solve.uav_ids = list(request.uav_ids) 
-        self.action_decision_maker(self._threats2solve) 
-        return response        
+        self._threats2solve = [] #List with all the ThreatRequest.
+        self._threat2solve = request
+        self._threats2solve.append(self._threat2solve)
+        return response
+
+    def timer_cb(self):
+        events = self._threats2solve.threats        
+        threat = events[0]
+        threat_id = events[0].threat_id
+        threat_time = events[0].header.stamp
+        uavs_threatened = events[0].uav_ids
+        uav_threatened = uavs_threatened[0]
+        self.action_decision_maker(threat)
+        self._threats2solve = self._threats2solve.pop(0)
+        print(self._threats2solve)
 
     def send_uavs_threatened(self, request): 
         return self._readOperation_service_handle(self._threats2solve.uav_ids)
