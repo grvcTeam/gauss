@@ -771,6 +771,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
             gauss_msgs::CheckConflicts check_conflict;
+            check_conflict.request.uav_id = req.threat.uav_ids.front();
             for (auto wp : test.poses){
                 gauss_msgs::Waypoint temp_wp;
                 temp_wp.x = wp.pose.position.x;
@@ -819,6 +820,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
             gauss_msgs::CheckConflicts check_conflict;
+            check_conflict.request.uav_id = req.threat.uav_ids.front();
             for (auto wp : test.poses){
                 gauss_msgs::Waypoint temp_wp;
                 temp_wp.x = wp.pose.position.x;
