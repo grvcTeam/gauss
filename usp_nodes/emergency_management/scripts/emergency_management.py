@@ -6,6 +6,7 @@ to take in the U-space when some Threats are showed up.'''
 
 import rospy
 import time
+import copy
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
 from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
@@ -18,7 +19,7 @@ class EmergencyManagement():
         
         # Initialization
         self._threats2solve = ThreatsRequest()        
-
+        self._threats2solve_list = []
         # Publish
 
         self._notification_publisher = rospy.Publisher('notification', Notification, queue_size=1)
@@ -37,12 +38,12 @@ class EmergencyManagement():
         # Server     
 
         self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
-        
-        print("Ready to add a threat request")
 
         # Timer
 
-        rospy.Timer(rospy.Duration(5), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(5), self.timer_cb)
+        
+        print("Ready to add a threat request")
     
     #TODO link Threats severity/probability with the SoA references.
            
@@ -66,7 +67,7 @@ class EmergencyManagement():
             uav_operation = self._readoperation_response.operation[uav]
             uav_priority = uav_operation.priority
             priority_ops.append(uav_priority)
-        threat2deconflicted.priority_ops = priority_ops 
+        threat2deconflicted.priority_ops = priority_ops
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response 
@@ -89,10 +90,11 @@ class EmergencyManagement():
         print("The best solution is", best_solution)
         return best_solution
 
-    def action_decision_maker(self,threat2solve): 
-        threat_id = threat2solve.threat_id
-        threat_time = threat2solve.header.stamp
-        uavs_threatened = threat2solve.uav_ids
+    def action_decision_maker(self,threats2solve):
+        events = threats2solve.threats 
+        threat_id = events[0].threat_id
+        threat_time = events[0].header.stamp
+        uavs_threatened = events[0].uav_ids
         uav_threatened = uavs_threatened[0]
         notification = Notification()
         #print("The Threat has been notified at the second since epoch:", threat_time)
@@ -114,7 +116,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(threat2solve))
+            self.send_threat2deconfliction(events[0])
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -125,9 +127,9 @@ class EmergencyManagement():
 
         '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
-        if threat_id == Threat.LOSS_OF_SEPARATION: 
-            for uav in uavs_threatened:
-                print(self.send_threat2deconfliction(threat2solve))
+        #if threat_id == Threat.LOSS_OF_SEPARATION: 
+            #for uav in uavs_threatened:
+                #print(self.send_threat2deconfliction(events[0]))
                 #best_solution = self.select_optimal_route()
                 #notification.uav_id = best_solution.uav_id
                 #notification.action = best_solution.maneuver_type
@@ -162,7 +164,7 @@ class EmergencyManagement():
             response = WriteGeofencesResponse()
             response = self._writeGeofences_service_handle(request)
             response.message = "Geofence stored in the Data Base."
-            print(response.message)
+            #print(response.message)
 
         '''Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
@@ -170,7 +172,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(threat2solve))
+            self.send_threat2deconfliction(events[0])
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -183,7 +185,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
               
-            print(self.send_threat2deconfliction(threat2solve))
+            self.send_threat2deconfliction(events[0])
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -212,7 +214,6 @@ class EmergencyManagement():
             response = WriteGeofencesResponse()
             response = self._writeGeofences_service_handle(request)
             response.message = "Geofence stored in the Data Base."
-            print(response.message)
             action = 'URGENT: Land now.'     
         
         '''Threat COMMUNICATION FAILURE: we EM can not do anything if there is a lost of the link communication between the GCS and/or the
@@ -233,7 +234,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(threat2solve))
+            self.send_threat2deconfliction(events[0])
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -262,8 +263,7 @@ class EmergencyManagement():
             request.geofences = [geofence]
             response = WriteGeofencesResponse()
             response = self._writeGeofences_service_handle(request)
-            response.message = "Geofence stored in the Data Base."
-            print(response.message)         
+            response.message = "Geofence stored in the Data Base."       
                 
         '''Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
         and we create a geofence around the UAV.'''
@@ -298,7 +298,7 @@ class EmergencyManagement():
             
             #Publish the action which the UAV has to make.
             
-            print(self.send_threat2deconfliction(threat2solve))
+            self.send_threat2deconfliction(events[0])
             best_solution = self.select_optimal_route()
             notification.uav_id = best_solution.uav_id
             notification.action = best_solution.maneuver_type
@@ -309,22 +309,14 @@ class EmergencyManagement():
         rospy.loginfo("New threat received:") 
         response = ThreatsResponse()
         response.success = True
-        self._threats2solve = [] #List with all the ThreatRequest.
-        self._threat2solve = request
-        self._threats2solve.append(self._threat2solve)
-        return response
+        threats2solve = copy.deepcopy(request) # No copia la referencia sino que crea uno 
+        self._threats2solve_list.append(threats2solve)
+        return response 
 
-    def timer_cb(self):
-        events = self._threats2solve.threats        
-        threat = events[0]
-        threat_id = events[0].threat_id
-        threat_time = events[0].header.stamp
-        uavs_threatened = events[0].uav_ids
-        uav_threatened = uavs_threatened[0]
-        self.action_decision_maker(threat)
-        self._threats2solve = self._threats2solve.pop(0)
-        print(self._threats2solve)
-
+    def timer_cb(self, timer):
+        rospy.loginfo("New threat solved!")
+        self.action_decision_maker(self._threats2solve_list.pop(0))
+    
     def send_uavs_threatened(self, request): 
         return self._readOperation_service_handle(self._threats2solve.uav_ids)
 
@@ -335,6 +327,8 @@ if __name__=='__main__':
     rospy.init_node('emergency_management')
     e = EmergencyManagement()
     rospy.spin()   
+
+
 
 
     
