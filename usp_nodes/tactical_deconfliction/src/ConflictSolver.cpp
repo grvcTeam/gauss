@@ -34,9 +34,11 @@ private:
     double pathDistance(gauss_msgs::DeconflictionPlan &_wp_list);
     double pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2);
     double minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &_wp_list, geometry_msgs::Polygon &_polygon);
+    double calulateRiskiness(gauss_msgs::DeconflictionPlan newplan);
     // Auxilary variables
     double rate;
-    double dX,dY,dZ,dT;
+    double minDist,dT;
+    double minX,maxX,minY,maxY,minZ,maxZ;
     ros::NodeHandle nh_;
 
     // Subscribers
@@ -61,10 +63,15 @@ private:
 ConflictSolver::ConflictSolver()
 {
     // Read parameters
-    nh_.param("/gauss/deltaX",dX,10.0);
-    nh_.param("/gauss/deltaY",dY,10.0);
-    nh_.param("/gauss/deltaZ",dZ,10.0);
-    nh_.param("/gauss/monitoring_rate",rate,0.5);
+    nh_.param("/gauss/safetyDistance",minDist,10.0);
+    nh_.param("/gauss/deltaX",minX,0.0);
+    nh_.param("/gauss/deltaY",minY,0.0);
+    nh_.param("/gauss/deltaZ",minZ,0.0);
+    nh_.param("/gauss/deltaX",maxX,200.0);
+    nh_.param("/gauss/deltaY",maxY,200.0);
+    nh_.param("/gauss/deltaZ",maxZ,30.0);
+
+    nh_.param("/gauss/monitoring_rate",rate,0.2);
 
 
     // Initialization
@@ -347,6 +354,37 @@ double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &
     return min_distance;
 }
 
+double ConflictSolver::calulateRiskiness(gauss_msgs::DeconflictionPlan newplan)
+{
+    static upat_follower::Generator generator(1.0, 1.0, 1.0);
+    nav_msgs::Path temp_path;
+
+    for (auto wp : newplan.waypoint_list){
+        geometry_msgs::PoseStamped temp_wp_stamped;
+        temp_wp_stamped.pose.position.x = wp.x;
+        temp_wp_stamped.pose.position.y = wp.y;
+        temp_wp_stamped.pose.position.z = wp.z;
+        temp_wp_stamped.header.stamp = wp.stamp;
+        temp_path.poses.push_back(temp_wp_stamped);
+    }
+
+    nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
+    gauss_msgs::CheckConflicts check_conflict;
+    check_conflict.request.uav_id = newplan.uav_id;
+    for (auto wp : test.poses){
+        gauss_msgs::Waypoint temp_wp;
+        temp_wp.x = wp.pose.position.x;
+        temp_wp.y = wp.pose.position.y;
+        temp_wp.z = wp.pose.position.z;
+        check_conflict.request.deconflicted_wp.push_back(temp_wp);
+    }
+
+    if (!check_client_.call(check_conflict) || !check_conflict.response.success)
+        ROS_ERROR("Failed checking conflicts");
+
+    return 100*check_conflict.response.threats.size()/test.poses.size();
+}
+
 
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res)
@@ -369,102 +407,190 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
 
         if (req.threat.threat_id==req.threat.LOSS_OF_SEPARATION)
         {
-            // gauss_msgs::Waypoint newwp1,newwp2;
+            gauss_msgs::ReadTraj traj_msg;
+            traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
+            traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
+            if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
+            {
+                ROS_ERROR("Failed to read a trajectory");
+                res.success=false;
+                return false;
+            }
+            gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
+            gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);
+
+            gauss_msgs::Waypoint wp1,wp2;
+            int j=0;
+            while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>=dT/2)
+                j++;
+            wp1=traj1.waypoints.at(j);
+            int k=0;
+            while (abs(traj2.waypoints.at(k).stamp.toSec()-conflict.times.at(1).toSec())>=dT/2)
+                k++;
+            wp2=traj2.waypoints.at(k);
+
+            double dist_vert=abs(wp2.z-wp1.z);
+            double dist_hor=sqrt(pow(wp2.x-wp1.x,2)+pow(wp2.y-wp1.y,2));
+            double sep_vert=sqrt(pow(minDist,2)-pow(dist_hor,2));
+            double sep_hor=sqrt(pow(minDist,2)-pow(dist_vert,2));
+            gauss_msgs::DeconflictionPlan newplan;
+            gauss_msgs::Waypoint newwp;
+            newplan.maneuver_type=8; // defined in https://docs.google.com/document/d/1R5jWSw4pyPyplHwwrQCDprIUkMimVz-yR8u_t19ooOA/edit
+
+            if (req.threat.priority_ops.at(0)>=req.threat.priority_ops.at(1))
+            {
+                newplan.uav_id=req.threat.uav_ids.at(1);
+                //Above
+                if (k>0)
+                    newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
+                newwp=traj2.waypoints.at(k);
+                newwp.z=traj1.waypoints.at(j).z+sep_vert;
+                if (newwp.z<=maxZ && newwp.z>=minZ)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(k<traj2.waypoints.size())
+                        newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
 
 
-            // int num_conflicts=1;
-            // while (num_conflicts>0)
-            // {
-            //     bool included1=false;
-            //     bool included2=false;
-            //     for (int i=0;i<res.uav_ids.size();i++)
-            //     {
-            //         if (conflict.uav_ids.at(0)==res.uav_ids.at(i))
-            //             included1=true;
-            //         if (conflict.uav_ids.at(1)==res.uav_ids.at(i))
-            //             included2=true;
-            //     }
-            //     if (included1=false)
-            //         res.uav_ids.push_back(conflict.uav_ids.at(0));
-            //     if (included2=false)
-            //         res.uav_ids.push_back(conflict.uav_ids.at(1));
+                //Below
+                newplan.waypoint_list.clear();
+                newplan.cost.clear();
+                newplan.riskiness.clear();
+                if (k>0)
+                    newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
+                newwp=traj2.waypoints.at(k);
+                newwp.z=traj1.waypoints.at(j).z-sep_vert;
+                if (newwp.z<=maxZ && newwp.z>=minZ)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(k<traj2.waypoints.size())
+                        newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
 
-            //     num_conflicts=0;
-            //     gauss_msgs::ReadTraj traj_msg;
-            //     traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
-            //     traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
-            //     if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
-            //     {
-            //         ROS_ERROR("Failed to read a trajectory");
-            //         res.success=false;
-            //         return false;
-            //     }
-            //     int j=0;
-            //     gauss_msgs::Waypoint wp1,wp2;
-            //     gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
-            //     gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);
-            //     int UAV1=req.threat.uav_ids.at(0);
-            //     int UAV2=req.threat.uav_ids.at(1);
+                //On the right
+                newplan.waypoint_list.clear();
+                newplan.cost.clear();
+                newplan.riskiness.clear();
+                if (k>0)
+                    newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
+                newwp=traj2.waypoints.at(k);
+                newwp.x=wp1.x+sep_hor*(wp2.x-wp1.x)/dist_hor;
+                newwp.y=wp1.y+sep_hor*(wp2.y-wp1.y)/dist_hor;
+                if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(k<traj2.waypoints.size())
+                        newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
 
-            //     while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>dT);
-            //     wp1=traj1.waypoints.at(j);
-            //     j=0;
-            //     while (abs(traj2.waypoints.at(j).stamp.toSec()-conflict.times.at(1).toSec())>dT);
-            //     wp2=traj2.waypoints.at(j);
+                //On the left
+                newplan.waypoint_list.clear();
+                newplan.cost.clear();
+                newplan.riskiness.clear();
+                if (k>0)
+                    newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
+                newwp=traj2.waypoints.at(k);
+                newwp.x=wp1.x-sep_hor*(wp2.x-wp1.x)/dist_hor;
+                newwp.y=wp1.y-sep_hor*(wp2.y-wp1.y)/dist_hor;
+                if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(k<traj2.waypoints.size())
+                        newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
+            }
+            if (req.threat.priority_ops.at(1)>=req.threat.priority_ops.at(0))
+            {
+                newplan.uav_id=req.threat.uav_ids.at(0);
+                //Above
+                newplan.waypoint_list.clear();
+                newplan.cost.clear();
+                newplan.riskiness.clear();
+                if (j>0)
+                    newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
+                newwp=traj1.waypoints.at(j);
+                newwp.z=traj2.waypoints.at(k).z+sep_vert;
+                if (newwp.z<=maxZ && newwp.z>=minZ)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(j<traj1.waypoints.size())
+                        newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
 
-            //     double distance=sqrt(pow(wp2.x-wp1.x,2)+pow(wp2.y-wp1.y,2)+pow(wp2.z-wp1.z,2));
-            //     double separation=0;
-            //     double mod1=sqrt(pow(wp1.x,2)+pow(wp1.y,2)+pow(wp1.z,2));
-            //     double mod2=sqrt(pow(wp2.x,2)+pow(wp2.y,2)+pow(wp2.z,2));
-            //     if (distance<dX)
-            //         separation=(dX-distance)/2;
-            //     newwp1.x=wp1.x+separation*(wp1.x-wp2.x)/distance;
-            //     newwp1.y=wp1.y+separation*(wp1.y-wp2.y)/distance;
-            //     newwp1.z=wp1.z+separation*(wp1.z-wp2.z)/distance;
-            //     newwp1.stamp=wp1.stamp;
-            //     newwp2.x=wp2.x-separation*(wp1.x-wp2.x)/distance;
-            //     newwp2.y=wp2.y-separation*(wp1.y-wp2.y)/distance;
-            //     newwp2.z=wp2.z-separation*(wp1.z-wp2.z)/distance;
-            //     newwp2.stamp=wp2.stamp;
+                //Below
+                newplan.waypoint_list.clear();
+                newplan.cost.clear();
+                newplan.riskiness.clear();
+                if (j>0)
+                    newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
+                newwp=traj1.waypoints.at(j);
+                newwp.z=traj2.waypoints.at(k).z-sep_vert;
+                if (newwp.z<=maxZ && newwp.z>=minZ)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(j<traj1.waypoints.size())
+                        newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
 
-            //     gauss_msgs::CheckConflicts check_msg;
-            //     check_msg.request.deconflicted_wp.push_back(newwp1);
-            //     check_msg.request.deconflicted_wp.push_back(newwp2);
-            //     check_msg.request.threat.threat_id=check_msg.request.threat.LOSS_OF_SEPARATION;
-            //     check_msg.request.threat.uav_ids.push_back(UAV1);
-            //     check_msg.request.threat.uav_ids.push_back(UAV2);
-            //     check_msg.request.threat.times.push_back(newwp1.stamp);
-            //     check_msg.request.threat.times.push_back(newwp2.stamp);
-            //     if (!check_client_.call(check_msg) || !check_msg.response.success)
-            //     {
-            //         ROS_ERROR("Failed checking new conflicts");
-            //         res.success=false;
-            //         return false;
-            //     }
+                //On the right
+                newplan.waypoint_list.clear();
+                newplan.cost.clear();
+                newplan.riskiness.clear();
+                if (j>0)
+                    newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
+                newwp=traj1.waypoints.at(j);
+                newwp.x=wp2.x+sep_hor*(wp1.x-wp2.x)/dist_hor;
+                newwp.y=wp2.y+sep_hor*(wp1.y-wp2.y)/dist_hor;
+                if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(j<traj1.waypoints.size())
+                        newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
 
-            //     num_conflicts=check_msg.response.threats.size();
-
-            //     if (num_conflicts>0)
-            //         conflict=check_msg.response.threats.at(0);
-            // }
-            // // Leer flight plans, modificarlo (tiempo y posicion) segun los newwp1 y newwp2
-            // // incluir nuevos flight plans en
-
-            // gauss_msgs::ReadFlightPlan plan_msg;
-            // for (int i=0;i<res.uav_ids.size();i++)
-            //     plan_msg.request.uav_ids.push_back(res.uav_ids.at(i));
-            // if (!read_flightplan_client_.call(plan_msg) || !plan_msg.response.success)
-            // {
-            //     ROS_ERROR("Failed to read a flight plan");
-            //     res.success=false;
-            //     return false;
-            // }
-
-            // res.deconfliction_plans.at(0);
-            // res.deconfliction_plans.at(1);
-
-            // res.success=true;
-
+                //On the left
+                newplan.waypoint_list.clear();
+                newplan.cost.clear();
+                newplan.riskiness.clear();
+                if (j>0)
+                    newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
+                newwp=traj1.waypoints.at(j);
+                newwp.x=wp2.x-sep_hor*(wp1.x-wp2.x)/dist_hor;
+                newwp.y=wp2.y-sep_hor*(wp1.y-wp2.y)/dist_hor;
+                if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
+                {
+                    newplan.waypoint_list.push_back(newwp);
+                    if(j<traj1.waypoints.size())
+                        newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
+                    newplan.cost.push_back(pathDistance(newplan));
+                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    res.deconfliction_plans.push_back(newplan);
+                }
+            }
+            res.message = "Conflict solved";
+            res.success = true;
         }
         else if (req.threat.threat_id==req.threat.GEOFENCE_CONFLICT)
         {
