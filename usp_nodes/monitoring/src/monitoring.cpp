@@ -41,6 +41,9 @@ private:
     double rate;
     int X,Y,Z,T;
     double dX,dY,dZ,dT;
+    double minX,maxX,minY,maxY,minZ,maxZ,maxT;
+    double minDist;
+
 
     cell ****grid;
 
@@ -72,19 +75,27 @@ private:
 // Monitoring Constructor
 Monitoring::Monitoring()
 {
-    // Read parameters
+    // Read
     nh_.param("/gauss/monitoring_rate",rate,0.2);
-    nh_.param("/gauss/latitude",X,20);
-    nh_.param("/gauss/longitude",Y,20);
-    nh_.param("/gauss/altitude",Z,3);
-    nh_.param("/gauss/horizon",T,90);
+    nh_.param("/gauss/minX",minX,-200.0);
+    nh_.param("/gauss/minY",minY,-200.0);
+    nh_.param("/gauss/minZ",minZ,0.0);
+    nh_.param("/gauss/maxX",maxX,200.0);
+    nh_.param("/gauss/maxY",maxY,200.0);
+    nh_.param("/gauss/maxZ",maxZ,30.0);
+    nh_.param("/gauss/time_horizon",maxT,90.0);
     nh_.param("/gauss/deltaX",dX,10.0);
     nh_.param("/gauss/deltaY",dY,10.0);
     nh_.param("/gauss/deltaZ",dZ,10.0);
+    nh_.param("/gauss/safetyDistance",minDist,10.0);
 
 
     // Initialization    
     dT=1.0/rate;
+    X=ceil((maxX-minX)/dX);
+    Y=ceil((maxY-minY)/dY);
+    Z=ceil((maxZ-minZ)/dZ);
+    T=ceil(maxT/dT);
 
     grid=NULL;
     locker=true;
@@ -125,7 +136,6 @@ Monitoring::Monitoring()
 
 int Monitoring::checkGeofences(gauss_msgs::Waypoint position4D, int geofence_size)
 {
-    //ROS_INFO("hola ");
     for (int i=0; i<geofence_size; i++)
     {
         gauss_msgs::ReadGeofences msg_geo;
@@ -158,7 +168,6 @@ int Monitoring::checkGeofences(gauss_msgs::Waypoint position4D, int geofence_siz
                     v1.x=geofence.polygon.x[i-1]-position4D.x;
                     v1.y=geofence.polygon.y[i-1]-position4D.y;
                     angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
-                    //ROS_INFO("acos(%f,%f)angle %f, vertex %d",v2.x*v1.x+v2.y*v1.y,sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v1.y*v1.y),angle_sum, i);
                 }
                 geometry_msgs::Point v1, v2;
                 v2.x=geofence.polygon.x[0]-position4D.x;
@@ -167,7 +176,6 @@ int Monitoring::checkGeofences(gauss_msgs::Waypoint position4D, int geofence_siz
                 v1.y=geofence.polygon.y[vertexes-1]-position4D.y;
                 angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
 
-                //ROS_INFO("final angle %f",angle_sum);
                 if (abs(angle_sum)>6)  // cercano a 2PI (algoritmo radial para deterinar si un punto está dentro de un polígono)
                     return i;
             }
@@ -208,26 +216,22 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
             return false;
     }
 
-
     if (!locker)
     {
         int wps = req.deconflicted_wp.size();
 
         for (int i=0; i<wps; i++)
         {
-            int posx = floor(req.deconflicted_wp.at(i).x/dX);
-            int posy = floor(req.deconflicted_wp.at(i).y/dX);
-            int posz = floor(req.deconflicted_wp.at(i).z/dX);
+            int posx = floor((req.deconflicted_wp.at(i).x-minX)/dX);
+            int posy = floor((req.deconflicted_wp.at(i).y-minY)/dY);
+            int posz = floor((req.deconflicted_wp.at(i).z-minZ)/dZ);
             int post = floor(req.deconflicted_wp.at(i).stamp.toSec()/dT-current_stamp.toSec()/dT);
-
-
 
             for (int m=max(0,posx-1); m<min(X,posx+2); m++)
                 for (int n=max(0,posy-1); n<min(Y,posy+2); n++)
                     for (int p=max(0,posz-1); p<min(Z,posz+2); p++)
                         for (int t=max(0,post-1); t<min(T,post+2); t++)
                         {
-                            ROS_INFO("%d %d %d %d",m,n,p,t);
                             if (grid[m][n][p][t].traj.size()>0)
                             {
 
@@ -249,7 +253,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
 
                                         if (sqrt(pow(req.deconflicted_wp.at(i).x-trajectory2.waypoints.at(*it_wp).x,2)+
                                                  pow(req.deconflicted_wp.at(i).y-trajectory2.waypoints.at(*it_wp).y,2)+
-                                                 pow(req.deconflicted_wp.at(i).z-trajectory2.waypoints.at(*it_wp).z,2))<dX &&
+                                                 pow(req.deconflicted_wp.at(i).z-trajectory2.waypoints.at(*it_wp).z,2))<minDist &&
                                                 abs(req.deconflicted_wp.at(i).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
                                         {
                                             gauss_msgs::Threat threat;
@@ -270,8 +274,6 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
 
         }
     }
-
-
 
     res.success=true;
     return true;
@@ -299,38 +301,19 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         missions=msg_size.response.operations;
     }
 
-
-    //cell grid[X][Y][Z][T];
     gauss_msgs::Threats threats_msg;
 
     locker=true;
 
     //Clear previous grid
-    for (int i=0; i<missions; i++)
-    {
-        gauss_msgs::ReadOperation msg_op;
-        msg_op.request.uav_ids.push_back(i);
-        if(!(read_operation_client_.call(msg_op)) || !(msg_op.response.success))
-        {
-            ROS_ERROR("Failed to read a trajectory");
-            return;
-        }
-        gauss_msgs::Operation operation = msg_op.response.operation[0];
-        gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
-        int waypoints = trajectory.waypoints.size();
-
-        for (int j=0; j<waypoints; j++)
-        {
-            int posx = floor(trajectory.waypoints.at(j).x/dX);
-            int posy = floor(trajectory.waypoints.at(j).y/dX);
-            int posz = floor(trajectory.waypoints.at(j).z/dX);
-            int post = floor(trajectory.waypoints.at(j).stamp.toSec()/dT-trajectory.waypoints.at(0).stamp.toSec()/dT);
-
-
-            grid[posx][posy][posz][post].traj.clear();
-            grid[posx][posy][posz][post].wp.clear();
-        }
-    }
+    for(int m=0;m<X;m++)
+        for (int n=0;n<Y;n++)
+            for (int p=0;p<Z;p++)
+                for (int t=0;t<T;t++)
+                {
+                    grid[m][n][p][t].traj.clear();
+                    grid[m][n][p][t].wp.clear();
+                }
 
     // Rellena grid con waypoints de las missiones
     for (int i=0; i<missions; i++)
@@ -342,7 +325,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             ROS_ERROR("Failed to read a trajectory");
             return;
         }
-
 
         gauss_msgs::Operation operation = msg_op.response.operation[0];
         gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
@@ -409,9 +391,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                 threats_msg.request.uav_ids.push_back(i);
                 threats_msg.request.threats.push_back(threat);
             }
-            int posx = floor(trajectory.waypoints.at(j).x/dX);
-            int posy = floor(trajectory.waypoints.at(j).y/dX);
-            int posz = floor(trajectory.waypoints.at(j).z/dX);
+            int posx = floor((trajectory.waypoints.at(j).x-minX)/dX);
+            int posy = floor((trajectory.waypoints.at(j).y-minY)/dY);
+            int posz = floor((trajectory.waypoints.at(j).z-minZ)/dZ);
             int post = floor(trajectory.waypoints.at(j).stamp.toSec()/dT-trajectory.waypoints.at(0).stamp.toSec()/dT);
 
             current_stamp=trajectory.waypoints.at(0).stamp;
@@ -427,7 +409,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
 
                             if (grid[m][n][p][t].traj.size()>0)
                             {
-
                                 list<int>::iterator it = grid[m][n][p][t].traj.begin();
                                 list<int>::iterator it_wp = grid[m][n][p][t].wp.begin();
                                 while (it != grid[m][n][p][t].traj.end())
@@ -445,7 +426,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
 
                                         if (sqrt(pow(trajectory.waypoints.at(j).x-trajectory2.waypoints.at(*it_wp).x,2)+
                                                  pow(trajectory.waypoints.at(j).y-trajectory2.waypoints.at(*it_wp).y,2)+
-                                                 pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<dX &&
+                                                 pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDist &&
                                                 abs(trajectory.waypoints.at(j).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
                                         {
                                             gauss_msgs::Threat threat;
