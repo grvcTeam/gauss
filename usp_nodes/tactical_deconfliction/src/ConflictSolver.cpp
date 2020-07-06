@@ -529,14 +529,12 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_list.waypoint_list.push_back(temp_wp);
             }
             temp_wp_list.maneuver_type = 1;
-            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
-            temp_wp_list.riskiness.push_back(minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon));
+            temp_wp_list.cost = pathDistance(temp_wp_list);
+            temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
             res.deconfliction_plans.push_back(temp_wp_list);
 
             // [3] Ruta que me manda devuelta a casa
             temp_wp_list.waypoint_list.clear();
-            temp_wp_list.cost.clear();
-            temp_wp_list.riskiness.clear();
             temp_wp.x = operation_msg.response.operation.front().track.waypoints.front().x;
             temp_wp.y = operation_msg.response.operation.front().track.waypoints.front().y;
             temp_wp.z = operation_msg.response.operation.front().track.waypoints.front().z;
@@ -547,8 +545,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp.z = operation_msg.response.operation.front().flight_plan.waypoints.front().z;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 3;
-            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
-            temp_wp_list.riskiness.push_back(minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon));
+            temp_wp_list.cost = pathDistance(temp_wp_list);
+            temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
@@ -650,15 +648,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_list.waypoint_list.push_back(temp_wp);
             }
             temp_wp_list.maneuver_type = 6;
-            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            temp_wp_list.cost = pathDistance(temp_wp_list);
             gauss_msgs::Waypoint intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.at(1), res_polygon);
-            temp_wp_list.riskiness.push_back(pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p));
+            temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
             res.deconfliction_plans.push_back(temp_wp_list);                        
             
             // [2] Ruta a mi destino por el camino mas corto
             temp_wp_list.waypoint_list.clear();
-            temp_wp_list.cost.clear();
-            temp_wp_list.riskiness.clear();
             temp_wp.x = conflict_point.x;
             temp_wp.y = conflict_point.y;
             temp_wp.z = conflict_point.z;
@@ -670,16 +666,14 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp.stamp = operation_msg.response.operation.front().flight_plan.waypoints.back().stamp;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 2;
-            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            temp_wp_list.cost = pathDistance(temp_wp_list);
             intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
-            temp_wp_list.riskiness.push_back(pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p));
+            temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
             // std::cout << temp_wp_list.waypoint_list.front() << std::endl << intersect_p << std::endl << pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p) << std::endl;
             res.deconfliction_plans.push_back(temp_wp_list);                        
             
             // [3] Ruta que me manda de vuelta a casa
             temp_wp_list.waypoint_list.clear();
-            temp_wp_list.cost.clear();
-            temp_wp_list.riskiness.clear();
             temp_wp.x = operation_msg.response.operation.front().track.waypoints.front().x;
             temp_wp.y = operation_msg.response.operation.front().track.waypoints.front().y;
             temp_wp.z = operation_msg.response.operation.front().track.waypoints.front().z;
@@ -690,9 +684,9 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp.z = operation_msg.response.operation.front().flight_plan.waypoints.front().z;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 3;
-            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
+            temp_wp_list.cost = pathDistance(temp_wp_list);
             intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
-            temp_wp_list.riskiness.push_back(pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p));
+            temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
             res.deconfliction_plans.push_back(temp_wp_list);
             
             res.message = "Conflict solved";    
@@ -719,21 +713,19 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().track.waypoints.back());
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 9;
-            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
-            temp_wp_list.riskiness.push_back(pathDistance(temp_wp_list) - operation_msg.response.operation.front().operational_volume);
+            temp_wp_list.cost = pathDistance(temp_wp_list);
+            temp_wp_list.riskiness = pathDistance(temp_wp_list) - operation_msg.response.operation.front().operational_volume;
             res.deconfliction_plans.push_back(temp_wp_list);
-            double dist_out_ov = temp_wp_list.riskiness.front();
-            double min_dist_to_path = temp_wp_list.cost.front();
+            double dist_out_ov = temp_wp_list.riskiness;
+            double min_dist_to_path = temp_wp_list.cost;
             // [10] Ruta para seguir con el plan de vuelo, da igual que esté más tiempo fuera del Operational Volume.
             temp_wp_list.waypoint_list.clear();
-            temp_wp_list.cost.clear();
-            temp_wp_list.riskiness.clear();
             temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().track.waypoints.back());
             temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().flight_plan.waypoints.at(operation_msg.response.operation.front().current_wp + 1));
             temp_wp_list.maneuver_type = 10;
-            temp_wp_list.cost.push_back(pathDistance(temp_wp_list));
-            double alpha = acos(min_dist_to_path / temp_wp_list.cost.front());
-            temp_wp_list.riskiness.push_back(dist_out_ov / cos(alpha));
+            temp_wp_list.cost = pathDistance(temp_wp_list);
+            double alpha = acos(min_dist_to_path / temp_wp_list.cost);
+            temp_wp_list.riskiness = dist_out_ov / cos(alpha);
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
@@ -741,25 +733,48 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
         else if (req.threat.threat_id==req.threat.LACK_OF_BATTERY)
         {
+            static upat_follower::Generator generator(1.0, 1.0, 1.0);
+            for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
+                gauss_msgs::Waypoint temp_wp;
+                gauss_msgs::DeconflictionPlan temp_wp_list;
+                temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+                temp_wp_list.maneuver_type = 5;
+                double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
+                temp_wp_list.cost = distance;
+                temp_wp_list.waypoint_list.push_back(wp_land);
+                nav_msgs::Path temp_path;
+                for (auto wp : temp_wp_list.waypoint_list){
+                    geometry_msgs::PoseStamped temp_wp_stamped;
+                    temp_wp_stamped.pose.position.x = wp.x;
+                    temp_wp_stamped.pose.position.y = wp.y;
+                    temp_wp_stamped.pose.position.z = wp.z;
+                    temp_wp_stamped.header.stamp = wp.stamp;
+                    temp_path.poses.push_back(temp_wp_stamped);
+                }
+                nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
+                gauss_msgs::CheckConflicts check_conflict;
+                check_conflict.request.uav_id = req.threat.uav_ids.front();
+                for (auto wp : check_path.poses){
+                    gauss_msgs::Waypoint temp_wp;
+                    temp_wp.x = wp.pose.position.x;
+                    temp_wp.y = wp.pose.position.y;
+                    temp_wp.z = wp.pose.position.z;
+                    check_conflict.request.deconflicted_wp.push_back(temp_wp);
+                }
+                if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
+                    ROS_ERROR("Failed checking conflicts");
+                temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+                res.deconfliction_plans.push_back(temp_wp_list);
+            }
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
-            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
-            temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 5;
-            double distance = 100000;
-            for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
-                double temp_distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
-                if (temp_distance < distance) {
-                    distance = temp_distance;
-                    temp_wp = wp_land;
-                }
-            }
-            temp_wp_list.cost.push_back(distance);
+            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().estimated_trajectory.waypoints.front());
+            double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), temp_wp);
+            temp_wp_list.cost = distance;
             temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.back();
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-
-            static upat_follower::Generator generator(1.0, 1.0, 1.0);
             nav_msgs::Path temp_path;
             for (auto wp : temp_wp_list.waypoint_list){
                 geometry_msgs::PoseStamped temp_wp_stamped;
@@ -769,10 +784,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_stamped.header.stamp = wp.stamp;
                 temp_path.poses.push_back(temp_wp_stamped);
             }
-            nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
+            nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
             gauss_msgs::CheckConflicts check_conflict;
             check_conflict.request.uav_id = req.threat.uav_ids.front();
-            for (auto wp : test.poses){
+            for (auto wp : check_path.poses){
                 gauss_msgs::Waypoint temp_wp;
                 temp_wp.x = wp.pose.position.x;
                 temp_wp.y = wp.pose.position.y;
@@ -781,8 +796,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
                 ROS_ERROR("Failed checking conflicts");
-                    
-            temp_wp_list.riskiness.push_back(100*check_conflict.response.threats.size()/test.poses.size());
+            temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
@@ -790,25 +804,48 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
         else if (req.threat.threat_id==req.threat.GNSS_DEGRADATION)
         {
+            static upat_follower::Generator generator(1.0, 1.0, 1.0);
+            for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
+                gauss_msgs::Waypoint temp_wp;
+                gauss_msgs::DeconflictionPlan temp_wp_list;
+                temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+                temp_wp_list.maneuver_type = 5;
+                double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
+                temp_wp_list.cost = distance;
+                temp_wp_list.waypoint_list.push_back(wp_land);
+                nav_msgs::Path temp_path;
+                for (auto wp : temp_wp_list.waypoint_list){
+                    geometry_msgs::PoseStamped temp_wp_stamped;
+                    temp_wp_stamped.pose.position.x = wp.x;
+                    temp_wp_stamped.pose.position.y = wp.y;
+                    temp_wp_stamped.pose.position.z = wp.z;
+                    temp_wp_stamped.header.stamp = wp.stamp;
+                    temp_path.poses.push_back(temp_wp_stamped);
+                }
+                nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
+                gauss_msgs::CheckConflicts check_conflict;
+                check_conflict.request.uav_id = req.threat.uav_ids.front();
+                for (auto wp : check_path.poses){
+                    gauss_msgs::Waypoint temp_wp;
+                    temp_wp.x = wp.pose.position.x;
+                    temp_wp.y = wp.pose.position.y;
+                    temp_wp.z = wp.pose.position.z;
+                    check_conflict.request.deconflicted_wp.push_back(temp_wp);
+                }
+                if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
+                    ROS_ERROR("Failed checking conflicts");
+                temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+                res.deconfliction_plans.push_back(temp_wp_list);
+            }
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
-            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
-            temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 5;
-            double distance = 100000;
-            for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
-                double temp_distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
-                if (temp_distance < distance) {
-                    distance = temp_distance;
-                    temp_wp = wp_land;
-                }
-            }
-            temp_wp_list.cost.push_back(distance);
+            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().estimated_trajectory.waypoints.front());
+            double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), temp_wp);
+            temp_wp_list.cost = distance;
             temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.back();
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-
-            static upat_follower::Generator generator(1.0, 1.0, 1.0);
             nav_msgs::Path temp_path;
             for (auto wp : temp_wp_list.waypoint_list){
                 geometry_msgs::PoseStamped temp_wp_stamped;
@@ -818,10 +855,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_stamped.header.stamp = wp.stamp;
                 temp_path.poses.push_back(temp_wp_stamped);
             }
-            nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
+            nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
             gauss_msgs::CheckConflicts check_conflict;
             check_conflict.request.uav_id = req.threat.uav_ids.front();
-            for (auto wp : test.poses){
+            for (auto wp : check_path.poses){
                 gauss_msgs::Waypoint temp_wp;
                 temp_wp.x = wp.pose.position.x;
                 temp_wp.y = wp.pose.position.y;
@@ -830,8 +867,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
                 ROS_ERROR("Failed checking conflicts");
-                    
-            temp_wp_list.riskiness.push_back(100*check_conflict.response.threats.size()/test.poses.size());
+            temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
