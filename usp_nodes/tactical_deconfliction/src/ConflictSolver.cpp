@@ -450,16 +450,14 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
 
                 //Below
                 newplan.waypoint_list.clear();
-                newplan.cost.clear();
-                newplan.riskiness.clear();
                 if (k>0)
                     newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
                 newwp=traj2.waypoints.at(k);
@@ -469,15 +467,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
                 //On the right
                 newplan.waypoint_list.clear();
-                newplan.cost.clear();
-                newplan.riskiness.clear();
                 if (k>0)
                     newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
                 newwp=traj2.waypoints.at(k);
@@ -488,15 +484,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
                 //On the left
                 newplan.waypoint_list.clear();
-                newplan.cost.clear();
-                newplan.riskiness.clear();
                 if (k>0)
                     newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
                 newwp=traj2.waypoints.at(k);
@@ -507,8 +501,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
             }
@@ -517,8 +511,6 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newplan.uav_id=req.threat.uav_ids.at(0);
                 //Above
                 newplan.waypoint_list.clear();
-                newplan.cost.clear();
-                newplan.riskiness.clear();
                 if (j>0)
                     newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
                 newwp=traj1.waypoints.at(j);
@@ -528,15 +520,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
                 //Below
                 newplan.waypoint_list.clear();
-                newplan.cost.clear();
-                newplan.riskiness.clear();
                 if (j>0)
                     newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
                 newwp=traj1.waypoints.at(j);
@@ -546,15 +536,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
                 //On the right
                 newplan.waypoint_list.clear();
-                newplan.cost.clear();
-                newplan.riskiness.clear();
                 if (j>0)
                     newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
                 newwp=traj1.waypoints.at(j);
@@ -565,15 +553,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
                 //On the left
                 newplan.waypoint_list.clear();
-                newplan.cost.clear();
-                newplan.riskiness.clear();
                 if (j>0)
                     newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
                 newwp=traj1.waypoints.at(j);
@@ -584,8 +570,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.waypoint_list.push_back(newwp);
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
-                    newplan.cost.push_back(pathDistance(newplan));
-                    newplan.riskiness.push_back(calulateRiskiness(newplan));
+                    newplan.cost = pathDistance(newplan);
+                    newplan.riskiness = calulateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
             }
