@@ -42,48 +42,48 @@ class EmergencyManagement():
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(5), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
         
         print("Ready to collect a list of threats!")
-    
-''' Le llega una lista de uavs, lee las operaciones de los mismos y guarda las prioridades de estas operaciones
-para devolverlas'''
     
     def send_priority_ops(self, uav_ids):
         request = ReadOperationRequest()
         request.uav_ids = uav_ids # Lista de uavs
         result = ReadOperationResponse()
         result = self._readOperation_service_handle(request) # lista de Operaciones de los uavs
-        operations = result.operation
-        priority_ops = []
-        for operation in operations:
-            uav_priority = operation.priority
-            priority_ops = priority_ops.append(uav_priority)
-        return priority_ops
+        return result
 
-'''Coge el threat "event", los uavs que están en conflicto, 
-lee de la base de datos sus prioridades y se las manda a tactical. Tactical devuelve lista de deconfliction plans'''
-
-    def send_threat2deconfliction (self,threat2deconflicted): 
+    def send_threat2deconfliction(self,threat2deconflicted): 
         request = DeconflictionRequest()
         request.tactical = True
         request.threat = threat2deconflicted #le meto aquí event. OK.
+        print(request.threat)
         uavs_in_conflict = threat2deconflicted.uav_ids
-        priority_ops = self.send_priority_ops(uavs_in_conflict)
-        request.threat.priority_ops = priority_ops
+        print(uavs_in_conflict)
+        self._readoperation_response = ReadOperationResponse()
+        self._readoperation_response = self._readOperation_service_handle(uavs_in_conflict)
+        print(self._readoperation_response)
+        priority_ops = []
+        for uav in uavs_in_conflict:
+            if len(self._readoperation_response.operation) > uav:
+                uav_operation = self._readoperation_response.operation[uav]
+                uav_priority = uav_operation.priority
+                priority_ops.append(uav_priority)    
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response 
    
-    def select_optimal_route (self, uav):
+    def select_optimal_route(self, uav):
         #Lista de deconfliction plans.msg
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
+        #print(deconfliction_plans_list)
         values = []
         for deconfliction_plan in deconfliction_plans_list:
              if deconfliction_plan.uav_id == uav:
                  alfa = 0.25 # Peso de coste
                  beta = 0.75 # Peso de peligrosidad
-                 value = alfa*deconfliction_plan.cost[0] + beta*deconfliction_plan.riskiness[0]
+                 value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
+                 #print(value)
                  values.append(value)
                  value_min = min(values)
                  pos_min = values.index(min(values))
@@ -100,6 +100,7 @@ lee de la base de datos sus prioridades y se las manda a tactical. Tactical devu
             threat_id = event.threat_id
             threat_time = event.header.stamp
             uavs_threatened = event.uav_ids
+            print(uavs_threatened)
             notification = Notification()
             if len(uavs_threatened) > 0: 
 
@@ -313,7 +314,8 @@ lee de la base de datos sus prioridades y se las manda a tactical. Tactical devu
         rospy.loginfo("New list of threats received!") 
         response = ThreatsResponse()
         response.success = True
-        threats_req2solve = ThreatsRequest(copy.deepcopy(request))
+        threats_req2solve = ThreatsRequest()
+        threats_req2solve = copy.deepcopy(request)
         threats2solve = threats_req2solve.threats 
         self._threats2solve_list.append(threats2solve) # List of list.
         return response 
