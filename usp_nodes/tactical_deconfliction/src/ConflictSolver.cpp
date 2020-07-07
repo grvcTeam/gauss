@@ -643,6 +643,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.maneuver_type = 1;
             temp_wp_list.cost = pathDistance(temp_wp_list);
             temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
             // [3] Ruta que me manda devuelta a casa
@@ -659,6 +660,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.maneuver_type = 3;
             temp_wp_list.cost = pathDistance(temp_wp_list);
             temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
@@ -763,6 +765,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.cost = pathDistance(temp_wp_list);
             gauss_msgs::Waypoint intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.at(1), res_polygon);
             temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);                        
             
             // [2] Ruta a mi destino por el camino mas corto
@@ -782,6 +785,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
             temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
             // std::cout << temp_wp_list.waypoint_list.front() << std::endl << intersect_p << std::endl << pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p) << std::endl;
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);                        
             
             // [3] Ruta que me manda de vuelta a casa
@@ -799,6 +803,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.cost = pathDistance(temp_wp_list);
             intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
             temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
             
             res.message = "Conflict solved";    
@@ -827,6 +832,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.maneuver_type = 9;
             temp_wp_list.cost = pathDistance(temp_wp_list);
             temp_wp_list.riskiness = pathDistance(temp_wp_list) - operation_msg.response.operation.front().operational_volume;
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
             double dist_out_ov = temp_wp_list.riskiness;
             double min_dist_to_path = temp_wp_list.cost;
@@ -838,6 +844,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.cost = pathDistance(temp_wp_list);
             double alpha = acos(min_dist_to_path / temp_wp_list.cost);
             temp_wp_list.riskiness = dist_out_ov / cos(alpha);
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
@@ -877,6 +884,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
                     ROS_ERROR("Failed checking conflicts");
                 temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+                temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
             gauss_msgs::Waypoint temp_wp;
@@ -909,6 +917,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
                 ROS_ERROR("Failed checking conflicts");
             temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
@@ -948,6 +957,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
                     ROS_ERROR("Failed checking conflicts");
                 temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+                temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
             gauss_msgs::Waypoint temp_wp;
@@ -980,6 +990,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
                 ROS_ERROR("Failed checking conflicts");
             temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";    
