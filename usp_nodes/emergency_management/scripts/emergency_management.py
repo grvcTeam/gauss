@@ -42,7 +42,7 @@ class EmergencyManagement():
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(2), self.timer_cb)
         
         print("Ready to collect a list of threats!")
     
@@ -59,10 +59,8 @@ class EmergencyManagement():
         request.threat = threat2deconflicted #le meto aquí event. OK.
         print(request.threat)
         uavs_in_conflict = threat2deconflicted.uav_ids
-        print(uavs_in_conflict)
         self._readoperation_response = ReadOperationResponse()
         self._readoperation_response = self._readOperation_service_handle(uavs_in_conflict)
-        print(self._readoperation_response)
         priority_ops = []
         for uav in uavs_in_conflict:
             if len(self._readoperation_response.operation) > uav:
@@ -71,6 +69,7 @@ class EmergencyManagement():
                 priority_ops.append(uav_priority)    
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
+        print(self._deconfliction_response)
         return self._deconfliction_response 
    
     def select_optimal_route(self, uav):
@@ -83,7 +82,6 @@ class EmergencyManagement():
                  alfa = 0.25 # Peso de coste
                  beta = 0.75 # Peso de peligrosidad
                  value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
-                 #print(value)
                  values.append(value)
                  value_min = min(values)
                  pos_min = values.index(min(values))
@@ -100,7 +98,6 @@ class EmergencyManagement():
             threat_id = event.threat_id
             threat_time = event.header.stamp
             uavs_threatened = event.uav_ids
-            print(uavs_threatened)
             notification = Notification()
             if len(uavs_threatened) > 0: 
 
@@ -128,14 +125,14 @@ class EmergencyManagement():
 
                 '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
-                #if threat_id == Threat.LOSS_OF_SEPARATION: 
-                    #for uav in uavs_threatened:
-                        #print(self.send_threat2deconfliction(event))
-                        #best_solution = self.select_optimal_route()
-                        #notification.uav_id = best_solution.uav_id
-                        #notification.action = best_solution.maneuver_type
-                        #notification.waypoints = best_solution.waypoint_list
-                        #self._notification_publisher.publish(notification)
+                if threat_id == Threat.LOSS_OF_SEPARATION: 
+                    for uav in uavs_threatened:
+                        print(self.send_threat2deconfliction(event))
+                        best_solution = self.select_optimal_route()
+                        notification.uav_id = best_solution.uav_id
+                        notification.action = best_solution.maneuver_type
+                        notification.waypoints = best_solution.waypoint_list
+                        self._notification_publisher.publish(notification)
 
                 '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
                 
