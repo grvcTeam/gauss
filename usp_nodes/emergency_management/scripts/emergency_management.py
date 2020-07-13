@@ -146,7 +146,7 @@ class EmergencyManagement():
                     
                     #Creation of the NDZ.
                     geofence_base = Circle()
-                    alarm_center = events[0].location
+                    alarm_center = event.location
                     geofence_base.x_center = alarm_center.x
                     geofence_base.y_center = alarm_center.y
                     geofence = Geofence()          
