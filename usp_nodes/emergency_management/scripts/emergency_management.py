@@ -67,6 +67,7 @@ class EmergencyManagement():
                 uav_operation = self._readoperation_response.operation[uav]
                 uav_priority = uav_operation.priority
                 priority_ops.append(uav_priority)    
+        request.threat.priority_ops = priority_ops
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         print(self._deconfliction_response)
@@ -96,6 +97,7 @@ class EmergencyManagement():
         events = threats2solve
         for event in events[0]:
             threat_id = event.threat_id
+            print(type(threat_id))
             threat_time = event.header.stamp
             uavs_threatened = event.uav_ids
             notification = Notification()
@@ -128,7 +130,7 @@ class EmergencyManagement():
                 if threat_id == Threat.LOSS_OF_SEPARATION: 
                     for uav in uavs_threatened:
                         print(self.send_threat2deconfliction(event))
-                        best_solution = self.select_optimal_route()
+                        best_solution = self.select_optimal_route(uav)
                         notification.uav_id = best_solution.uav_id
                         notification.action = best_solution.maneuver_type
                         notification.waypoints = best_solution.waypoint_list
