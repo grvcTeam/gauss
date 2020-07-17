@@ -34,7 +34,7 @@ private:
     double pathDistance(gauss_msgs::DeconflictionPlan &_wp_list);
     double pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2);
     double minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &_wp_list, geometry_msgs::Polygon &_polygon);
-    double calulateRiskiness(gauss_msgs::DeconflictionPlan newplan);
+    double calculateRiskiness(gauss_msgs::DeconflictionPlan newplan);
     // Auxilary variables
     double rate;
     double minDist,dT;
@@ -354,12 +354,11 @@ double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &
     return min_distance;
 }
 
-double ConflictSolver::calulateRiskiness(gauss_msgs::DeconflictionPlan newplan)
+double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan)
 {
     static upat_follower::Generator generator(1.0, 1.0, 1.0);
     nav_msgs::Path temp_path;
-
-    for (auto wp : newplan.waypoint_list){
+    for (auto wp : _newplan.waypoint_list){
         geometry_msgs::PoseStamped temp_wp_stamped;
         temp_wp_stamped.pose.position.x = wp.x;
         temp_wp_stamped.pose.position.y = wp.y;
@@ -368,10 +367,10 @@ double ConflictSolver::calulateRiskiness(gauss_msgs::DeconflictionPlan newplan)
         temp_path.poses.push_back(temp_wp_stamped);
     }
 
-    nav_msgs::Path test = generator.generatePath(temp_path, 0.0, 100.0);
+    nav_msgs::Path interp_path = generator.generatePath(temp_path, 0.0, 1.0);
     gauss_msgs::CheckConflicts check_conflict;
-    check_conflict.request.uav_id = newplan.uav_id;
-    for (auto wp : test.poses){
+    check_conflict.request.uav_id = _newplan.uav_id;
+    for (auto wp : interp_path.poses){
         gauss_msgs::Waypoint temp_wp;
         temp_wp.x = wp.pose.position.x;
         temp_wp.y = wp.pose.position.y;
@@ -382,7 +381,7 @@ double ConflictSolver::calulateRiskiness(gauss_msgs::DeconflictionPlan newplan)
     if (!check_client_.call(check_conflict) || !check_conflict.response.success)
         ROS_ERROR("Failed checking conflicts");
 
-    return 100*check_conflict.response.threats.size()/test.poses.size();
+    return 100*check_conflict.response.threats.size()/interp_path.poses.size();
 }
 
 
@@ -451,7 +450,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
@@ -468,7 +467,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
@@ -485,7 +484,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
@@ -502,7 +501,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(k<traj2.waypoints.size())
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
             }
@@ -521,7 +520,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
@@ -537,7 +536,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
@@ -554,7 +553,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
 
@@ -571,7 +570,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     if(j<traj1.waypoints.size())
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j+1));
                     newplan.cost = pathDistance(newplan);
-                    newplan.riskiness = calulateRiskiness(newplan);
+                    newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
             }
@@ -852,7 +851,6 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
         else if (req.threat.threat_id==req.threat.LACK_OF_BATTERY)
         {
-            static upat_follower::Generator generator(1.0, 1.0, 1.0);
             for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
                 gauss_msgs::Waypoint temp_wp;
                 gauss_msgs::DeconflictionPlan temp_wp_list;
@@ -862,28 +860,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
                 temp_wp_list.cost = distance;
                 temp_wp_list.waypoint_list.push_back(wp_land);
-                nav_msgs::Path temp_path;
-                for (auto wp : temp_wp_list.waypoint_list){
-                    geometry_msgs::PoseStamped temp_wp_stamped;
-                    temp_wp_stamped.pose.position.x = wp.x;
-                    temp_wp_stamped.pose.position.y = wp.y;
-                    temp_wp_stamped.pose.position.z = wp.z;
-                    temp_wp_stamped.header.stamp = wp.stamp;
-                    temp_path.poses.push_back(temp_wp_stamped);
-                }
-                nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
-                gauss_msgs::CheckConflicts check_conflict;
-                check_conflict.request.uav_id = req.threat.uav_ids.front();
-                for (auto wp : check_path.poses){
-                    gauss_msgs::Waypoint temp_wp;
-                    temp_wp.x = wp.pose.position.x;
-                    temp_wp.y = wp.pose.position.y;
-                    temp_wp.z = wp.pose.position.z;
-                    check_conflict.request.deconflicted_wp.push_back(temp_wp);
-                }
-                if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
-                    ROS_ERROR("Failed checking conflicts");
-                temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+                temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
                 temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
@@ -895,28 +872,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), temp_wp);
             temp_wp_list.cost = distance;
             temp_wp_list.waypoint_list.push_back(temp_wp);
-            nav_msgs::Path temp_path;
-            for (auto wp : temp_wp_list.waypoint_list){
-                geometry_msgs::PoseStamped temp_wp_stamped;
-                temp_wp_stamped.pose.position.x = wp.x;
-                temp_wp_stamped.pose.position.y = wp.y;
-                temp_wp_stamped.pose.position.z = wp.z;
-                temp_wp_stamped.header.stamp = wp.stamp;
-                temp_path.poses.push_back(temp_wp_stamped);
-            }
-            nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
-            gauss_msgs::CheckConflicts check_conflict;
-            check_conflict.request.uav_id = req.threat.uav_ids.front();
-            for (auto wp : check_path.poses){
-                gauss_msgs::Waypoint temp_wp;
-                temp_wp.x = wp.pose.position.x;
-                temp_wp.y = wp.pose.position.y;
-                temp_wp.z = wp.pose.position.z;
-                check_conflict.request.deconflicted_wp.push_back(temp_wp);
-            }
-            if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
-                ROS_ERROR("Failed checking conflicts");
-            temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+            temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
@@ -925,7 +881,6 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
         else if (req.threat.threat_id==req.threat.GNSS_DEGRADATION)
         {
-            static upat_follower::Generator generator(1.0, 1.0, 1.0);
             for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
                 gauss_msgs::Waypoint temp_wp;
                 gauss_msgs::DeconflictionPlan temp_wp_list;
@@ -935,28 +890,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
                 temp_wp_list.cost = distance;
                 temp_wp_list.waypoint_list.push_back(wp_land);
-                nav_msgs::Path temp_path;
-                for (auto wp : temp_wp_list.waypoint_list){
-                    geometry_msgs::PoseStamped temp_wp_stamped;
-                    temp_wp_stamped.pose.position.x = wp.x;
-                    temp_wp_stamped.pose.position.y = wp.y;
-                    temp_wp_stamped.pose.position.z = wp.z;
-                    temp_wp_stamped.header.stamp = wp.stamp;
-                    temp_path.poses.push_back(temp_wp_stamped);
-                }
-                nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
-                gauss_msgs::CheckConflicts check_conflict;
-                check_conflict.request.uav_id = req.threat.uav_ids.front();
-                for (auto wp : check_path.poses){
-                    gauss_msgs::Waypoint temp_wp;
-                    temp_wp.x = wp.pose.position.x;
-                    temp_wp.y = wp.pose.position.y;
-                    temp_wp.z = wp.pose.position.z;
-                    check_conflict.request.deconflicted_wp.push_back(temp_wp);
-                }
-                if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
-                    ROS_ERROR("Failed checking conflicts");
-                temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+                temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
                 temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
@@ -968,28 +902,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), temp_wp);
             temp_wp_list.cost = distance;
             temp_wp_list.waypoint_list.push_back(temp_wp);
-            nav_msgs::Path temp_path;
-            for (auto wp : temp_wp_list.waypoint_list){
-                geometry_msgs::PoseStamped temp_wp_stamped;
-                temp_wp_stamped.pose.position.x = wp.x;
-                temp_wp_stamped.pose.position.y = wp.y;
-                temp_wp_stamped.pose.position.z = wp.z;
-                temp_wp_stamped.header.stamp = wp.stamp;
-                temp_path.poses.push_back(temp_wp_stamped);
-            }
-            nav_msgs::Path check_path = generator.generatePath(temp_path, 0.0, 100.0);
-            gauss_msgs::CheckConflicts check_conflict;
-            check_conflict.request.uav_id = req.threat.uav_ids.front();
-            for (auto wp : check_path.poses){
-                gauss_msgs::Waypoint temp_wp;
-                temp_wp.x = wp.pose.position.x;
-                temp_wp.y = wp.pose.position.y;
-                temp_wp.z = wp.pose.position.z;
-                check_conflict.request.deconflicted_wp.push_back(temp_wp);
-            }
-            if (!check_client_.call(check_conflict) || !check_conflict.response.success) 
-                ROS_ERROR("Failed checking conflicts");
-            temp_wp_list.riskiness = 100*check_conflict.response.threats.size()/check_path.poses.size();
+            temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
