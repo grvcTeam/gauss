@@ -1,0 +1,10 @@
+string uuid
+float64 longitude
+float64 latitude
+float32 circle_radius
+float32 start_altitude
+float32 end_altitude
+uint32 start_time
+uint32 end_time
+float32 confidence
+string description

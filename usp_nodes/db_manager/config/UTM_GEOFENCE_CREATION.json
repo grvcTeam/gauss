@@ -59,8 +59,8 @@
 			"start_time": 0,
 			"end_time": 900,
 			"circle": {
-				"x_center": 6,
-				"y_center": 4,
+				"x_center": 26,
+				"y_center": 24,
 				"radius": 2
 			},
 			"polygon": {

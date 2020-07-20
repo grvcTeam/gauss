@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 
     gauss_msgs::Deconfliction deconfliction;
     deconfliction.request.threat.geofence_ids.push_back(test_geofence_id);
-    deconfliction.request.threat.threat_id = deconfliction.request.threat.GNSS_DEGRADATION;
+    deconfliction.request.threat.threat_id = deconfliction.request.threat.LACK_OF_BATTERY;
     deconfliction.request.threat.times.push_back(ros::Time(0.0));
     deconfliction.request.threat.times.push_back(ros::Time(900.0));
     deconfliction.request.threat.uav_ids.push_back(test_uav_id);

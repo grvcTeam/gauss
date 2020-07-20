@@ -1,4 +1,4 @@
-string icao
+uint32 icao
 string flight_plan_id
 string new_flight_plan 
 # 4D trajectory codified in a string 
