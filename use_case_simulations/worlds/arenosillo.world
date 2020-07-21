@@ -47,7 +47,8 @@
         <pose frame=''>-24 -29 0 0 0 1.570796327</pose> <!-- Displace in the x and y axes (meters) and rotate pi/2 (rad) in the z axis to center the origin of the simulator-->
       </model>
     </state>
-      <model name='AGen_base_obs_0_0_0'>
+
+    <model name='WT_tower'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -85,7 +86,8 @@
       </link>
       <pose frame=''>500 400 20 0 -0 0</pose>
     </model>
-    <model name='AGen_mot_obs_0_0_0'>
+
+    <model name='WT_engine'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -121,7 +123,8 @@
       </link>
       <pose frame=''>500 400 42.5 0 1.57 0</pose>
     </model>
-    <model name='AGen_ax_obs_0_0_0'>
+
+    <model name='WT_blade_center'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -157,7 +160,8 @@
       </link>
       <pose frame=''>505 400 42.5 0 1.57 0</pose>
     </model>
-    <model name='AGen_ax1_obs_0_0_0'>
+
+    <model name='WT_blade_1'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -193,7 +197,8 @@
       </link>
       <pose frame=''>505 400 27.5 0 -0 0</pose>
     </model>
-    <model name='AGen_ax2_obs_0_0_0'>
+
+    <model name='WT_blade_2'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -229,7 +234,8 @@
       </link>
       <pose frame=''>505 413 50 2.0944 -0 0</pose>
     </model>
-    <model name='AGen_ax3_obs_0_0_0'>
+
+    <model name='WT_blade_3'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -265,67 +271,8 @@
       </link>
       <pose frame=''>505 387 50 -2.0944 0 0</pose>
     </model>
-      <model name='AGen_ax1_obs_0_0_0'>
-        <pose frame=''>505 400 27.5 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>505 400 27.5 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='AGen_ax2_obs_0_0_0'>
-        <pose frame=''>505 413 50 2.0944 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>505 413 50 2.0944 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='AGen_ax3_obs_0_0_0'>
-        <pose frame=''>505 387 50 -2.0944 0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>505 387 50 -2.0944 0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='AGen_ax_obs_0_0_0'>
-        <pose frame=''>505 400 42.5 0 1.57 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>505 400 42.5 0 1.57 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='AGen_base_obs_0_0_0'>
-        <pose frame=''>500 400 20 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>500 400 20 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='AGen_mot_obs_0_0_0'>
-        <pose frame=''>500 400 42.5 0 1.57 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>500 400 42.5 0 1.57 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL1_base1_obs_0_0_0'>
+    
+    <model name='PL_base_1'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -363,7 +310,8 @@
       </link>
       <pose frame=''>-800 100 15 0 -0 0</pose>
     </model>
-    <model name='PL1_wir1_obs_0'>
+    
+    <model name='PL_wire1_1_2'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -401,7 +349,8 @@
       </link>
       <pose frame=''>-600 101.5 25 3.14159 1.57079 3.14159</pose>
     </model>
-    <model name='PL1_wir1_obs_1'>
+    
+    <model name='PL_wire2_1_2'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -439,7 +388,8 @@
       </link>
       <pose frame=''>-600 98.5 25 3.14159 1.57079 3.14159</pose>
     </model>
-    <model name='PL1_base2_obs_0_0_0'>
+    
+    <model name='PL_base_2'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -477,7 +427,8 @@
       </link>
       <pose frame=''>-400 100 15 0 -0 0</pose>
     </model>
-    <model name='PL1_wir2_obs_0'>
+    
+    <model name='PL_wire1_2_3'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -515,7 +466,8 @@
       </link>
       <pose frame=''>-200 101.5 25 3.14159 1.57079 3.14159</pose>
     </model>
-    <model name='PL1_wir2_obs_1'>
+    
+    <model name='PL_wire2_2_3'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -553,7 +505,8 @@
       </link>
       <pose frame=''>-200 98.5 25 3.14159 1.57079 3.14159</pose>
     </model>
-    <model name='PL2_base3_obs_0_0_0'>
+    
+    <model name='PL_base_3'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -591,7 +544,8 @@
       </link>
       <pose frame=''>0 100 15 0 -0 0.302885</pose>
     </model>
-    <model name='PL2_wir3_obs_0'>
+    
+    <model name='PL_wire1_3_4'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -629,7 +583,8 @@
       </link>
       <pose frame=''>190.449 161.087 25 3.14159 1.57079 -2.83871</pose>
     </model>
-    <model name='PL2_wir3_obs_1'>
+    
+    <model name='PL_wire2_3_4'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -667,7 +622,8 @@
       </link>
       <pose frame=''>191.343 158.223 25 3.14159 1.57079 -2.83871</pose>
     </model>
-    <model name='PL2_base4_obs_0_0_0'>
+    
+    <model name='PL_base_4'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -705,7 +661,8 @@
       </link>
       <pose frame=''>381.792 219.31 15 0 -0 0.302885</pose>
     </model>
-    <model name='PL2_wir4_obs_0'>
+    
+    <model name='PL_wire1_4_5'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -743,7 +700,8 @@
       </link>
       <pose frame=''>572.241 280.397 25 3.14159 1.57079 -2.83871</pose>
     </model>
-    <model name='PL2_wir4_obs_1'>
+    
+    <model name='PL_wire2_4_5'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -781,7 +739,8 @@
       </link>
       <pose frame=''>573.135 277.533 25 3.14159 1.57079 -2.83871</pose>
     </model>
-    <model name='PL2_base5_obs_0_0_0'>
+    
+    <model name='PL_base_5'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -819,7 +778,8 @@
       </link>
       <pose frame=''>763.584 338.62 15 0 -0 0.302885</pose>
     </model>
-    <model name='CF_L_obs_0_0_0'>
+
+    <model name='Crop_Field'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -843,9 +803,10 @@
           </surface>
         </collision>
         <visual name='visual'>
+          <transparency>0.75</transparency>
           <geometry>
             <box>
-              <size>420 250 10</size>
+              <size>210 125 10</size>
             </box>
           </geometry>
         </visual>
@@ -853,8 +814,9 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>500 -350 5 0 0 -0.785398</pose>
+      <pose frame=''>50 -150 5 0 0 -0.785398</pose>
     </model>
+    
     <!--model name='Geofence_0'>
       <static>1</static>
       <link name='link'>
@@ -872,11 +834,12 @@
       </link>
       <pose frame=''>6 4.5 5 0 0 0</pose>
     </model-->
+
     <model name='Geofence_1'>
       <static>1</static>
       <link name='link'>
         <visual name='visual'>
-          <transparency>0.25</transparency>
+          <transparency>0.75</transparency>
           <geometry>
             <cylinder>
               <radius>2</radius>
@@ -889,469 +852,6 @@
         <gravity>1</gravity>
       </link>
       <pose frame=''>6 4 5 0 0 0</pose>
-    </model>
-    <model name='eve_CL_obs_0_0_0'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <box>
-              <size>0.5 20 3</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.5 20 3</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>-802.5 -790 1.5 0 -0 0</pose>
-    </model>
-    <model name='eve_CR_obs_0_0_0'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <box>
-              <size>0.5 20 3</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.5 20 3</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>-797.5 -790 1.5 0 -0 0</pose>
-    </model>
-    <model name='eve_W1_obs_0_0_0'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <box>
-              <size>0.5 22.5 3</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.5 22.5 3</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>-813.75 -780 1.5 0 -0 1.5708</pose>
-    </model>
-    <model name='eve_W2_obs_0_0_0'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <box>
-              <size>0.5 50 3</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.5 50 3</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>-825 -755 1.5 0 -0 0</pose>
-    </model>
-    <model name='eve_W3_obs_0_0_0'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <box>
-              <size>0.5 50 3</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.5 50 3</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>-800 -730 1.5 0 -0 1.5708</pose>
-    </model>
-    <model name='eve_W4_obs_0_0_0'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <box>
-              <size>0.5 50 3</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.5 50 3</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>-775 -755 1.5 0 -0 0</pose>
-    </model>
-    <model name='eve_W5_obs_0_0_0'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <box>
-              <size>0.5 22.5 3</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.5 22.5 3</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>-786.25 -780 1.5 0 -0 1.5708</pose>
-    </model>
-    <model name='CF_L_obs_0_0_0'>
-        <pose frame=''>500 -350 5 0 0 -0.785398</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>500 -350 5 0 0 -0.785398</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL1_base1_obs_0_0_0'>
-        <pose frame=''>-800 100 15 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-800 100 15 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL1_base2_obs_0_0_0'>
-        <pose frame=''>-400 100 15 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-400 100 15 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL1_wir1_obs_0'>
-        <pose frame=''>-600 101.5 25 3.14159 1.57079 3.14159</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-600 101.5 25 3.14159 1.57079 3.14159</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL1_wir1_obs_1'>
-        <pose frame=''>-600 98.5 25 3.14159 1.57079 3.14159</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-600 98.5 25 3.14159 1.57079 3.14159</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL1_wir2_obs_0'>
-        <pose frame=''>-200 101.5 25 3.14159 1.57079 3.14159</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-200 101.5 25 3.14159 1.57079 3.14159</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL1_wir2_obs_1'>
-        <pose frame=''>-200 98.5 25 3.14159 1.57079 3.14159</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-200 98.5 25 3.14159 1.57079 3.14159</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL2_base3_obs_0_0_0'>
-        <pose frame=''>0 100 15 0 -0 0.302885</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>0 100 15 0 -0 0.302885</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL2_base4_obs_0_0_0'>
-        <pose frame=''>381.792 219.31 15 0 -0 0.302885</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>381.792 219.31 15 0 -0 0.302885</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL2_base5_obs_0_0_0'>
-        <pose frame=''>763.584 338.62 15 0 -0 0.302885</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>763.584 338.62 15 0 -0 0.302885</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL2_wir3_obs_0'>
-        <pose frame=''>190.449 161.087 25 3.14159 1.57079 -2.83871</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>190.449 161.087 25 3.14159 1.57079 -2.83871</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL2_wir3_obs_1'>
-        <pose frame=''>191.343 158.223 25 3.14159 1.57079 -2.83871</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>191.343 158.223 25 3.14159 1.57079 -2.83871</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL2_wir4_obs_0'>
-        <pose frame=''>572.241 280.397 25 3.14159 1.57079 -2.83871</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>572.241 280.397 25 3.14159 1.57079 -2.83871</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='PL2_wir4_obs_1'>
-        <pose frame=''>573.135 277.533 25 3.14159 1.57079 -2.83871</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>573.135 277.533 25 3.14159 1.57079 -2.83871</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='eve_CL_obs_0_0_0'>
-        <pose frame=''>-802.5 -790 1.5 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-802.5 -790 1.5 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='eve_CR_obs_0_0_0'>
-        <pose frame=''>-797.5 -790 1.5 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-797.5 -790 1.5 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='eve_W1_obs_0_0_0'>
-        <pose frame=''>-813.75 -780 1.5 0 -0 1.5708</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-813.75 -780 1.5 0 -0 1.5708</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='eve_W2_obs_0_0_0'>
-        <pose frame=''>-825 -755 1.5 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-825 -755 1.5 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='eve_W3_obs_0_0_0'>
-        <pose frame=''>-800 -730 1.5 0 -0 1.5708</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-800 -730 1.5 0 -0 1.5708</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='eve_W4_obs_0_0_0'>
-        <pose frame=''>-775 -755 1.5 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-775 -755 1.5 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='eve_W5_obs_0_0_0'>
-        <pose frame=''>-786.25 -780 1.5 0 -0 1.5708</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-786.25 -780 1.5 0 -0 1.5708</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-
+    </model>          
   </world>
 </sdf>
