@@ -2,7 +2,7 @@
 	"operations": [
 		{
 			"uav_id": 0,
-			"icao_address": "1234",
+			"icao_address": "UAV0gauss2020",
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
@@ -126,11 +126,11 @@
 			},
 			"flight_geometry": 2.0,
 			"operational_volume": 1.0,
-			"conop": "conop1234"
+			"conop": "Power line inspection"
 		},
 		{
 			"uav_id": 1,
-			"icao_address": "4321",
+			"icao_address": "UAV1gauss2020",
 			"frame": "",
 			"autonomy": 20,
 			"priority": 0,
@@ -226,7 +226,7 @@
 			},
 			"flight_geometry": 1.0,
 			"operational_volume": 2.0,
-			"conop": "conop4321"
+			"conop": "Delivery package"
 		}
 	]
 }
