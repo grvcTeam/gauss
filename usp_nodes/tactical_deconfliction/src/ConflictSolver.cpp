@@ -647,10 +647,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
 
             // [3] Ruta que me manda devuelta a casa
             temp_wp_list.waypoint_list.clear();
-            temp_wp.x = operation_msg.response.operation.front().track.waypoints.front().x;
-            temp_wp.y = operation_msg.response.operation.front().track.waypoints.front().y;
-            temp_wp.z = operation_msg.response.operation.front().track.waypoints.front().z;
-            temp_wp.stamp = operation_msg.response.operation.front().track.waypoints.front().stamp;
+            temp_wp.x = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().x;
+            temp_wp.y = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().y;
+            temp_wp.z = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().z;
+            temp_wp.stamp = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().stamp;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp.x = operation_msg.response.operation.front().flight_plan.waypoints.front().x;
             temp_wp.y = operation_msg.response.operation.front().flight_plan.waypoints.front().y;
@@ -701,9 +701,9 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // [6] Ruta a mi destino saliendo lo antes posible de la geofence
             // Get min distance to polygon border
             gauss_msgs::Waypoint conflict_point;
-            conflict_point.x = operation_msg.response.operation.front().track.waypoints.front().x;
-            conflict_point.y = operation_msg.response.operation.front().track.waypoints.front().y;
-            conflict_point.z = operation_msg.response.operation.front().track.waypoints.front().z;
+            conflict_point.x = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().x;
+            conflict_point.y = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().y;
+            conflict_point.z = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().z;
             std::map <std::vector<double> , double> point_and_distance;
             for (auto vertex : res_polygon.points){
                 std::vector<double> point;
@@ -741,7 +741,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
-            interp_times.push_back(operation_msg.response.operation.front().track.waypoints.front().stamp.toSec()); // init astar pos time
+            interp_times.push_back(operation_msg.response.operation.front().estimated_trajectory.waypoints.front().stamp.toSec()); // init astar pos time
             interp_times.push_back(res_times.at(goal_astar_pos));
             a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
             a_star_times_res.push_back(res_times.at(goal_astar_pos));
@@ -751,7 +751,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp.x = conflict_point.x;
             temp_wp.y = conflict_point.y;
             temp_wp.z = conflict_point.z;
-            temp_wp.stamp = operation_msg.response.operation.front().track.waypoints.front().stamp;
+            temp_wp.stamp = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().stamp;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             for (int i = 0; i < a_star_path_res.poses.size(); i++){
                 temp_wp.x = a_star_path_res.poses.at(i).pose.position.x;
@@ -772,7 +772,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp.x = conflict_point.x;
             temp_wp.y = conflict_point.y;
             temp_wp.z = conflict_point.z;
-            temp_wp.stamp = operation_msg.response.operation.front().track.waypoints.front().stamp;
+            temp_wp.stamp = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().stamp;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp.x = operation_msg.response.operation.front().flight_plan.waypoints.back().x;
             temp_wp.y = operation_msg.response.operation.front().flight_plan.waypoints.back().y;
@@ -789,10 +789,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             
             // [3] Ruta que me manda de vuelta a casa
             temp_wp_list.waypoint_list.clear();
-            temp_wp.x = operation_msg.response.operation.front().track.waypoints.front().x;
-            temp_wp.y = operation_msg.response.operation.front().track.waypoints.front().y;
-            temp_wp.z = operation_msg.response.operation.front().track.waypoints.front().z;
-            temp_wp.stamp = operation_msg.response.operation.front().track.waypoints.front().stamp;
+            temp_wp.x = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().x;
+            temp_wp.y = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().y;
+            temp_wp.z = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().z;
+            temp_wp.stamp = operation_msg.response.operation.front().estimated_trajectory.waypoints.front().stamp;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp.x = operation_msg.response.operation.front().flight_plan.waypoints.front().x;
             temp_wp.y = operation_msg.response.operation.front().flight_plan.waypoints.front().y;
@@ -815,8 +815,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // [9] Ruta para volver lo antes posible al flight geometry y seguir el plan de vuelo.
             std::map <std::vector<double> , double> point_and_distance;
             for (int i = 0; i < operation_msg.response.operation.front().flight_plan.waypoints.size() - 1; i++){
-                point_and_distance.insert(getCoordinatesAndDistance(operation_msg.response.operation.front().track.waypoints.back().x,
-                                                                    operation_msg.response.operation.front().track.waypoints.back().y,
+                point_and_distance.insert(getCoordinatesAndDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.back().x,
+                                                                    operation_msg.response.operation.front().estimated_trajectory.waypoints.back().y,
                                                                     operation_msg.response.operation.front().flight_plan.waypoints.at(i).x, 
                                                                     operation_msg.response.operation.front().flight_plan.waypoints.at(i).y,
                                                                     operation_msg.response.operation.front().flight_plan.waypoints.at(i+1).x, 
@@ -825,24 +825,24 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             auto min_distance_coordinate = get_min(point_and_distance);
             temp_wp.x = min_distance_coordinate.first.front();
             temp_wp.y = min_distance_coordinate.first.back();
-            temp_wp.z = operation_msg.response.operation.front().track.waypoints.back().z;
-            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().track.waypoints.back());
+            temp_wp.z = operation_msg.response.operation.front().estimated_trajectory.waypoints.back().z;
+            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().estimated_trajectory.waypoints.back());
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 9;
             temp_wp_list.cost = pathDistance(temp_wp_list);
-            temp_wp_list.riskiness = pathDistance(temp_wp_list) - operation_msg.response.operation.front().operational_volume;
+            temp_wp_list.riskiness = std::abs(pathDistance(temp_wp_list) - operation_msg.response.operation.front().operational_volume);
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
             double dist_out_ov = temp_wp_list.riskiness;
             double min_dist_to_path = temp_wp_list.cost;
             // [10] Ruta para seguir con el plan de vuelo, da igual que esté más tiempo fuera del Operational Volume.
             temp_wp_list.waypoint_list.clear();
-            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().track.waypoints.back());
+            temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().estimated_trajectory.waypoints.back());
             temp_wp_list.waypoint_list.push_back(operation_msg.response.operation.front().flight_plan.waypoints.at(operation_msg.response.operation.front().current_wp + 1));
             temp_wp_list.maneuver_type = 10;
             temp_wp_list.cost = pathDistance(temp_wp_list);
             double alpha = acos(min_dist_to_path / temp_wp_list.cost);
-            temp_wp_list.riskiness = dist_out_ov / cos(alpha);
+            temp_wp_list.riskiness = std::abs(dist_out_ov / cos(alpha));
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
 
@@ -854,7 +854,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
                 gauss_msgs::Waypoint temp_wp;
                 gauss_msgs::DeconflictionPlan temp_wp_list;
-                temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+                temp_wp = operation_msg.response.operation.front().estimated_trajectory.waypoints.front();
                 temp_wp_list.waypoint_list.push_back(temp_wp);
                 temp_wp_list.maneuver_type = 5;
                 double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
@@ -884,7 +884,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
                 gauss_msgs::Waypoint temp_wp;
                 gauss_msgs::DeconflictionPlan temp_wp_list;
-                temp_wp = operation_msg.response.operation.front().flight_plan.waypoints.front();
+                temp_wp = operation_msg.response.operation.front().estimated_trajectory.waypoints.front();
                 temp_wp_list.waypoint_list.push_back(temp_wp);
                 temp_wp_list.maneuver_type = 5;
                 double distance = pointsDistance(operation_msg.response.operation.front().estimated_trajectory.waypoints.front(), wp_land);
