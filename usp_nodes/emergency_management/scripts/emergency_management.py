@@ -76,6 +76,7 @@ class EmergencyManagement():
     def select_optimal_route(self, uav):
         #Lista de deconfliction plans.msg
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
+        print(deconfliction_plans_list)
         values = []
         
         for deconfliction_plan in deconfliction_plans_list:
@@ -164,7 +165,7 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
-                
+                print(response.message)
 
             '''Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
@@ -215,7 +216,8 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
-                
+                print(response.message)
+
             '''Threat COMMUNICATION FAILURE: we EM can not do anything if there is a lost of the link communication between the GCS and/or the
                 UAV and USP.'''
 
@@ -266,7 +268,8 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."       
-                        
+                print(response.message)
+
             '''Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
                 and we create a geofence around the UAV.'''
 
@@ -291,7 +294,8 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."   
-                
+                print(response.message)
+
             '''Threat GNSS DEGRADATION: we wait a period of time and then we ask to tactical
                 possible trajectories to landing spots'''
 
