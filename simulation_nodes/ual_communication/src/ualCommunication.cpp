@@ -18,6 +18,7 @@
 //----------------------------------------------------------------------------------------------------------------------
 
 #include <upat_follower/ual_communication.h>
+#include <gauss_msgs/ReadFlightPlan.h>
 
 uav_abstraction_layer::State ual_state_;
 
@@ -32,7 +33,7 @@ int main(int _argc, char **_argv) {
     int pub_rate, uav_id;
     bool light;
     std::string ns_prefix;
-    ros::param::param<int>("~uav_id", uav_id, 1);
+    ros::param::param<int>("~uav_id", uav_id, 0);
     ros::param::param<std::string>("~ns_prefix", ns_prefix, "uav_");
     ros::param::param<int>("~pub_rate", pub_rate, 30);
     ros::param::param<bool>("~light", light, false);
@@ -62,6 +63,34 @@ int main(int _argc, char **_argv) {
     }
     sleep(1.0);
 
+    ros::ServiceClient read_plan_client_;
+    read_plan_client_ = nh.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/read_flight_plan");
+    gauss_msgs::ReadFlightPlan plan_msg;
+    plan_msg.request.uav_ids.push_back(0);
+    if (!read_plan_client_.call(plan_msg) || !plan_msg.response.success)
+    {
+        ROS_ERROR("Failed to read a flight plan");
+        return false;
+    }
+    nav_msgs::Path res_path;
+    res_path.header.frame_id = "map"; // world
+    std::vector<double> res_times;
+    for (int i = 0; i < plan_msg.response.plans.front().waypoints.size(); i++){
+        geometry_msgs::PoseStamped temp_pose;
+        temp_pose.pose.position.x = plan_msg.response.plans.front().waypoints.at(i).x;
+        temp_pose.pose.position.y = plan_msg.response.plans.front().waypoints.at(i).y;
+        temp_pose.pose.position.z = plan_msg.response.plans.front().waypoints.at(i).z;
+        res_path.poses.push_back(temp_pose);
+        res_times.push_back(plan_msg.response.plans.front().waypoints.at(i).stamp.toSec());
+    }
+
+    ual_communication.flag_redo_ = true;
+    ual_communication.init_path_.poses.clear();
+    ual_communication.init_path_.poses = res_path.poses;
+    ual_communication.init_path_.header = res_path.header;
+    ual_communication.times_.clear();
+    ual_communication.times_ = res_times;
+    
     while (ros::ok()) {
         ual_communication.runMission();
         ual_communication.callVisualization();
