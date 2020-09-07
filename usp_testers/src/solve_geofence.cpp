@@ -154,6 +154,7 @@ int main(int argc, char *argv[])
             temp_pose.pose.position.x = wps.x;
             temp_pose.pose.position.y = wps.y;
             temp_pose.pose.position.z = wps.z;
+            temp_pose.header.stamp = wps.stamp;
             if (change_path_to_pub == 3){
                 astar_path_3.poses.push_back(temp_pose);
             } else if (change_path_to_pub == 2){
@@ -172,6 +173,7 @@ int main(int argc, char *argv[])
         wp.x = i.pose.position.x;
         wp.y = i.pose.position.y;
         wp.z = i.pose.position.z;
+        wp.stamp = i.header.stamp;
         notification.waypoints.push_back(wp);
     }
 
