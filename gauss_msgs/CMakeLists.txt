@@ -73,6 +73,8 @@ find_package(catkin REQUIRED COMPONENTS
    FlightPlanReq.srv
    ReadFlightPlan.srv
    WriteFlightPlan.srv
+   ReadFlightPlanUpdated.srv
+   WriteFlightPlanUpdated.srv
    ReadTracks.srv
    WriteTraj.srv
    ReadTraj.srv
