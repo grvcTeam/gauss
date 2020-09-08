@@ -177,18 +177,15 @@ int main(int argc, char *argv[])
         notification.waypoints.push_back(wp);
     }
 
-    bool once = true;
-
     while(ros::ok()){
         tester.pub_flight_plan_.publish(res_path);
         tester.pub_geofence_.publish(res_polygon);
         tester.pub_astar_plan_1_.publish(astar_path_1);
         tester.pub_astar_plan_2_.publish(astar_path_2);
         tester.pub_astar_plan_3_.publish(astar_path_3);
-        // if (once){
+        if (std::cin.get() == '\n'){
             tester.pub_notification_.publish(notification);
-        //     once = false;
-        // }
+        }        
         rate.sleep();
         ros::spinOnce();
     }
