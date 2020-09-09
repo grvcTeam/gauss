@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
       Splitter Ratio: 0.5
-    Tree Height: 747
+    Tree Height: 359
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -170,13 +170,21 @@ Visualization Manager:
           Value: true
         uav_0/odom:
           Value: true
+        world:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        world:
+          map:
+            map_ned:
+              {}
+            uav_0/odom:
+              uav_0/base_link:
+                {}
       Update Interval: 0
       Value: true
   Enabled: true
@@ -204,25 +212,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 48.8711205
+      Distance: 19.6848316
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 4.48439598
-        Y: 3.90654945
-        Z: -0.585562527
+        X: 5.96577454
+        Y: 3.73048115
+        Z: -0.585699141
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.800397992
+      Pitch: 1.56979632
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.87858009
+      Yaw: 4.70855331
     Saved: ~
 Window Geometry:
   Displays:

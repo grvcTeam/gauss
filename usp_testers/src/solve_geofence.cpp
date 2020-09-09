@@ -168,6 +168,8 @@ int main(int argc, char *argv[])
 
     gauss_msgs::Notification notification;
     notification.uav_id = 0;
+    notification.threat.threat_id = notification.threat.GEOFENCE_CONFLICT;
+    notification.maneuver_type = 1;
     for (auto i : astar_path_1.poses){
         gauss_msgs::Waypoint wp;
         wp.x = i.pose.position.x;

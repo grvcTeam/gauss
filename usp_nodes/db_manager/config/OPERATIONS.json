@@ -6,7 +6,7 @@
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
-			"current_wp": 2,
+			"current_wp": 1,
 			"flight_plan": {
 				"waypoints": [
 					{
@@ -45,7 +45,7 @@
 						"mandatory": 0
 					},
 					{
-						"x": 10,
+						"x": 11,
 						"y": 4,
 						"z": 1,
 						"stamp": 25.0,
