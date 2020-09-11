@@ -99,7 +99,8 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
         }
         break;
     case _threat.LOSS_OF_SEPARATION:
-        /* code */
+        merge_to_the_end = true;
+        flight_plan_section = 0;
         break;
     case _threat.TECHNICAL_FAILURE:
         // LAND NOW!
@@ -121,64 +122,63 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
 
     
 
-    if (_threat.threat_id != _threat.LOSS_OF_SEPARATION){
-        bool change_path_reference = false;
-        for (int i = 0; i < _flight_plan.waypoints.size(); i++){
-            geometry_msgs::PoseStamped temp_pose;
-            switch (flight_plan_section){
-                case 0: // First section. Do nothing until current waypoint.
-                    if (_flight_plan.waypoints.at(i).x == _flight_plan.waypoints.at(_current_wp).x &&
-                        _flight_plan.waypoints.at(i).y == _flight_plan.waypoints.at(_current_wp).y &&
-                        _flight_plan.waypoints.at(i).z == _flight_plan.waypoints.at(_current_wp).z){
-                            flight_plan_section = 1;
-                    } else {
-                        break;
-                    }
-                case 1: // Introduce waypoints between current waypoint and the first one of the solution (tactical)
-                    if (_flight_plan.waypoints.at(i).x == notification_.waypoints.front().x &&
-                        _flight_plan.waypoints.at(i).y == notification_.waypoints.front().y &&
-                        _flight_plan.waypoints.at(i).z == notification_.waypoints.front().z){
-                            flight_plan_section = 2;
-                    } else {
-                        temp_pose.pose.position.x = _flight_plan.waypoints.at(i).x;
-                        temp_pose.pose.position.y = _flight_plan.waypoints.at(i).y;
-                        temp_pose.pose.position.z = _flight_plan.waypoints.at(i).z;
-                        temp_pose.header.stamp = _flight_plan.waypoints.at(i).stamp;
-                        out_path.poses.push_back(temp_pose);
-                    }
+    bool change_path_reference = false;
+    for (int i = 0; i < _flight_plan.waypoints.size(); i++){
+        geometry_msgs::PoseStamped temp_pose;
+        switch (flight_plan_section){
+            case 0: // First section. Do nothing until current waypoint.
+                if (_flight_plan.waypoints.at(i).x == _flight_plan.waypoints.at(_current_wp).x &&
+                    _flight_plan.waypoints.at(i).y == _flight_plan.waypoints.at(_current_wp).y &&
+                    _flight_plan.waypoints.at(i).z == _flight_plan.waypoints.at(_current_wp).z){
+                        flight_plan_section = 1;
+                } else {
                     break;
-                case 2: // Introduce the solution
-                    for(int i = 0; i < notification_.waypoints.size(); i++){
-                        geometry_msgs::PoseStamped temp_pose;
-                        temp_pose.pose.position.x = notification_.waypoints.at(i).x;
-                        temp_pose.pose.position.y = notification_.waypoints.at(i).y;
-                        temp_pose.pose.position.z = notification_.waypoints.at(i).z;
-                        temp_pose.header.stamp = notification_.waypoints.at(i).stamp;
-                        out_path.poses.push_back(temp_pose);
-                    }
-                    if (merge_to_the_end){
-                        flight_plan_section = 3;
-                    } else {
-                        i = _flight_plan.waypoints.size(); // TODO: Check using examples
-                    }
-                case 3: // Do nothing until matching the solution with the flight plan
-                    if (_flight_plan.waypoints.at(i).x == notification_.waypoints.back().x &&
-                        _flight_plan.waypoints.at(i).y == notification_.waypoints.back().y &&
-                        _flight_plan.waypoints.at(i).z == notification_.waypoints.back().z){
-                            flight_plan_section = 4;
-                        }
-                    break;
-                case 4: // Introduce the rest of the flight plan
+                }
+            case 1: // Introduce waypoints between current waypoint and the first one of the solution (tactical)
+                if (_flight_plan.waypoints.at(i).x == notification_.waypoints.front().x &&
+                    _flight_plan.waypoints.at(i).y == notification_.waypoints.front().y &&
+                    _flight_plan.waypoints.at(i).z == notification_.waypoints.front().z){
+                        flight_plan_section = 2;
+                } else {
                     temp_pose.pose.position.x = _flight_plan.waypoints.at(i).x;
                     temp_pose.pose.position.y = _flight_plan.waypoints.at(i).y;
                     temp_pose.pose.position.z = _flight_plan.waypoints.at(i).z;
                     temp_pose.header.stamp = _flight_plan.waypoints.at(i).stamp;
                     out_path.poses.push_back(temp_pose);
-                    break;
-            }
+                }
+                break;
+            case 2: // Introduce the solution
+                for(int i = 0; i < notification_.waypoints.size(); i++){
+                    geometry_msgs::PoseStamped temp_pose;
+                    temp_pose.pose.position.x = notification_.waypoints.at(i).x;
+                    temp_pose.pose.position.y = notification_.waypoints.at(i).y;
+                    temp_pose.pose.position.z = notification_.waypoints.at(i).z;
+                    temp_pose.header.stamp = notification_.waypoints.at(i).stamp;
+                    out_path.poses.push_back(temp_pose);
+                }
+                if (merge_to_the_end){
+                    flight_plan_section = 3;
+                } else {
+                    i = _flight_plan.waypoints.size(); // TODO: Check using examples
+                }
+            case 3: // Do nothing until matching the solution with the flight plan
+                if (_flight_plan.waypoints.at(i).x == notification_.waypoints.back().x &&
+                    _flight_plan.waypoints.at(i).y == notification_.waypoints.back().y &&
+                    _flight_plan.waypoints.at(i).z == notification_.waypoints.back().z){
+                        flight_plan_section = 4;
+                    }
+                break;
+            case 4: // Introduce the rest of the flight plan
+                temp_pose.pose.position.x = _flight_plan.waypoints.at(i).x;
+                temp_pose.pose.position.y = _flight_plan.waypoints.at(i).y;
+                temp_pose.pose.position.z = _flight_plan.waypoints.at(i).z;
+                temp_pose.header.stamp = _flight_plan.waypoints.at(i).stamp;
+                out_path.poses.push_back(temp_pose);
+                break;
         }
     }
 
+    for (auto i : out_path.poses) std::cout << i << std::endl;
 
     return out_path;
 }
