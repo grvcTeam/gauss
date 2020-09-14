@@ -118,9 +118,7 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
             break;
         }
         break;
-    }
-
-    
+    } 
 
     bool change_path_reference = false;
     for (int i = 0; i < _flight_plan.waypoints.size(); i++){

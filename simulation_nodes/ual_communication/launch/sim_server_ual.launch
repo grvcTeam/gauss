@@ -19,7 +19,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
     <arg name="mode" default="sitl"/>
     <arg name="robot_model" default="mbzirc"/>
 
-    <arg name="pose_frame_id" default=""/>
+    <arg name="pose_frame_id" default="map"/>
     <!-- To publish ual/pose in other frame than local, e.g. map -->
     <arg name="mavros_offboard_rate" default="30.0"/>
     <arg name="position_th" default="0.33"/>
@@ -44,19 +44,19 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         <arg name="id" value="1"/>
         <arg name="material" value="Blue"/>
         <arg name="mode" value="$(arg mode)"/>
-        <arg name="x" value="0"/>
-        <arg name="y" value="0"/>
+        <arg name="x" value="1"/>
+        <arg name="y" value="4"/>
         <arg name="z" value="0"/>
         <arg name="yaw" value="0"/>
         <arg name="robot_model" value="$(arg robot_model)"/>
     </include>
     <!-- Launch robot id=2 -->
-    <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="$(arg ns_prefix)1" if="$(arg multi)">
-        <arg name="id" value="2"/>
+    <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="$(arg ns_prefix)2" if="$(arg multi)">
+        <arg name="id" value="3"/>
         <arg name="material" value="Green"/>
         <arg name="mode" value="$(arg mode)"/>
-        <arg name="x" value="0"/>
-        <arg name="y" value="10"/>
+        <arg name="x" value="1"/>
+        <arg name="y" value="1"/>
         <arg name="z" value="0"/>
         <arg name="yaw" value="0"/>
         <arg name="robot_model" value="$(arg robot_model)"/>
@@ -75,13 +75,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         <param name="home_pose_parent_frame" value="map"/>
         <!-- default= map -->
         <!-- Define home pose relative to global map frame -->
-        <rosparam param="home_pose">[0, 0, 0]</rosparam>        <!-- [x,y,z] -->
+        <rosparam param="home_pose">[1, 4, 0]</rosparam>        <!-- [x,y,z] -->
         <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
         <!-- <rosparam param="map_origin_geo">[37.558542, -5.931074, 7.89]</rosparam> -->        <!-- [lat,lon,alt] -->
     </node>
     <!-- Launch UAL server for uav id=1 -->
-    <node pkg="ual_backend_mavros" type="ual_backend_mavros_server" name="ual" ns="$(arg ns_prefix)1" output="screen" if="$(arg multi)">
-        <param name="uav_id" value="1"/>
+    <node pkg="ual_backend_mavros" type="ual_backend_mavros_server" name="ual" ns="$(arg ns_prefix)2" output="screen" if="$(arg multi)">
+        <param name="uav_id" value="2"/>
         <param name="ual_server" value="$(arg ual_server)"/>
         <param name="ual_pub_rate" value="$(arg ual_pub_rate)"/>
         <param name="mavros_offboard_rate" value="$(arg mavros_offboard_rate)"/>
@@ -92,7 +92,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         <param name="home_pose_parent_frame" value="map"/>
         <!-- default= map -->
         <!-- Define home pose relative to global map frame -->
-        <rosparam param="home_pose">[0, 10, 0]</rosparam>        <!-- [x,y,z] -->
+        <rosparam param="home_pose">[1, 1, 0]</rosparam>        <!-- [x,y,z] -->
         <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
         <!-- <rosparam param="map_origin_geo">[37.558542, -5.931074, 7.89]</rosparam> -->        <!-- [lat,lon,alt] -->
     </node>

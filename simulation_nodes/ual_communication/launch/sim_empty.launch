@@ -35,7 +35,7 @@
     <node pkg="monitoring" type="monitoring" name="monitoring"  required="true"/>
     <!-- <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/> -->
 
-    <node pkg="tf2_ros" type="static_transform_publisher" name="tf_map_world" args="0 0 0 0 0 0 1 world map" />
+    <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="tf_map_world" args="0 0 0 0 0 0 1 world map" /> -->
 
     <!-- UAV Path Manager nodes -->
     <group ns="upat_follower">
@@ -56,15 +56,42 @@
                 <param name="light" value="$(arg light)"/>
                 <param name="sitl" value="$(arg sitl)"/>
             </node>
-            <!-- <node pkg="upat_fo$(arg pkg_name)llower" type="visualization_node" name="visualization" required="true" output="screen">
-                <param name="uav_id" value="1"/>
+            <node pkg="upat_follower" type="visualization_node" name="visualization" required="true" output="screen">
+                <param name="uav_id" value="0"/>
                 <param name="ns_prefix" value="$(arg ns_prefix)"/>
                 <param name="robot_model" value="$(arg robot_model)"/>
                 <param name="pub_rate" value="$(arg pub_rate)"/>
                 <param name="save_experiment_data" value="$(arg save_experiment_data)"/>
                 <param name="trajectory" value="$(arg trajectory)"/>
                 <param name="generator_mode" value="$(arg generator_mode)"/>
-            </node> -->
+            </node>
+        </group>
+        <group ns="$(arg ns_prefix)2">
+            <node pkg="$(arg pkg_name)" type="ualCommunication" name="ual_communication" output="screen" required="true" if="$(arg multi)">
+                <param name="uav_id" value="2"/>
+                <param name="ns_prefix" value="$(arg ns_prefix)"/>
+                <param name="save_test_data" value="$(arg save_test_data)"/>
+                <param name="trajectory" value="$(arg trajectory)"/>
+                <param name="pub_rate" value="$(arg pub_rate)"/>
+                <param name="path" value="$(arg path)"/>
+                <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
+                <param name="use_class" value="true"/>
+                <param name="generator_mode" value="$(arg generator_mode)"/>
+                <param name="debug" value="$(arg debug)"/>
+                <param name="cruising_speed" value="$(arg cruising_speed)"/>
+                <param name="look_ahead" value="$(arg look_ahead)"/>
+                <param name="light" value="$(arg light)"/>
+                <param name="sitl" value="$(arg sitl)"/>
+            </node>
+            <node pkg="upat_follower" type="visualization_node" name="visualization" required="true" output="screen">
+                <param name="uav_id" value="2"/>
+                <param name="ns_prefix" value="$(arg ns_prefix)"/>
+                <param name="robot_model" value="$(arg robot_model)"/>
+                <param name="pub_rate" value="$(arg pub_rate)"/>
+                <param name="save_experiment_data" value="$(arg save_experiment_data)"/>
+                <param name="trajectory" value="$(arg trajectory)"/>
+                <param name="generator_mode" value="$(arg generator_mode)"/>
+            </node>
         </group>
     </group>
 

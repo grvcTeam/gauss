@@ -68,7 +68,7 @@ Tester::Tester()
 
 geometry_msgs::PolygonStamped Tester::circleToPolygon(float _x, float _y, float _radius, float _nVertices){
     geometry_msgs::PolygonStamped out_polygon;
-    out_polygon.header.frame_id = "world";
+    out_polygon.header.frame_id = "map";
     Eigen::Vector2d centerToVertex(_radius, 0.0), centerToVertexTemp;
     for (int i = 0; i < _nVertices; i++) {
         double theta = i * 2 * M_PI / (_nVertices - 1);
@@ -88,7 +88,7 @@ std::vector<nav_msgs::Path> Tester::convertFlightPlans(const std::vector<gauss_m
     
     for (auto plan : _plans){
         nav_msgs::Path temp_path;
-        temp_path.header.frame_id = "world";
+        temp_path.header.frame_id = "map";
         for (auto wp : plan.waypoints){
             geometry_msgs::PoseStamped temp_pose;
             temp_pose.pose.position.x = wp.x;
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
         return false;
     }
     geometry_msgs::PolygonStamped res_polygon;
-    res_polygon.header.frame_id = "world";
+    res_polygon.header.frame_id = "map";
     if (geofence_msg.response.geofences.front().cylinder_shape){
         res_polygon = tester.circleToPolygon(geofence_msg.response.geofences.front().circle.x_center, 
                                              geofence_msg.response.geofences.front().circle.y_center,
@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 
     int change_path_to_pub = 1;
     nav_msgs::Path astar_path_1, astar_path_2, astar_path_3;
-    astar_path_1.header.frame_id = astar_path_2.header.frame_id = astar_path_3.header.frame_id = "world";
+    astar_path_1.header.frame_id = astar_path_2.header.frame_id = astar_path_3.header.frame_id = "map";
     for (auto plans : deconfliction.response.deconfliction_plans){
         for (auto wps : plans.waypoint_list){
             geometry_msgs::PoseStamped temp_pose;
@@ -194,12 +194,12 @@ int main(int argc, char *argv[])
     notification.maneuver_type = 1;
     
     // TO TEST. DELETE THIS
-    // gauss_msgs::Waypoint wp;
-    // wp.x = 5.0;
-    // wp.y = 4.0;
-    // wp.z = 1.0;
-    // wp.stamp = ros::Time(15.0);
-    // notification.waypoints.push_back(wp);
+    gauss_msgs::Waypoint wp;
+    wp.x = 5.0;
+    wp.y = 4.0;
+    wp.z = 1.0;
+    wp.stamp = ros::Time(15.0);
+    notification.waypoints.push_back(wp);
     // TO TEST. DELETE THIS
     
     for (auto i : astar_path_1.poses){
