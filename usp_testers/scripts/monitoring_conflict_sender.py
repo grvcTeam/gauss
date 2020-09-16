@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# this Python file uses the following encoding: utf-8
 '''This script is a monitoring simulator developed to send conflicts one by one'''
 import rospy
 import time
@@ -16,8 +17,8 @@ class Monitoring():
         
         # Wait until service is available and creat connection
         
-        rospy.wait_for_service('threats')         
-        self._threats_service = rospy.ServiceProxy('threats', Threats) 
+        rospy.wait_for_service('/gauss/threats')         
+        self._threats_service = rospy.ServiceProxy('/gauss/threats', Threats) 
                               
     # This method sends a subscrition to the threats.srv service.
 
@@ -35,21 +36,24 @@ class Monitoring():
         conflict = Threat()
         conflict.threat_id = conflict_id
         
+        
         if conflict_id == Threat.UAS_IN_CV:
-            self._conflicted_uas = [1]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.UAS_IN_CV
         if conflict_id == Threat.UAS_OUT_OV:
-            self._conflicted_uas = [2]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.UAS_OUT_OV
         if conflict_id == Threat.LOSS_OF_SEPARATION:
-            self._conflicted_uas = [1, 2]
+            self._conflicted_uas = [0, 1]
             self._conflict_id = Threat.LOSS_OF_SEPARATION
         if conflict_id == Threat.GEOFENCE_INTRUSION:
-            self._conflicted_uas = [3]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.GEOFENCE_INTRUSION
+            conflict.geofence_ids =[1]
         if conflict_id == Threat.GEOFENCE_CONFLICT:
-            self._conflicted_uas = [4]
+            self._conflicted_uas = [0]
             self._conflict_id = Threat.GEOFENCE_CONFLICT
+            conflict.geofence_ids =[0]
         conflict.uav_ids = self._conflicted_uas
         self._conflict_flaged.append(conflict)   
     # This method is an HMI in order to check different conflicts configurations.

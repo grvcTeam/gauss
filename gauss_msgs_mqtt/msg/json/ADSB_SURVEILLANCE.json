@@ -1,12 +1,12 @@
 {       
-      "icao": "", 
+      "icao": , 
       "callsign": "",
       "latitude":,
       "longitude": ,
       "altitude": , 
       "heading": ,
       "speed": , 
-      "timestamp": , 
+      "timestamp":  
 }
 
 

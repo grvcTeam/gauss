@@ -1,5 +1,5 @@
 {    
-	"icao": "",
+	"icao": ,
 	"latitude": ,
 	"longitude": ,
 	"altitude": ,		
@@ -8,14 +8,20 @@
 	"roll": ,
 	"groundspeed": ,					
 	"covariance_h": ,					
-	"covariance_v": ,					
-	"solution_mode": ,  				 
-	"integrity": ,					
+	"covariance_v": ,
+	"hpl": ,
+	"hal": ,
+	"hpe"; ,
+	"vpl": ,
+	"val": ,
+	"vpe": ,					
+	"solution_mode": ,  				 					
 	"timestamp": ,					
 	"jamming": ,					
-	"spoofing": ,					  
-	"gnss_anomalous_position_drift": , 
-	"gnss_signal_to_noise_ratio": , 
-	"gnss_received_power":  
+	"spoofing": ,
+	"anomalous_clock_drift": ,					  
+	"anomalous_pos_drift": , 
+	"signal_noise_ratio": , 
+	"received_power":  
 }
 
