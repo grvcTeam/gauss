@@ -93,7 +93,7 @@ DataBase::DataBase()
     size_plans=size_geofences=0;
 
     // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
-    operationsFromJson("OPERATIONS.json");
+    operationsFromJson("Operations_loss_of_separation.json");
     geofencesFromJson("UTM_GEOFENCE_CREATION.json");
 
     // Publish

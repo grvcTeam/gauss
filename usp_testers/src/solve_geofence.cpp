@@ -12,6 +12,7 @@
 #include <gauss_msgs/Deconfliction.h>
 #include <gauss_msgs/Notification.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 #include <Eigen/Eigen>
 
@@ -25,12 +26,15 @@ public:
     bool writeDB();
     ros::ServiceClient write_deconfliction_client_, read_plan_client_, read_geofence_client_;
     ros::Publisher pub_geofence_, pub_flight_plan_1_, pub_flight_plan_2_, pub_flight_plan_3_, pub_astar_plan_1_, pub_astar_plan_2_, pub_astar_plan_3_, pub_notification_;
+    ros::Subscriber sub_ual_0_pose_;
+    geometry_msgs::PoseStamped ual_0_pose_;
     geometry_msgs::PolygonStamped circleToPolygon(float _x, float _y, float _radius, float _nVertices = 9);
     std::vector<nav_msgs::Path> convertFlightPlans(const std::vector<gauss_msgs::WaypointList> &_plans);
+    bool checkDistanceLessThan(const geometry_msgs::Pose &_p1, const geometry_msgs::Pose &_p2, double &_distance);
 
 private:
     // Topic Callbacks
-    void positionReportCB(const gauss_msgs::PositionReport::ConstPtr& msg);
+    void ualPoseCB(const geometry_msgs::PoseStamped::ConstPtr &_ual_pose);
     // Service Callbacks
     // Auxilary methods
     // Auxilary variables
@@ -41,6 +45,7 @@ private:
     // Server
     // Client
 };
+
 
 // Tester Constructor
 Tester::Tester()
@@ -57,6 +62,7 @@ Tester::Tester()
     pub_astar_plan_3_ = nh_.advertise<nav_msgs::Path>("/gauss/tester/astar_plan_3", 1);
     pub_notification_ = nh_.advertise<gauss_msgs::Notification>("notification", 1);
     // Subscribe
+    sub_ual_0_pose_ = nh_.subscribe("/uav_0/ual/pose", 0, &Tester::ualPoseCB, this);
     // Server
     // Client
     write_deconfliction_client_ = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/tactical_deconfliction");
@@ -64,6 +70,10 @@ Tester::Tester()
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
 
     ROS_INFO("Started Tester node!");
+}
+
+void Tester::ualPoseCB(const geometry_msgs::PoseStamped::ConstPtr &_ual_pose) {
+    ual_0_pose_ = *_ual_pose;
 }
 
 geometry_msgs::PolygonStamped Tester::circleToPolygon(float _x, float _y, float _radius, float _nVertices){
@@ -102,6 +112,17 @@ std::vector<nav_msgs::Path> Tester::convertFlightPlans(const std::vector<gauss_m
 
 
     return out_paths;
+}
+
+bool Tester::checkDistanceLessThan(const geometry_msgs::Pose &_p1, const geometry_msgs::Pose &_p2, double &_check_distance){
+    Eigen::Vector3f p1 = Eigen::Vector3f(_p1.position.x, _p1.position.y, _p1.position.z);
+    Eigen::Vector3f p2 = Eigen::Vector3f(_p2.position.x, _p2.position.y, _p2.position.z);
+    double distance = (p2 - p1).norm();
+    if (distance > _check_distance){
+        return false;
+    } else {
+        return true;
+    }
 }
 
 // MAIN function
@@ -149,12 +170,12 @@ int main(int argc, char *argv[])
     gauss_msgs::Deconfliction deconfliction;
     // deconfliction.request.threat.geofence_ids.push_back(test_geofence_id); // Comment for -> Loss of separation
     deconfliction.request.threat.threat_id = deconfliction.request.threat.LOSS_OF_SEPARATION;
-    deconfliction.request.threat.priority_ops.push_back(1); // Uncomment for -> Loss of separation
-    deconfliction.request.threat.priority_ops.push_back(1); // Uncomment for -> Loss of separation
+    deconfliction.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
+    deconfliction.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
     deconfliction.request.threat.times.push_back(ros::Time(15.0));
     deconfliction.request.threat.times.push_back(ros::Time(15.0));
     deconfliction.request.threat.uav_ids.push_back(0);
-    deconfliction.request.threat.uav_ids.push_back(2); // Uncomment for -> Loss of separation
+    deconfliction.request.threat.uav_ids.push_back(1); // Uncomment for -> Loss of separation
     deconfliction.request.tactical = true;
 
     if (!tester.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
@@ -192,17 +213,8 @@ int main(int argc, char *argv[])
     notification.uav_id = 0;
     notification.threat.threat_id = notification.threat.LOSS_OF_SEPARATION;
     notification.maneuver_type = 1;
-    
-    // TO TEST. DELETE THIS
-    gauss_msgs::Waypoint wp;
-    wp.x = 5.0;
-    wp.y = 4.0;
-    wp.z = 1.0;
-    wp.stamp = ros::Time(15.0);
-    notification.waypoints.push_back(wp);
-    // TO TEST. DELETE THIS
-    
-    for (auto i : astar_path_1.poses){
+        
+    for (auto i : astar_path_2.poses){
         gauss_msgs::Waypoint wp;
         wp.x = i.pose.position.x;
         wp.y = i.pose.position.y;
@@ -210,6 +222,14 @@ int main(int argc, char *argv[])
         wp.stamp = i.header.stamp;
         notification.waypoints.push_back(wp);
     }
+
+    double check_distance_send_conflict = 1.0;
+    int pos_on_flight_plan_send_conflict = 1;
+    geometry_msgs::Pose wp_send_conflict;
+    wp_send_conflict.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
+    wp_send_conflict.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
+    wp_send_conflict.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
+    bool send_conflict_once = true;
 
     while(ros::ok()){
         tester.pub_flight_plan_1_.publish(res_paths.at(0));
@@ -219,9 +239,11 @@ int main(int argc, char *argv[])
         tester.pub_astar_plan_1_.publish(astar_path_1);
         tester.pub_astar_plan_2_.publish(astar_path_2);
         tester.pub_astar_plan_3_.publish(astar_path_3);
-        if (std::cin.get() == '\n'){
+        if (tester.checkDistanceLessThan(tester.ual_0_pose_.pose, wp_send_conflict, check_distance_send_conflict) && send_conflict_once){
             tester.pub_notification_.publish(notification);
-        }        
+            send_conflict_once = false;
+        }
+        
         rate.sleep();
         ros::spinOnce();
     }
