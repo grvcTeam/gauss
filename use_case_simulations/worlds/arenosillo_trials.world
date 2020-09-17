@@ -44,21 +44,21 @@
     <!-- Include human target -->
     <include>
       <uri>model://target</uri>
-      <pose>3 2 0 0 0 0</pose>
+      <pose>110 16 0 0 0 1.8</pose>
       <name>target</name>
     </include>
 
     <!-- Include human target -->
     <include>
       <uri>model://target</uri>
-      <pose>5 0 0 0 0 0</pose>
+      <pose>-275 200 0 0 0 0</pose>
       <name>target</name>
     </include>
 
     <!-- Include human target -->
     <include>
       <uri>model://target</uri>
-      <pose>-3 -2 0 0 0 0</pose>
+      <pose>-80 10 0 0 0 1.57</pose>
       <name>target</name>
     </include>
 
