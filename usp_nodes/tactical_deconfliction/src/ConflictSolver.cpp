@@ -864,6 +864,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
+            // [5] Ruta que aterrice en un landing spot
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
             temp_wp_list.maneuver_type = 5;
@@ -894,6 +895,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
+            // [5] Ruta que aterrice en un landing spot
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
             temp_wp_list.maneuver_type = 5;
