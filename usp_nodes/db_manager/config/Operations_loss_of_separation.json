@@ -262,7 +262,7 @@
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
-			"current_wp": 1,
+			"current_wp": 4,
 			"flight_plan": {
 				"waypoints": [
 					{
@@ -338,7 +338,7 @@
 						"x": 80,
 						"y": 0,
 						"z": 15.0,
-						"stamp": 30,
+						"stamp": 30.0,
 						"mandatory": 1
 					}
 				]
@@ -348,13 +348,6 @@
 				"waypoints": [
 					{
 						"x": 80,
-						"y": 0,
-						"z": 5,
-						"stamp": 22.5,
-						"mandatory": 1
-					},
-					{
-						"x": 80,
 						"y": -20,
 						"z": 5,
 						"stamp": 30.0,
@@ -362,9 +355,16 @@
 					},
 					{
 						"x": 80,
-						"y": -40,
-						"z": 5.5,
-						"stamp": 25,
+						"y": 0,
+						"z": 5,
+						"stamp": 37.5,
+						"mandatory": 1
+					},
+					{
+						"x": 80,
+						"y": 20,
+						"z": 5.0,
+						"stamp": 45.0,
 						"mandatory": 1
 					}
 				]

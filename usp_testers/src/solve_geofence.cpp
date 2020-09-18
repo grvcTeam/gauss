@@ -24,7 +24,7 @@ class Tester
 public:
     Tester();
     bool writeDB();
-    ros::ServiceClient write_deconfliction_client_, read_plan_client_, read_geofence_client_;
+    ros::ServiceClient write_deconfliction_client_, write_operation_client_, read_operation_client_, read_plan_client_, read_geofence_client_;
     ros::Publisher pub_geofence_, pub_flight_plan_1_, pub_flight_plan_2_, pub_flight_plan_3_, pub_astar_plan_1_, pub_astar_plan_2_, pub_astar_plan_3_, pub_notification_;
     ros::Subscriber sub_ual_0_pose_;
     geometry_msgs::PoseStamped ual_0_pose_;
@@ -66,6 +66,8 @@ Tester::Tester()
     // Server
     // Client
     write_deconfliction_client_ = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/tactical_deconfliction");
+    write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/write_operation");
+    read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
     read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/read_flight_plan");
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
 
@@ -180,13 +182,9 @@ int main(int argc, char *argv[])
 
     if (!tester.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
     {
-        ROS_ERROR("Call write deconfliction error");
+        ROS_ERROR("Call write deconfliction error 1");
         return false;
-    } else {
-        for (auto plan : deconfliction.response.deconfliction_plans){
-            std::cout << plan << std::endl;
-        }
-    }
+    } 
 
     int change_path_to_pub = 1;
     nav_msgs::Path astar_path_1, astar_path_2, astar_path_3;
@@ -209,10 +207,10 @@ int main(int argc, char *argv[])
         change_path_to_pub++;
     }
 
-    gauss_msgs::Notification notification;
-    notification.uav_id = 0;
-    notification.threat.threat_id = notification.threat.LOSS_OF_SEPARATION;
-    notification.maneuver_type = 1;
+    gauss_msgs::Notification notification, notification2;
+    notification.uav_id = notification2.uav_id = 0;
+    notification.threat.threat_id = notification2.threat.threat_id = notification.threat.LOSS_OF_SEPARATION;
+    notification.maneuver_type = notification2.maneuver_type = 1;
         
     for (auto i : astar_path_2.poses){
         gauss_msgs::Waypoint wp;
@@ -223,13 +221,19 @@ int main(int argc, char *argv[])
         notification.waypoints.push_back(wp);
     }
 
-    double check_distance_send_conflict = 1.0;
+    double check_distance_send_conflict = 2.0;
     int pos_on_flight_plan_send_conflict = 1;
-    geometry_msgs::Pose wp_send_conflict;
+    geometry_msgs::Pose wp_send_conflict, wp_send_conflict2;
     wp_send_conflict.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
     wp_send_conflict.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
     wp_send_conflict.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
+    pos_on_flight_plan_send_conflict = 3;
+    wp_send_conflict2.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
+    wp_send_conflict2.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
+    wp_send_conflict2.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
+
     bool send_conflict_once = true;
+    bool send_conflict_once2 = true;
 
     while(ros::ok()){
         tester.pub_flight_plan_1_.publish(res_paths.at(0));
@@ -242,6 +246,59 @@ int main(int argc, char *argv[])
         if (tester.checkDistanceLessThan(tester.ual_0_pose_.pose, wp_send_conflict, check_distance_send_conflict) && send_conflict_once){
             tester.pub_notification_.publish(notification);
             send_conflict_once = false;
+        }
+        if (tester.checkDistanceLessThan(tester.ual_0_pose_.pose, wp_send_conflict2, check_distance_send_conflict) && send_conflict_once2){
+            gauss_msgs::ReadOperation operation_read;
+            operation_read.request.uav_ids.push_back(0);
+            if (!tester.read_operation_client_.call(operation_read) || !operation_read.response.success)
+            {
+                ROS_ERROR("Failed to read an operation");
+                return false;
+            }
+            gauss_msgs::WriteOperation operation_write;
+            operation_write.request.uav_ids.push_back(0);
+            operation_write.request.operation.push_back(operation_read.response.operation.front());
+            operation_write.request.operation.front().current_wp = 3;
+            operation_write.request.operation.front().estimated_trajectory.waypoints.clear();
+            for (int i = 0; i < 3; i++){
+                gauss_msgs::Waypoint temp_wp;
+                temp_wp.x = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).x;
+                temp_wp.y = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).y;
+                temp_wp.z = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).z;
+                temp_wp.stamp = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).stamp;
+                operation_write.request.operation.front().estimated_trajectory.waypoints.push_back(temp_wp);
+            }
+            operation_write.request.operation.front().estimated_trajectory.waypoints.at(0).stamp = ros::Time(30.0); // Uncomment if using 3D path follower 
+            operation_write.request.operation.front().estimated_trajectory.waypoints.at(1).stamp = ros::Time(37.5); // Uncomment if using 3D path follower
+            operation_write.request.operation.front().estimated_trajectory.waypoints.at(2).stamp = ros::Time(45.0); // Uncomment if using 3D path follower
+            if(!tester.write_operation_client_.call(operation_write) || !operation_write.response.success){
+                ROS_ERROR("Failed to write an operation");
+                return false;
+            }
+            gauss_msgs::Deconfliction deconfliction2;
+            deconfliction2.request.threat.threat_id = deconfliction.request.threat.LOSS_OF_SEPARATION;
+            deconfliction2.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
+            deconfliction2.request.threat.priority_ops.push_back(1); // Uncomment for -> Loss of separation
+            deconfliction2.request.threat.times.push_back(ros::Time(37.5)); // If using 3D path follower 37.5 else 30.0
+            deconfliction2.request.threat.times.push_back(ros::Time(37.5));
+            deconfliction2.request.threat.uav_ids.push_back(0);
+            deconfliction2.request.threat.uav_ids.push_back(2); // Uncomment for -> Loss of separation
+            deconfliction2.request.tactical = true;
+            if (!tester.write_deconfliction_client_.call(deconfliction2) || !deconfliction2.response.success)
+            {
+                ROS_ERROR("Call write deconfliction error 2");
+                return false;
+            }
+            for (auto i : deconfliction2.response.deconfliction_plans.front().waypoint_list){
+                gauss_msgs::Waypoint wp;
+                wp.x = i.x;
+                wp.y = i.y;
+                wp.z = i.z;
+                wp.stamp = i.stamp;
+                notification2.waypoints.push_back(wp);
+            }
+            tester.pub_notification_.publish(notification2);
+            send_conflict_once2 = false;
         }
         
         rate.sleep();

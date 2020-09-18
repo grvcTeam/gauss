@@ -31,9 +31,10 @@
     </include>
 
     <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true"/>
-    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction"  required="true"/>
+    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
     <node pkg="monitoring" type="monitoring" name="monitoring"  required="true"/>
-    <node pkg="usp_testers" type="solve_geofence" name="tester_1"  required="true"/>
+    <node pkg="usp_testers" type="solve_geofence" name="tester_1" output="screen" required="true"/>
+    <node pkg="upat_follower" type="multi_uav_log_node" name="multi_uav_log" if="$(arg save_experiment_data)"/> 
     <!-- <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/> -->
 
     <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="tf_map_world" args="0 0 0 0 0 0 1 world map" /> -->
@@ -45,7 +46,7 @@
                 <param name="uav_id" value="0"/>
                 <param name="ns_prefix" value="$(arg ns_prefix)"/>
                 <param name="save_test_data" value="$(arg save_test_data)"/>
-                <param name="trajectory" value="$(arg trajectory)"/>
+                <param name="trajectory" value="false"/>
                 <param name="pub_rate" value="$(arg pub_rate)"/>
                 <param name="path" value="$(arg path)"/>
                 <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
