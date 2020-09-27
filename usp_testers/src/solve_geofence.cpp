@@ -232,8 +232,8 @@ int main(int argc, char *argv[])
     wp_send_conflict2.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
     wp_send_conflict2.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
 
-    bool send_conflict_once = true;
-    bool send_conflict_once2 = true;
+    bool send_conflict_once = true; // Send a conflict while flying for UAV 0 and UAV 1
+    bool send_conflict_once2 = false; // Send a conflict while flying for UAV 0 and UAV 2
 
     while(ros::ok()){
         tester.pub_flight_plan_1_.publish(res_paths.at(0));

@@ -46,7 +46,7 @@
                 <param name="uav_id" value="0"/>
                 <param name="ns_prefix" value="$(arg ns_prefix)"/>
                 <param name="save_test_data" value="$(arg save_test_data)"/>
-                <param name="trajectory" value="false"/>
+                <param name="trajectory" value="$(arg trajectory)"/>
                 <param name="pub_rate" value="$(arg pub_rate)"/>
                 <param name="path" value="$(arg path)"/>
                 <param name="reach_tolerance" value="$(arg reach_tolerance)"/>

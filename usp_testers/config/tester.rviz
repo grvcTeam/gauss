@@ -5,9 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /TF1
       Splitter Ratio: 0.5
-    Tree Height: 359
+    Tree Height: 775
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -33,7 +32,7 @@ Visualization Manager:
   Class: ""
   Displays:
     - Alpha: 0.5
-      Cell Size: 1
+      Cell Size: 2
       Class: rviz/Grid
       Color: 160; 160; 164
       Enabled: false
@@ -43,11 +42,11 @@ Visualization Manager:
       Name: Grid
       Normal Cell Count: 0
       Offset:
-        X: 0
+        X: 50
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 10
+      Plane Cell Count: 30
       Reference Frame: <Fixed Frame>
       Value: false
     - Class: rviz/TF
@@ -185,7 +184,7 @@ Visualization Manager:
       Head Length: 0.200000003
       Length: 0.300000012
       Line Style: Lines
-      Line Width: 0.0299999993
+      Line Width: 0.400000006
       Name: upat_generated_0
       Offset:
         X: 0
@@ -208,7 +207,7 @@ Visualization Manager:
       Head Length: 0.200000003
       Length: 0.300000012
       Line Style: Lines
-      Line Width: 0.0299999993
+      Line Width: 0.400000006
       Name: upat_generated_1
       Offset:
         X: 0
@@ -231,7 +230,7 @@ Visualization Manager:
       Head Length: 0.200000003
       Length: 0.300000012
       Line Style: Lines
-      Line Width: 0.0299999993
+      Line Width: 0.400000006
       Name: upat_generated_2
       Offset:
         X: 0
@@ -254,7 +253,7 @@ Visualization Manager:
       Head Length: 0.200000003
       Length: 0.300000012
       Line Style: Lines
-      Line Width: 0.0299999993
+      Line Width: 1
       Name: upat_current_0
       Offset:
         X: 0
@@ -277,7 +276,7 @@ Visualization Manager:
       Head Length: 0.200000003
       Length: 0.300000012
       Line Style: Lines
-      Line Width: 0.0299999993
+      Line Width: 1
       Name: upat_current_1
       Offset:
         X: 0
@@ -300,7 +299,7 @@ Visualization Manager:
       Head Length: 0.200000003
       Length: 0.300000012
       Line Style: Lines
-      Line Width: 0.0299999993
+      Line Width: 1
       Name: upat_current_2
       Offset:
         X: 0
@@ -340,7 +339,7 @@ Visualization Manager:
       Value: true
   Enabled: true
   Global Options:
-    Background Color: 48; 48; 48
+    Background Color: 60; 60; 60
     Default Light: true
     Fixed Frame: map
     Frame Rate: 30
@@ -363,25 +362,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 84.8205719
+      Distance: 87.9039841
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 50.055439
-        Y: -10.1401243
-        Z: -3.69881105
+        X: 52.5711327
+        Y: -5.84777594
+        Z: -4.17950153
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.394797444
+      Pitch: 0.589797258
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.92037034
+      Yaw: 0.940384746
     Saved: ~
 Window Geometry:
   Displays:
