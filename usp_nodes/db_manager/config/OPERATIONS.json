@@ -2,7 +2,7 @@
 	"operations": [
 		{
 			"uav_id": 0,
-			"icao_address": "1234",
+			"icao_address": "UAV0gauss2020",
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
@@ -58,15 +58,15 @@
 			"track": {
 				"waypoints": [
 					{
-						"x": 0,
+						"x": 2,
 						"y": 4.5,
 						"z": 1,
 						"stamp": 0.2,
 						"mandatory": 0
 					},
 					{
-						"x": 2.5,
-						"y": 4.4,
+						"x": 4.8,
+						"y": 5.2,
 						"z": 1,
 						"stamp": 5.2,
 						"mandatory": 0
@@ -78,7 +78,7 @@
 				"waypoints": [
 					{
 						"x": 4.8,
-						"y": 4.1,
+						"y": 5.2,
 						"z": 1,
 						"stamp": 10.1,
 						"mandatory": 0
@@ -116,22 +116,8 @@
 						"mandatory": 0
 					},
 					{
-						"x": -10,
-						"y": -10,
-						"z": 1,
-						"stamp": 1,
-						"mandatory": 0
-					},
-					{
-						"x": 6,
-						"y": -5,
-						"z": 1,
-						"stamp": 1,
-						"mandatory": 0
-					},
-					{
-						"x": 7,
-						"y": 3,
+						"x": 3,
+						"y": 2,
 						"z": 1,
 						"stamp": 1,
 						"mandatory": 0
@@ -140,11 +126,11 @@
 			},
 			"flight_geometry": 2.0,
 			"operational_volume": 1.0,
-			"conop": "conop1234"
+			"conop": "Power line inspection"
 		},
 		{
 			"uav_id": 1,
-			"icao_address": "4321",
+			"icao_address": "UAV1gauss2020",
 			"frame": "",
 			"autonomy": 20,
 			"priority": 0,
@@ -240,7 +226,7 @@
 			},
 			"flight_geometry": 1.0,
 			"operational_volume": 2.0,
-			"conop": "conop4321"
+			"conop": "Delivery package"
 		}
 	]
 }

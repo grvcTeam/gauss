@@ -5,7 +5,10 @@
 #include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/WriteTraj.h>
 #include <gauss_msgs/ReadFlightPlan.h>
+#include <gauss_msgs/ReadFlightPlanModT.h>
 #include <gauss_msgs/WriteFlightPlan.h>
+#include <gauss_msgs/ReadFlightPlanUpdated.h>
+#include <gauss_msgs/WriteFlightPlanUpdated.h>
 #include <gauss_msgs/ReadGeofences.h>
 #include <gauss_msgs/WriteGeofences.h>
 #include <gauss_msgs/Operation.h>
@@ -36,8 +39,11 @@ private:
     bool writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res);
     bool readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msgs::ReadGeofences::Response &res);
     bool writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_msgs::WriteGeofences::Response &res);
+    bool readPlanModTCB(gauss_msgs::ReadFlightPlanModT::Request &req, gauss_msgs::ReadFlightPlanModT::Response &res);
     bool readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::ReadFlightPlan::Response &res);
+    bool readPlanUpdatedCB(gauss_msgs::ReadFlightPlanUpdated::Request &req, gauss_msgs::ReadFlightPlanUpdated::Response &res);
     bool writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs::WriteFlightPlan::Response &res);
+    bool writePlanUpdatedCB(gauss_msgs::WriteFlightPlanUpdated::Request &req, gauss_msgs::WriteFlightPlanUpdated::Response &res);
     bool readTrackCB(gauss_msgs::ReadTracks::Request &req, gauss_msgs::ReadTracks::Response &res);
     bool writeTrackCB(gauss_msgs::WriteTracks::Request &req, gauss_msgs::WriteTracks::Response &res);
     bool readTrajectoryCB(gauss_msgs::ReadTraj::Request &req, gauss_msgs::ReadTraj::Response &res);
@@ -50,6 +56,7 @@ private:
     // Auxilary methods
     bool operationsFromJson(std::string _file_name);
     bool geofencesFromJson(std::string _file_name);
+    bool checkNewFlightPlan(const gauss_msgs::WaypointList &_pre_flight_plan, const gauss_msgs::WaypointList &_flight_plan);
 
     list<gauss_msgs::Operation> operation_db;
     list<gauss_msgs::Geofence> geofence_db;
@@ -65,11 +72,14 @@ private:
     // Server
     ros::ServiceServer read_operation_server_;
     ros::ServiceServer write_operation_server_;
+    ros::ServiceServer read_flight_plan_mod_t_server_;
     ros::ServiceServer read_icao_server_;
     ros::ServiceServer read_geofences_server_;
     ros::ServiceServer write_geofences_server_;
     ros::ServiceServer read_plan_server_;
+    ros::ServiceServer read_plan_updated_server_;
     ros::ServiceServer write_plan_server_;
+    ros::ServiceServer write_plan_updated_server_;
     ros::ServiceServer read_track_server_;
     ros::ServiceServer write_track_server_;
     ros::ServiceServer read_traj_server_;
@@ -102,7 +112,9 @@ DataBase::DataBase()
     read_geofences_server_=nh_.advertiseService("/gauss/read_geofences",&DataBase::readGeofenceCB,this);
     write_geofences_server_=nh_.advertiseService("/gauss/write_geofences",&DataBase::writeGeofenceCB,this);
     read_plan_server_=nh_.advertiseService("/gauss/read_flight_plan",&DataBase::readPlanCB,this);
+    read_plan_updated_server_=nh_.advertiseService("/gauss/read_flight_plan_updated",&DataBase::readPlanUpdatedCB,this);
     write_plan_server_=nh_.advertiseService("/gauss/write_flight_plan",&DataBase::writePlanCB,this);
+    write_plan_updated_server_=nh_.advertiseService("/gauss/write_flight_plan_updated",&DataBase::writePlanUpdatedCB,this);
     read_track_server_=nh_.advertiseService("/gauss/read_tracks",&DataBase::readTrackCB,this);
     write_track_server_=nh_.advertiseService("/gauss/write_tracks",&DataBase::writeTrackCB,this);
     read_traj_server_=nh_.advertiseService("/gauss/read_estimated_trajectory",&DataBase::readTrajectoryCB,this);
@@ -230,6 +242,24 @@ bool DataBase::geofencesFromJson(std::string _file_name)
     return true;
 }
 
+bool DataBase::checkNewFlightPlan(const gauss_msgs::WaypointList &_pre_flight_plan, const gauss_msgs::WaypointList &_flight_plan){
+    if (_pre_flight_plan.waypoints.size() != _flight_plan.waypoints.size()){
+        return true;
+    } else {
+        for (int i = 0; i < _pre_flight_plan.waypoints.size(); i++){
+            if (_pre_flight_plan.waypoints.at(i).x != _flight_plan.waypoints.at(i).x ||
+                _pre_flight_plan.waypoints.at(i).y != _flight_plan.waypoints.at(i).y ||
+                _pre_flight_plan.waypoints.at(i).z != _flight_plan.waypoints.at(i).z ||
+                _pre_flight_plan.waypoints.at(i).stamp != _flight_plan.waypoints.at(i).stamp ||
+                _pre_flight_plan.waypoints.at(i).mandatory != _flight_plan.waypoints.at(i).mandatory){
+                    return true;
+                }
+        }
+        return false;
+    }
+}
+
+
 // Callback
 
 bool DataBase::returnDBsizeCB(gauss_msgs::DB_size::Request &req, gauss_msgs::DB_size::Response &res)
@@ -288,16 +318,21 @@ bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_
     {
         res.success=false;
         if (operation_db.empty()){
+            req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
             operation_db.push_back(req.operation[i]);
             res.success = true;
         } else {
             for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
                 if (it->uav_id == req.uav_ids[i]){
+                    if (checkNewFlightPlan(it->flight_plan, req.operation[i].flight_plan)){
+                        req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
+                    }
                     *it = req.operation[i];
                     res.success = true;
                     break;
                 }
                 if (!res.success){
+                    req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
                     operation_db.push_back(req.operation[i]);
                     res.success = true;
                 }
@@ -364,6 +399,34 @@ bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_m
     return true;
 }
 
+bool DataBase::readPlanModTCB(gauss_msgs::ReadFlightPlanModT::Request &req, gauss_msgs::ReadFlightPlanModT::Response &res)
+{
+    std::string invalid_ids;
+    if (req.uav_ids.size() <= operation_db.size()){
+        for (int i = 0; i < req.uav_ids.size(); i++){
+            res.success = false;
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    res.success = true;
+                    res.mod_t.push_back(it->flight_plan_mod_t);
+                    res.message = "All requested flight plans mod t were returned";
+                    break;
+                }
+            }
+            if(!res.success) invalid_ids = invalid_ids + " " + std::to_string(req.uav_ids[i]); 
+        }
+        if (!invalid_ids.empty()){
+            res.success = false;
+            res.mod_t.clear();
+            res.message = "Data base does not contain requested ids:" + invalid_ids;
+        }
+    } else {
+        res.success = false;
+        res.message = "Request ids size can not be larger than operation_db size!";
+    }
+    return true;
+}
+
 bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::ReadFlightPlan::Response &res)
 {
     std::string invalid_ids;
@@ -392,7 +455,63 @@ bool DataBase::readPlanCB(gauss_msgs::ReadFlightPlan::Request &req, gauss_msgs::
     return true;
 }
 
+bool DataBase::readPlanUpdatedCB(gauss_msgs::ReadFlightPlanUpdated::Request &req, gauss_msgs::ReadFlightPlanUpdated::Response &res)
+{
+    std::string invalid_ids;
+    if (req.uav_ids.size() <= operation_db.size()){
+        for (int i = 0; i < req.uav_ids.size(); i++){
+            res.success = false;
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    res.success = true;
+                    res.plans.push_back(it->flight_plan);
+                    res.message = "All requested flight plans were returned";
+                    break;
+                }
+            }
+            if(!res.success) invalid_ids = invalid_ids + " " + std::to_string(req.uav_ids[i]); 
+        }
+        if (!invalid_ids.empty()){
+            res.success = false;
+            res.plans.clear();
+            res.message = "Data base does not contain requested ids:" + invalid_ids;
+        }
+    } else {
+        res.success = false;
+        res.message = "Request ids size can not be larger than operation_db size!";
+    }
+    return true;
+}
+
 bool DataBase::writePlanCB(gauss_msgs::WriteFlightPlan::Request &req, gauss_msgs::WriteFlightPlan::Response &res)
+{
+    std::string message = "";
+    for (int i = 0; i < req.uav_ids.size(); i++)
+    {
+        res.success=false;
+        if (operation_db.empty()){
+            message = "Data base has zero operations";
+        } else {
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    it->flight_plan = req.plans[i];
+                    message = "All requested plans were written on the DataBase";
+                    res.success = true;
+                    break;
+                }
+                if (!res.success){
+                    message = "Data base does not contain requested id [" + std::to_string(req.uav_ids[i]) + "]"; 
+                    res.success = false;
+                }
+            }
+        }
+    }
+    size_plans = operation_db.size();
+    res.message = message;
+    return true;
+}
+
+bool DataBase::writePlanUpdatedCB(gauss_msgs::WriteFlightPlanUpdated::Request &req, gauss_msgs::WriteFlightPlanUpdated::Response &res)
 {
     std::string message = "";
     for (int i = 0; i < req.uav_ids.size(); i++)
