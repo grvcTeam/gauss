@@ -27,7 +27,7 @@ class MissionLoader():
         '''TAKE OFF POSE'''
         take_off_phase = MissionElement()
         take_off_phase.type = MissionElement.TAKEOFF_POSE
-        take_off_phase.waypoints = [PoseStamped(header_map,Pose(Point(0,100,50),Quaternion(0,0,0,1)))]        
+        take_off_phase.waypoints = [PoseStamped(header_map,Pose(Point(100,0,10),Quaternion(0,0,0,1)))]        
         take_off_phase.params = self.dictToListOfParamFloat({"minimum_pitch": 0.0})
         wps.append(take_off_phase)
 
