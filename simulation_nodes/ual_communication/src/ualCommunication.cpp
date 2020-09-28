@@ -21,15 +21,26 @@
 #include <gauss_msgs/ReadFlightPlan.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/Notification.h>
+#include <gauss_msgs/PositionReport.h>
 
 int uav_id_;
 bool new_notification_ = false;
 gauss_msgs::Notification notification_;
 uav_abstraction_layer::State ual_state_;
+geometry_msgs::PoseStamped ual_pose_;
+geometry_msgs::TwistStamped ual_vel_;
 ros::ServiceClient read_operation_client_;
 
 void ualStateCb(const uav_abstraction_layer::State msg) {
     ual_state_.state = msg.state;
+}
+
+void ualPoseCb(const geometry_msgs::PoseStamped msg) {
+    ual_pose_ = msg;
+}
+
+void ualVelocityCb(const geometry_msgs::TwistStamped msg) {
+    ual_vel_ = msg;
 }
 
 void notificationCb(const gauss_msgs::Notification msg) {
@@ -195,6 +206,24 @@ gauss_msgs::Operation getOperation(const int &_uav_id){
     return out_operation;
 }
 
+gauss_msgs::PositionReport updatePositionReport(gauss_msgs::PositionReport &_position_report){
+    // _position_report.confidence = ?
+    _position_report.header = ual_pose_.header;
+    // _position_report.heading = ?
+    // _position_report.icao_address = ?
+    _position_report.position.x = ual_pose_.pose.position.x;
+    _position_report.position.y = ual_pose_.pose.position.y;
+    _position_report.position.z = ual_pose_.pose.position.z;
+    _position_report.position.stamp = ual_pose_.header.stamp; // ?
+    _position_report.position.mandatory = 0; // ?
+    _position_report.speed = sqrt(ual_vel_.twist.linear.x * ual_vel_.twist.linear.x + 
+                                    ual_vel_.twist.linear.y * ual_vel_.twist.linear.y + 
+                                    ual_vel_.twist.linear.z * ual_vel_.twist.linear.z);
+    // _position_report.source == ?
+    _position_report.uav_id = uav_id_;
+    return _position_report;
+}
+
 int main(int _argc, char **_argv) {
     ros::init(_argc, _argv, "ualCommunication_node");
 
@@ -209,7 +238,11 @@ int main(int _argc, char **_argv) {
     ros::Rate rate(pub_rate);   
     ros::NodeHandle nh;
     ros::Subscriber sub_state_ = nh.subscribe("/" + ns_prefix + std::to_string(uav_id_) + "/ual/state", 0, ualStateCb);
+    ros::Subscriber sub_pose_ = nh.subscribe("/" + ns_prefix + std::to_string(uav_id_) + "/ual/pose", 0, ualPoseCb);
+    ros::Subscriber sub_vel_ = nh.subscribe("/" + ns_prefix + std::to_string(uav_id_) + "/ual/velocity", 0, ualVelocityCb);
     ros::Subscriber sub_notification_ = nh.subscribe("/notification", 0, notificationCb);
+    ros::Publisher pub_position_report_ = nh.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
+
     read_operation_client_ = nh.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
 
     // Let UAL and MAVROS get ready
@@ -255,6 +288,7 @@ int main(int _argc, char **_argv) {
     ual_communication.times_ = res_times;
     
     bool once = false;
+    gauss_msgs::PositionReport position_report;
     while (ros::ok()) {
         ual_communication.runMission();
         ual_communication.callVisualization();
@@ -276,6 +310,9 @@ int main(int _argc, char **_argv) {
 
             new_notification_ = false;
         }
+
+        pub_position_report_.publish(updatePositionReport(position_report));
+
         ros::spinOnce();
         rate.sleep();
     }

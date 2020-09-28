@@ -71,6 +71,7 @@ find_package(catkin REQUIRED COMPONENTS
    FILES
    Deconfliction.srv
    FlightPlanReq.srv
+   ReadFlightPlanModT.srv
    ReadFlightPlan.srv
    WriteFlightPlan.srv
    ReadFlightPlanUpdated.srv

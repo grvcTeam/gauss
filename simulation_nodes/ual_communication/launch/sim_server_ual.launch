@@ -42,21 +42,32 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
     <!-- Launch robot id=1 -->
     <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="$(arg ns_prefix)0">
         <arg name="id" value="1"/>
-        <arg name="material" value="Blue"/>
+        <arg name="material" value="Red"/>
         <arg name="mode" value="$(arg mode)"/>
-        <arg name="x" value="1"/>
-        <arg name="y" value="4"/>
+        <arg name="x" value="0"/>
+        <arg name="y" value="0"/>
         <arg name="z" value="0"/>
         <arg name="yaw" value="0"/>
         <arg name="robot_model" value="$(arg robot_model)"/>
     </include>
     <!-- Launch robot id=2 -->
+    <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="$(arg ns_prefix)1" if="$(arg multi)">
+        <arg name="id" value="2"/>
+        <arg name="material" value="Blue"/>
+        <arg name="mode" value="$(arg mode)"/>
+        <arg name="x" value="40"/>
+        <arg name="y" value="40"/>
+        <arg name="z" value="0"/>
+        <arg name="yaw" value="0"/>
+        <arg name="robot_model" value="$(arg robot_model)"/>
+    </include>
+    <!-- Launch robot id=3 -->
     <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="$(arg ns_prefix)2" if="$(arg multi)">
         <arg name="id" value="3"/>
         <arg name="material" value="Green"/>
         <arg name="mode" value="$(arg mode)"/>
-        <arg name="x" value="1"/>
-        <arg name="y" value="1"/>
+        <arg name="x" value="80"/>
+        <arg name="y" value="-100"/>
         <arg name="z" value="0"/>
         <arg name="yaw" value="0"/>
         <arg name="robot_model" value="$(arg robot_model)"/>
@@ -75,7 +86,24 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         <param name="home_pose_parent_frame" value="map"/>
         <!-- default= map -->
         <!-- Define home pose relative to global map frame -->
-        <rosparam param="home_pose">[1, 4, 0]</rosparam>        <!-- [x,y,z] -->
+        <rosparam param="home_pose">[0, 0, 0]</rosparam>        <!-- [x,y,z] -->
+        <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
+        <!-- <rosparam param="map_origin_geo">[37.558542, -5.931074, 7.89]</rosparam> -->        <!-- [lat,lon,alt] -->
+    </node>
+    <!-- Launch UAL server for uav id=1 -->
+    <node pkg="ual_backend_mavros" type="ual_backend_mavros_server" name="ual" ns="$(arg ns_prefix)1" output="screen" if="$(arg multi)">
+        <param name="uav_id" value="1"/>
+        <param name="ual_server" value="$(arg ual_server)"/>
+        <param name="ual_pub_rate" value="$(arg ual_pub_rate)"/>
+        <param name="mavros_offboard_rate" value="$(arg mavros_offboard_rate)"/>
+        <param name="position_th" value="$(arg position_th)"/>
+        <param name="orientation_th" value="$(arg orientation_th)"/>
+        <param name="hold_pose_time" value="$(arg hold_pose_time)"/>
+        <param name="pose_frame_id" value="$(arg pose_frame_id)"/>
+        <param name="home_pose_parent_frame" value="map"/>
+        <!-- default= map -->
+        <!-- Define home pose relative to global map frame -->
+        <rosparam param="home_pose">[40, 40, 0]</rosparam>        <!-- [x,y,z] -->
         <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
         <!-- <rosparam param="map_origin_geo">[37.558542, -5.931074, 7.89]</rosparam> -->        <!-- [lat,lon,alt] -->
     </node>
@@ -92,7 +120,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         <param name="home_pose_parent_frame" value="map"/>
         <!-- default= map -->
         <!-- Define home pose relative to global map frame -->
-        <rosparam param="home_pose">[1, 1, 0]</rosparam>        <!-- [x,y,z] -->
+        <rosparam param="home_pose">[80, -100, 0]</rosparam>        <!-- [x,y,z] -->
         <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
         <!-- <rosparam param="map_origin_geo">[37.558542, -5.931074, 7.89]</rosparam> -->        <!-- [lat,lon,alt] -->
     </node>
