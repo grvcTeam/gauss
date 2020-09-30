@@ -70,7 +70,7 @@
       </model>
     </state>
 
-    <!--model name='WT_tower'>
+    <model name='WT_tower'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -106,7 +106,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>500 400 20 0 -0 0</pose>
+      <pose frame=''>500 450 20 0 -0 0</pose>
     </model>
 
     <model name='WT_engine'>
@@ -143,7 +143,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>500 400 42.5 0 1.57 0</pose>
+      <pose frame=''>500 450 42.5 0 1.57 0</pose>
     </model>
 
     <model name='WT_blade_center'>
@@ -180,7 +180,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>505 400 42.5 0 1.57 0</pose>
+      <pose frame=''>505 450 42.5 0 1.57 0</pose>
     </model>
 
     <model name='WT_blade_1'>
@@ -217,7 +217,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>505 400 40 2.0944 -0 0</pose>
+      <pose frame=''>505 450 27.5 0 -0 0</pose>
     </model>
 
     <model name='WT_blade_2'>
@@ -254,7 +254,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>505 413 50 -2.0944 -0 0</pose>
+      <pose frame=''>505 463 50 2.0944 -0 0</pose>
     </model>
 
     <model name='WT_blade_3'>
@@ -291,10 +291,10 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>505 387 50 -2.0944 0 0</pose>
-    </model!-->
+      <pose frame=''>505 437 50 -2.0944 0 0</pose>
+    </model>
     
-    <!--model name='PL_base_1'>
+    <model name='PL_base_1'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
@@ -330,7 +330,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>-800 100 15 0 -0 0</pose>
+      <pose frame=''>-800 550 15 0 -0 0</pose>
     </model>
     
     <model name='PL_wire1_1_2'>
@@ -369,7 +369,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>-600 101.5 25 3.14159 1.57079 3.14159</pose>
+      <pose frame=''>-600 551.5 25 3.14159 1.57079 3.14159</pose>
     </model>
     
     <model name='PL_wire2_1_2'>
@@ -408,7 +408,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>-600 98.5 25 3.14159 1.57079 3.14159</pose>
+      <pose frame=''>-600 548.5 25 3.14159 1.57079 3.14159</pose>
     </model>
     
     <model name='PL_base_2'>
@@ -447,7 +447,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>-400 100 15 0 -0 0</pose>
+      <pose frame=''>-400 550 15 0 -0 0</pose>
     </model>
     
     <model name='PL_wire1_2_3'>
@@ -486,7 +486,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>-200 101.5 25 3.14159 1.57079 3.14159</pose>
+      <pose frame=''>-200 551.5 25 3.14159 1.57079 3.14159</pose>
     </model>
     
     <model name='PL_wire2_2_3'>
@@ -525,7 +525,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>-200 98.5 25 3.14159 1.57079 3.14159</pose>
+      <pose frame=''>-200 548.5 25 3.14159 1.57079 3.14159</pose>
     </model>
     
     <model name='PL_base_3'>
@@ -564,7 +564,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>0 100 15 0 -0 0.302885</pose>
+      <pose frame=''>0 550 15 0 -0 0.302885</pose>
     </model>
     
     <model name='PL_wire1_3_4'>
@@ -595,7 +595,7 @@
           <geometry>
             <cylinder>
               <radius>0.15</radius>
-              <length>400</length>
+              <length>382</length>
             </cylinder>
           </geometry>
         </visual>
@@ -603,7 +603,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>190.449 161.087 25 3.14159 1.57079 -2.83871</pose>
+      <pose frame=''>189.5 576.25 25 3.14159 1.57079 -3.012</pose>
     </model>
     
     <model name='PL_wire2_3_4'>
@@ -634,7 +634,7 @@
           <geometry>
             <cylinder>
               <radius>0.15</radius>
-              <length>400</length>
+              <length>382</length>
             </cylinder>
           </geometry>
         </visual>
@@ -642,7 +642,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>191.343 158.223 25 3.14159 1.57079 -2.83871</pose>
+      <pose frame=''>189.5 573.25 25 3.14159 1.57079 -3.012</pose>
     </model>
     
     <model name='PL_base_4'>
@@ -681,7 +681,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>381.792 219.31 15 0 -0 0.302885</pose>
+      <pose frame=''>379 599.4 15 0 -0 0.302885</pose>
     </model>
     
     <model name='PL_wire1_4_5'>
@@ -720,7 +720,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>572.241 280.397 25 3.14159 1.57079 -2.83871</pose>
+      <pose frame=''>572.241 652.75 25 3.14159 1.57079 -2.88</pose>
     </model>
     
     <model name='PL_wire2_4_5'>
@@ -759,7 +759,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>573.135 277.533 25 3.14159 1.57079 -2.83871</pose>
+      <pose frame=''>573.135 649.75 25 3.14159 1.57079 -2.88</pose>
     </model>
     
     <model name='PL_base_5'>
@@ -798,8 +798,8 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>763.584 338.62 15 0 -0 0.302885</pose>
-    </model!-->
+      <pose frame=''>765 702.75 15 0 -0 0.302885</pose>
+    </model>
 
     <model name='Crop_Field'>
       <static>1</static>
