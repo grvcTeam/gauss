@@ -62,10 +62,12 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
         switch (_maneuver_type)
         {
         case 1: // Ruta a mi destino evitando una geofence
+            ROS_WARN("1");
             merge_to_the_end = true;
             flight_plan_section = 0;
             break;
         case 3: // Ruta que me manda devuelta a casa
+            ROS_WARN("3");
             merge_to_the_end = false;
             flight_plan_section = 2; 
             break;
