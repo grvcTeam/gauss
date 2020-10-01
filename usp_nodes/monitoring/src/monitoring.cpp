@@ -433,7 +433,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                         }
                                         gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation[0].estimated_trajectory;
 
-                                        double minDistAux=min(minDist,operation.operational_volume+msg_op2.response.operation[0].operational_volume);
+                                        double minDistAux=max(minDist,operation.operational_volume+msg_op2.response.operation[0].operational_volume);
 
 
                                         if (sqrt(pow(trajectory.waypoints.at(j).x-trajectory2.waypoints.at(*it_wp).x,2)+

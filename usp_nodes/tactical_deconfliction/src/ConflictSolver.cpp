@@ -442,7 +442,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 k++;
             wp2=traj2.waypoints.at(k);
 
-            double minDistAux=min(minDist,op_msg.response.operation.at(0).operational_volume+op_msg.response.operation.at(1).operational_volume);
+            double minDistAux=max(minDist,op_msg.response.operation.at(0).operational_volume+op_msg.response.operation.at(1).operational_volume);
 
             double dist_vert=abs(wp2.z-wp1.z);
             double dist_hor=sqrt(pow(wp2.x-wp1.x,2)+pow(wp2.y-wp1.y,2));
