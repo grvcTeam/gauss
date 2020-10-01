@@ -415,18 +415,30 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                 {
                                     if (*it != i)
                                     {
-                                        gauss_msgs::ReadTraj msg_traj2;
+                                       /* gauss_msgs::ReadTraj msg_traj2;
                                         msg_traj2.request.uav_ids.push_back(*it);
                                         if(!(read_trajectory_client_.call(msg_traj2)) || !(msg_traj2.response.success))
                                         {
                                             ROS_ERROR("Failed to read a trajectory");
                                             return;
+                                        }*/
+                                        //gauss_msgs::WaypointList trajectory2 = msg_traj2.response.tracks[0];
+
+                                        gauss_msgs::ReadOperation msg_op2;
+                                        msg_op2.request.uav_ids.push_back(*it);
+                                        if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
+                                        {
+                                            ROS_ERROR("Failed to read an operation");
+                                            return;
                                         }
-                                        gauss_msgs::WaypointList trajectory2 = msg_traj2.response.tracks[0];
+                                        gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation[0].estimated_trajectory;
+
+                                        double minDistAux=min(minDist,operation.operational_volume+msg_op2.response.operation[0].operational_volume);
+
 
                                         if (sqrt(pow(trajectory.waypoints.at(j).x-trajectory2.waypoints.at(*it_wp).x,2)+
                                                  pow(trajectory.waypoints.at(j).y-trajectory2.waypoints.at(*it_wp).y,2)+
-                                                 pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDist &&
+                                                 pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDistAux &&
                                                 abs(trajectory.waypoints.at(j).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
                                         {
                                             gauss_msgs::Threat threat;
