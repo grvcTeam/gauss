@@ -137,8 +137,6 @@ int main(int argc, char *argv[])
     int test_uav_id = 0;
     gauss_msgs::ReadFlightPlan plan_msg;
     plan_msg.request.uav_ids.push_back(0);
-    plan_msg.request.uav_ids.push_back(1);
-    plan_msg.request.uav_ids.push_back(2);
     if (!tester.read_plan_client_.call(plan_msg) || !plan_msg.response.success)
     {
         ROS_ERROR("Failed to read a flight plan");
@@ -183,6 +181,7 @@ int main(int argc, char *argv[])
         return false;
     } 
 
+
     int change_path_to_pub = 1;
     nav_msgs::Path astar_path_1, astar_path_2, astar_path_3;
     astar_path_1.header.frame_id = astar_path_2.header.frame_id = astar_path_3.header.frame_id = "map";
@@ -218,8 +217,9 @@ int main(int argc, char *argv[])
         notification.waypoints.push_back(wp);
     }
 
+
     double check_distance_send_conflict = 1.0;
-    int pos_on_flight_plan_send_conflict = 0;
+    int pos_on_flight_plan_send_conflict = 1;
     geometry_msgs::Pose wp_send_conflict, wp_send_conflict2;
     wp_send_conflict.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
     wp_send_conflict.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
@@ -229,8 +229,6 @@ int main(int argc, char *argv[])
 
     while(ros::ok()){
         tester.pub_flight_plan_1_.publish(res_paths.at(0));
-        tester.pub_flight_plan_2_.publish(res_paths.at(1));
-        tester.pub_flight_plan_3_.publish(res_paths.at(2));
         tester.pub_geofence_.publish(res_polygon);
         tester.pub_astar_plan_1_.publish(astar_path_1);
         tester.pub_astar_plan_2_.publish(astar_path_2);

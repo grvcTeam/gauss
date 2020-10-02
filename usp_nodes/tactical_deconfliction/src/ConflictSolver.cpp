@@ -211,7 +211,7 @@ geometry_msgs::Point ConflictSolver::findGoalAStarPoint(geometry_msgs::Polygon &
         }
     }
 
-    if (out_point.x == 0.0 || out_point.y == 0.0) {
+    if (out_point.x == 0.0 && out_point.y == 0.0) {
         out_point.x = _path.poses.back().pose.position.x;
         out_point.y = _path.poses.back().pose.position.y;
         out_point.z = _path.poses.back().pose.position.z;
@@ -678,13 +678,14 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
             int init_astar_pos, goal_astar_pos;
             geometry_msgs::Polygon polygon_test_input = res_polygon;
-            polygon_test_input.points.push_back(polygon_test_input.points.front());
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_input.points.push_back(polygon_test_input.points.front());
+            }
             geometry_msgs::Polygon polygon_test_output;
             decreasePolygon(polygon_test_input, -operation_msg.response.operation.front().operational_volume, polygon_test_output);
-            for (auto i : polygon_test_input.points) std::cout << i << std::endl;
-            std::cout << "---------------------------------" << std::endl;
-            for (auto i : polygon_test_output.points) std::cout << i << std::endl;
-            polygon_test_output.points.pop_back();
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_output.points.pop_back();
+            }
             init_astar_point = findInitAStarPoint(polygon_test_output, res_path, init_astar_pos);
             goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
             std::cout << "init: " << init_astar_point << " | goal: " << goal_astar_point << std::endl;
@@ -797,19 +798,28 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
             p_min_distance = Eigen::Vector2f(min_distance_coordinate.first.front(), min_distance_coordinate.first.back()); 
             unit_vec = (p_min_distance - p_conflict) / (p_min_distance - p_conflict).norm();
-            double safety_distance = 1.0;
+            double safety_distance = operation_msg.response.operation.front().operational_volume * 2;
             v_out_polygon = unit_vec * safety_distance;
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
             init_astar_point.x = min_distance_coordinate.first.front() + v_out_polygon(0);
             init_astar_point.y = min_distance_coordinate.first.back() + v_out_polygon(1);
+            geometry_msgs::Polygon polygon_test_input = res_polygon;
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_input.points.push_back(polygon_test_input.points.front());
+            }
+            geometry_msgs::Polygon polygon_test_output;
+            decreasePolygon(polygon_test_input, -operation_msg.response.operation.front().operational_volume, polygon_test_output);
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_output.points.pop_back();
+            }
             int init_astar_pos, goal_astar_pos;
-            goal_astar_point = findGoalAStarPoint(res_polygon, res_path, goal_astar_pos);
-            std::vector<double> grid_borders = findGridBorders(res_polygon, res_path, init_astar_point, goal_astar_point);
+            goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
+            std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
             min_grid_point.x = grid_borders[0];
             min_grid_point.y = grid_borders[1];
             max_grid_point.x = grid_borders[2];
             max_grid_point.y = grid_borders[3];
-            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, res_polygon, min_grid_point, max_grid_point);
+            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
