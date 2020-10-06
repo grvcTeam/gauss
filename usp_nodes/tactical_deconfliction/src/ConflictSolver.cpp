@@ -11,6 +11,8 @@
 #include <tactical_deconfliction/path_finder.h>
 #include <Eigen/Eigen>
 
+using namespace std;
+
 // Class definition
 class ConflictSolver
 {
@@ -406,7 +408,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
 
         if (req.threat.threat_id==req.threat.LOSS_OF_SEPARATION)
         {
-            gauss_msgs::ReadTraj traj_msg;
+           /* gauss_msgs::ReadTraj traj_msg;
             traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
             traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
             if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
@@ -416,7 +418,19 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 return false;
             }
             gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
-            gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);
+            gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);*/
+
+            gauss_msgs::ReadOperation op_msg;
+            op_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
+            op_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
+            if (!read_operation_client_.call(op_msg) || !op_msg.response.success)
+            {
+                ROS_ERROR("Failed to read a operation");
+                res.success=false;
+                return false;
+            }
+            gauss_msgs::WaypointList traj1=op_msg.response.operation.at(0).estimated_trajectory;
+            gauss_msgs::WaypointList traj2=op_msg.response.operation.at(1).estimated_trajectory;
 
             gauss_msgs::Waypoint wp1,wp2;
             int j=0;
@@ -428,10 +442,12 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 k++;
             wp2=traj2.waypoints.at(k);
 
+            double minDistAux=max(minDist,op_msg.response.operation.at(0).operational_volume+op_msg.response.operation.at(1).operational_volume);
+
             double dist_vert=abs(wp2.z-wp1.z);
             double dist_hor=sqrt(pow(wp2.x-wp1.x,2)+pow(wp2.y-wp1.y,2));
-            double sep_vert=sqrt(pow(minDist,2)-pow(dist_hor,2));
-            double sep_hor=sqrt(pow(minDist,2)-pow(dist_vert,2));
+            double sep_vert=sqrt(pow(minDistAux,2)-pow(dist_hor,2));
+            double sep_hor=sqrt(pow(minDistAux,2)-pow(dist_vert,2));
             gauss_msgs::DeconflictionPlan newplan;
             gauss_msgs::Waypoint newwp;
             newplan.maneuver_type=8; // defined in https://docs.google.com/document/d/1R5jWSw4pyPyplHwwrQCDprIUkMimVz-yR8u_t19ooOA/edit
