@@ -22,10 +22,10 @@
     <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="ATLANTIC">
         <arg name="id" value="1"/>
         <arg name="material" value="Orange"/>
-        <arg name="x" value="110"/>
-        <arg name="y" value="20"/>
+        <arg name="x" value="0"/>
+        <arg name="y" value="0"/>
         <arg name="z" value="0"/>
-        <arg name="yaw" value="2.5"/>
+        <arg name="yaw" value="0"/>
         <arg name="robot_model" value="plane"/>
     </include>
 
@@ -74,7 +74,7 @@
         <param name="pose_frame_id" value="$(arg pose_frame_id)"/>
         <param name="home_pose_parent_frame" value="map"/>
         <!-- Define home pose relative to global map frame -->
-        <rosparam param="home_pose">[110, 20, 0]</rosparam><!-- [x,y,z] -->
+        <rosparam param="home_pose">[0, 0, 0]</rosparam><!-- [x,y,z] -->
         <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
         <rosparam param="map_origin_geo">[37.0947222, 6.7311111, 40]</rosparam><!-- [lat,lon,alt] -->
         <rosparam param="mission/aux_distance"> 100.0</rosparam>
@@ -114,7 +114,7 @@
         <rosparam param="mission/pass_acceptance_radius"> 30.0</rosparam>
     </node!-->
 
-    <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 -150 0 0 0 0 map aux 100" />
+    <!--node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 -150 0 0 0 0 map aux 100" /!-->
 
     <!-- Launch UAL server for drone id=3 -->
     <node pkg="ual_backend_mavros" type="ual_backend_mavros_server" name="ual" output="screen" ns="M600_1">

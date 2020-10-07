@@ -801,13 +801,13 @@
       <pose frame=''>765 702.75 15 0 -0 0.302885</pose>
     </model>
 
-    <model name='Crop_Field'>
+    <model name='NDZ_campsite'>
       <static>1</static>
       <link name='link'>
         <collision name='collision'>
           <geometry>
             <box>
-              <size>420 250 10</size>
+              <size>1000 200 150</size>
             </box>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -836,30 +836,33 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>600 75 0 0 0 1.135</pose>
+      <pose frame=''>600 75 75 0 0 1.135</pose>
     </model>
-    
-    <!--model name='Geofence_0'>
-      <static>1</static>
-      <link name='link'>
-        <visual name='visual'>
-          <transparency>0.5</transparency>
-          <geometry>
-            <box>
-              <size>4 3 10</size>
-            </box>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <kinematic>0</kinematic>
-        <gravity>1</gravity>
-      </link>
-      <pose frame=''>6 4.5 5 0 0 0</pose>
-    </model-->
 
     <model name='Geofence_1'>
       <static>1</static>
       <link name='link'>
+        <collision name='collision'>
+          <geometry>
+            <cylinder>
+              <radius>50</radius>
+              <length>150</length>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
         <visual name='visual'>
           <transparency>0.75</transparency>
           <geometry>
@@ -873,7 +876,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
       </link>
-      <pose frame=''>-80 -120 0 0 0 0</pose>
+      <pose frame=''>-80 -120 75 0 0 0</pose>
     </model>          
   </world>
 </sdf>

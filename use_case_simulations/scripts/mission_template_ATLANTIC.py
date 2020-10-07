@@ -31,22 +31,22 @@ class MissionLoader():
         take_off_phase.params = self.dictToListOfParamFloat({"minimum_pitch": 0.0})
         wps.append(take_off_phase)
 
-        '''PASS'''
-        pass_phase = MissionElement()
-        pass_phase.type = MissionElement.PASS
-        pass_phase.waypoints = [PoseStamped(header_map,Pose(Point(100,150,80),Quaternion(0,0,0,1)))]
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(200,0,80),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(100,-150,80),Quaternion(0,0,0,1))))
-        pass_phase.params = self.dictToListOfParamFloat({"acceptance_radius": 10.0,"orbit_distance": 0.0, "speed" : 10.0})
-        wps.append(pass_phase)
+        #'''PASS'''
+        #pass_phase = MissionElement()
+        #pass_phase.type = MissionElement.PASS
+        #pass_phase.waypoints = [PoseStamped(header_map,Pose(Point(100,150,80),Quaternion(0,0,0,1)))]
+        #pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(200,0,80),Quaternion(0,0,0,1))))
+        #pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(100,-150,80),Quaternion(0,0,0,1))))
+        #pass_phase.params = self.dictToListOfParamFloat({"acceptance_radius": 10.0,"orbit_distance": 0.0, "speed" : 10.0})
+        #wps.append(pass_phase)
 
-        '''LOITER HEIGHT'''
-        loiter_height_phase = MissionElement()
-        loiter_height_phase.type = MissionElement.LOITER_HEIGHT
-        loiter_height_phase.waypoints = [PoseStamped(header_map,Pose(Point(100,-150,80),Quaternion(0,0,0,1)))]
-        loiter_height_phase.waypoints.append(PoseStamped(header_map,Pose(Point(100,-150,30),Quaternion(0,0,0,1))))     
-        loiter_height_phase.params = self.dictToListOfParamFloat({"heading": 0.0,"radius": 10.0, "forward_moving" : 1.0})
-        wps.append(loiter_height_phase)
+        #'''LOITER HEIGHT'''
+        #loiter_height_phase = MissionElement()
+        #loiter_height_phase.type = MissionElement.LOITER_HEIGHT
+        #loiter_height_phase.waypoints = [PoseStamped(header_map,Pose(Point(100,-150,80),Quaternion(0,0,0,1)))]
+        #loiter_height_phase.waypoints.append(PoseStamped(header_map,Pose(Point(100,-150,30),Quaternion(0,0,0,1))))     
+        #loiter_height_phase.params = self.dictToListOfParamFloat({"heading": 0.0,"radius": 10.0, "forward_moving" : 1.0})
+        #wps.append(loiter_height_phase)
 
         '''LAND POSE'''
         landing_phase = MissionElement()

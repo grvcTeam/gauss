@@ -13,8 +13,8 @@ class MissionLoader():
        
         # Wait until service is available and creat connection
         
-        rospy.wait_for_service('/ual/set_mission')         
-        self._setmission_service = rospy.ServiceProxy('/ual/set_mission', SetMission) 
+        rospy.wait_for_service('ATLANTIC/ual/set_mission')         
+        self._setmission_service = rospy.ServiceProxy('ATLANTIC/ual/set_mission', SetMission) 
         
         mission_wps = self.define_mission()
         self.send_mission(mission_wps)
@@ -34,16 +34,16 @@ class MissionLoader():
         '''PASS'''
         pass_phase = MissionElement()
         pass_phase.type = MissionElement.PASS
-        pass_phase.waypoints = [PoseStamped(header_map,Pose(Point(-900,0,35),Quaternion(0,0,0,1)))]
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-800,115,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-600,115,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-400,105,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-200,105,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(0,100,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(190.449,155,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(381.792,210,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(572.241,270,35),Quaternion(0,0,0,1))))
-        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(763.584,338.62,35),Quaternion(0,0,0,1))))
+        pass_phase.waypoints = [PoseStamped(header_map,Pose(Point(-900,400,35),Quaternion(0,0,0,1)))]
+        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-800,550,35),Quaternion(0,0,0,1))))
+        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(-400,555,35),Quaternion(0,0,0,1))))
+        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(0,550,35),Quaternion(0,0,0,1))))
+        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(379,599.4,35),Quaternion(0,0,0,1))))
+        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(765,702.75,35),Quaternion(0,0,0,1))))
+        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(500,700,35),Quaternion(0,0,0,1))))
+        pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(100,100,35),Quaternion(0,0,0,1))))
+        #pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(572.241,270,35),Quaternion(0,0,0,1))))
+        #pass_phase.waypoints.append(PoseStamped(header_map,Pose(Point(763.584,338.62,35),Quaternion(0,0,0,1))))
         pass_phase.params = self.dictToListOfParamFloat({"acceptance_radius": 10.0,"orbit_distance": 0.0, "speed" : 20.0})
         wps.append(pass_phase)
 

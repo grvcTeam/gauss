@@ -1,0 +1,15 @@
+<!-- Launch for UAVs operations in the gauss-utm-->
+<launch>
+
+	<arg name="rate" default="0.5" />
+
+	<node pkg="use_case_simulations" type="track_waypoints_M600_1.py" name="M600_delivery_medical_supply" output="screen">
+	</node>
+
+	<node pkg="use_case_simulations" type="track_waypoints_M600_2.py" name="M600_beach_monitoring" output="screen">
+	</node>
+
+	<node pkg="use_case_simulations" type="PL_inspection_mission.py" name="ATLANTIC_PL_inspection" output="screen">
+	</node>
+
+</launch>
