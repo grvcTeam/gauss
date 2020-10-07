@@ -37,6 +37,9 @@ private:
     double pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2);
     double minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &_wp_list, geometry_msgs::Polygon &_polygon);
     double calculateRiskiness(gauss_msgs::DeconflictionPlan newplan);
+    void decreasePolygon(const geometry_msgs::Polygon &p, double thickness, geometry_msgs::Polygon &q);
+    double signedArea(const geometry_msgs::Polygon &p);
+
     // Auxilary variables
     double rate;
     double minDist,dT;
@@ -105,6 +108,66 @@ int ConflictSolver::pnpoly(int nvert, std::vector<float> &vertx, std::vector<flo
     return c;
 }
 
+double ConflictSolver::signedArea(const geometry_msgs::Polygon &p){
+   double A = 0;
+   //========================================================//
+   // Assumes:                                               //
+   //    N+1 vertices:   p[0], p[1], ... , p[N-1], p[N]      //
+   //    Closed polygon: p[0] = p[N]                         //
+   // Returns:                                               //
+   //    Signed area: +ve if anticlockwise, -ve if clockwise //
+   //========================================================//
+   int N = p.points.size() - 1;
+   for (int i = 0; i < N; i++) A += p.points.at(i).x * p.points.at(i+1).y - p.points.at(i+1).x * p.points.at(i).y;
+   A *= 0.5;
+   return A;
+}
+
+void ConflictSolver::decreasePolygon(const geometry_msgs::Polygon &p, double thickness, geometry_msgs::Polygon &q){
+    //=====================================================//
+    // Assumes:                                            //
+    //    N+1 vertices:   p[0], p[1], ... , p[N-1], p[N]   //
+    //    Closed polygon: p[0] = p[N]                      //
+    //    No zero-length sides                             //
+    // Returns (by reference, as a parameter):             //
+    //    Internal poly:  q[0], q[1], ... , q[N-1], q[N]   //
+    //=====================================================//
+    int N = p.points.size() - 1;
+    q.points.resize(N+1);              
+    double a, b, A, B, d, cross;
+    double displacement = thickness;
+    if (signedArea(p) < 0) displacement = -displacement; // Detects clockwise order
+    // Unit vector (a,b) along last edge
+    a = p.points.at(N).x - p.points.at(N-1).x;
+    b = p.points.at(N).y - p.points.at(N-1).y;
+    d = sqrt(a*a + b*b);  
+    a /= d;
+    b /= d; 
+    for (int i = 0; i < N; i++){ // Loop round the polygon, dealing with successive intersections of lines
+        // Unit vector (A,B) along previous edge
+        A = a;
+        B = b;
+        // Unit vector (a,b) along next edge
+        a = p.points.at(i+1).x - p.points.at(i).x;
+        b = p.points.at(i+1).y - p.points.at(i).y;
+        d = sqrt(a*a + b*b);
+        a /= d;
+        b /= d;
+        // New vertex
+        cross = A*b - a*B;
+        const double SMALL = 1.0e-10;
+        if (abs(cross) < SMALL){ // Degenerate cases: 0 or 180 degrees at vertex 
+            q.points.at(i).x = p.points.at(i).x - displacement * b;
+            q.points.at(i).y = p.points.at(i).y + displacement * a;
+        } else { // Usual case
+            q.points.at(i).x = p.points.at(i).x + displacement * (a - A) / cross;
+            q.points.at(i).y = p.points.at(i).y + displacement * (b - B) / cross;
+        }
+    }
+    // Close the inside polygon
+    q.points.at(N) = q.points.at(0);
+}
+
 geometry_msgs::Point ConflictSolver::findInitAStarPoint(geometry_msgs::Polygon &_polygon, nav_msgs::Path &_path, int &_init_astar_pos) {
     geometry_msgs::Point out_point;
     std::vector<float> vert_x, vert_y;
@@ -150,7 +213,7 @@ geometry_msgs::Point ConflictSolver::findGoalAStarPoint(geometry_msgs::Polygon &
         }
     }
 
-    if (out_point.x == 0.0 || out_point.y == 0.0) {
+    if (out_point.x == 0.0 && out_point.y == 0.0) {
         out_point.x = _path.poses.back().pose.position.x;
         out_point.y = _path.poses.back().pose.position.y;
         out_point.z = _path.poses.back().pose.position.z;
@@ -630,14 +693,23 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // [1] Ruta a mi destino evitando una geofence
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
             int init_astar_pos, goal_astar_pos;
-            init_astar_point = findInitAStarPoint(res_polygon, res_path, init_astar_pos);
-            goal_astar_point = findGoalAStarPoint(res_polygon, res_path, goal_astar_pos);
-            std::vector<double> grid_borders = findGridBorders(res_polygon, res_path, init_astar_point, goal_astar_point);
+            geometry_msgs::Polygon polygon_test_input = res_polygon;
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_input.points.push_back(polygon_test_input.points.front());
+            }
+            geometry_msgs::Polygon polygon_test_output;
+            decreasePolygon(polygon_test_input, -operation_msg.response.operation.front().operational_volume, polygon_test_output);
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_output.points.pop_back();
+            }
+            init_astar_point = findInitAStarPoint(polygon_test_output, res_path, init_astar_pos);
+            goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
+            std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
             min_grid_point.x = grid_borders[0];
             min_grid_point.y = grid_borders[1];
             max_grid_point.x = grid_borders[2];
             max_grid_point.y = grid_borders[3];
-            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, res_polygon, min_grid_point, max_grid_point);
+            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
@@ -741,19 +813,28 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
             p_min_distance = Eigen::Vector2f(min_distance_coordinate.first.front(), min_distance_coordinate.first.back()); 
             unit_vec = (p_min_distance - p_conflict) / (p_min_distance - p_conflict).norm();
-            double safety_distance = 1.0;
+            double safety_distance = operation_msg.response.operation.front().operational_volume * 2;
             v_out_polygon = unit_vec * safety_distance;
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
             init_astar_point.x = min_distance_coordinate.first.front() + v_out_polygon(0);
             init_astar_point.y = min_distance_coordinate.first.back() + v_out_polygon(1);
+            geometry_msgs::Polygon polygon_test_input = res_polygon;
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_input.points.push_back(polygon_test_input.points.front());
+            }
+            geometry_msgs::Polygon polygon_test_output;
+            decreasePolygon(polygon_test_input, -operation_msg.response.operation.front().operational_volume, polygon_test_output);
+            if (!geofence_msg.response.geofences.front().cylinder_shape){
+                polygon_test_output.points.pop_back();
+            }
             int init_astar_pos, goal_astar_pos;
-            goal_astar_point = findGoalAStarPoint(res_polygon, res_path, goal_astar_pos);
-            std::vector<double> grid_borders = findGridBorders(res_polygon, res_path, init_astar_point, goal_astar_point);
+            goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
+            std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
             min_grid_point.x = grid_borders[0];
             min_grid_point.y = grid_borders[1];
             max_grid_point.x = grid_borders[2];
             max_grid_point.y = grid_borders[3];
-            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, res_polygon, min_grid_point, max_grid_point);
+            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
@@ -880,6 +961,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
+            // [5] Ruta que aterrice en un landing spot
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
             temp_wp_list.maneuver_type = 5;
@@ -910,6 +992,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 temp_wp_list.uav_id = req.threat.uav_ids.front();
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
+            // [5] Ruta que aterrice en un landing spot
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
             temp_wp_list.maneuver_type = 5;
