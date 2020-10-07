@@ -704,7 +704,6 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             init_astar_point = findInitAStarPoint(polygon_test_output, res_path, init_astar_pos);
             goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
-            std::cout << "init: " << init_astar_point << " | goal: " << goal_astar_point << std::endl;
             std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
             min_grid_point.x = grid_borders[0];
             min_grid_point.y = grid_borders[1];

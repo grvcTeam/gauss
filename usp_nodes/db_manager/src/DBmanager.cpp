@@ -61,7 +61,7 @@ private:
     list<gauss_msgs::Operation> operation_db;
     list<gauss_msgs::Geofence> geofence_db;
 
-    ros::NodeHandle nh_;
+    ros::NodeHandle nh_, pnh_;
 
     // Subscribers
 
@@ -88,17 +88,20 @@ private:
 };
 
 // DataBase Constructor
-DataBase::DataBase()
+DataBase::DataBase() : nh_(), pnh_("~")
 {
     // Read parameters
-
-
+    std::string operations_name = "OPERATIONS";
+    std::string geofences_name = "UTM_GEOFENCE_CREATION";
+    pnh_.getParam("operations_json", operations_name);
+    pnh_.getParam("geofences_json",  geofences_name);
+    
     // Initialization
     size_plans=size_geofences=0;
 
     // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
-    operationsFromJson("operations_test_geofence.json");
-    geofencesFromJson("geofences_test.json");
+    operationsFromJson(operations_name + ".json");
+    geofencesFromJson(geofences_name + ".json");
 
     // Publish
 

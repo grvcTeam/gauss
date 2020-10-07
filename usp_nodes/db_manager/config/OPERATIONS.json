@@ -73,7 +73,7 @@
 					}
 				]
 			},
-			"time_horizon": 30,
+			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
 					{
@@ -187,7 +187,7 @@
 					}
 				]
 			},
-			"time_horizon": 30,
+			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
 					{
@@ -301,7 +301,7 @@
 					}
 				]
 			},
-			"time_horizon": 30,
+			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
 					{

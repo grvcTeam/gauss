@@ -30,7 +30,10 @@
         <!-- <arg name="robot_model" value="$(arg robot_model)"/> -->
     </include>
 
-    <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true"/>
+    <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
+        <param name="operations_json" value="operations_test_loss"/>
+        <param name="geofences_json" value= "geofences_test"/>
+    </node>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
     <node pkg="monitoring" type="monitoring" name="monitoring"  required="true"/>
     <node pkg="usp_testers" type="solve_loss_of_separation" name="tester_loss_of_separation" output="screen" required="true"/>
