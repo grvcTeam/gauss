@@ -302,15 +302,15 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                 {
                                     if (*it != req.uav_id)
                                     {
-                                        gauss_msgs::ReadTraj msg_traj2;
-                                        msg_traj2.request.uav_ids.push_back(*it);
-                                        if(!(read_trajectory_client_.call(msg_traj2)) || !(msg_traj2.response.success))
+                                        gauss_msgs::ReadOperation msg_op2;
+                                        msg_op2.request.uav_ids.push_back(*it);
+                                        if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
                                         {
-                                            ROS_ERROR("Failed to read a trajectory");
+                                            ROS_ERROR("Failed to read an operation");
                                             //locker=false;
                                             return false;
                                         }
-                                        gauss_msgs::WaypointList trajectory2 = msg_traj2.response.tracks[0];
+                                        gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation.front().track;
 
                                         if (sqrt(pow(req.deconflicted_wp.at(i).x-trajectory2.waypoints.at(*it_wp).x,2)+
                                                  pow(req.deconflicted_wp.at(i).y-trajectory2.waypoints.at(*it_wp).y,2)+
@@ -324,6 +324,8 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(req.deconflicted_wp.at(i).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
+                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op2.response.operation.front().priority);
                                             res.threats.push_back(threat);
                                         }
                                     }
@@ -508,6 +510,8 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(trajectory.waypoints.at(j).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
+                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op2.response.operation.front().priority);
                                             threat.threat_id=threat.LOSS_OF_SEPARATION;
 
                                             threats_msg.request.uav_ids.push_back(i);
