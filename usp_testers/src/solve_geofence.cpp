@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 
     gauss_msgs::Deconfliction deconfliction;
     deconfliction.request.threat.geofence_ids.push_back(test_geofence_id);
-    deconfliction.request.threat.threat_id = deconfliction.request.threat.GEOFENCE_CONFLICT;
+    deconfliction.request.threat.threat_type = deconfliction.request.threat.GEOFENCE_CONFLICT;
     deconfliction.request.threat.times.push_back(ros::Time(15.0));
     deconfliction.request.threat.times.push_back(ros::Time(15.0));
     deconfliction.request.threat.uav_ids.push_back(0);
@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 
     gauss_msgs::Notification notification;
     notification.uav_id = 0;
-    notification.threat.threat_id = notification.threat.GEOFENCE_CONFLICT;
+    notification.threat.threat_type = notification.threat.GEOFENCE_CONFLICT;
     notification.maneuver_type = 1;
         
     for (auto i : astar_path_1.poses){

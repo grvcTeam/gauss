@@ -270,7 +270,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
             threat.uav_ids.push_back(req.uav_id);
             threat.geofence_ids.push_back(geofence_intrusion);
             threat.times.push_back(req.deconflicted_wp.at(i).stamp);
-            threat.threat_id=threat.GEOFENCE_CONFLICT;
+            threat.threat_type=threat.GEOFENCE_CONFLICT;
             res.threats.push_back(threat);
         }
         else if (geofence_intrusion==-2)
@@ -319,7 +319,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                         {
                                             gauss_msgs::Threat threat;
                                             threat.header.stamp=ros::Time::now();
-                                            threat.threat_id = threat.LOSS_OF_SEPARATION;
+                                            threat.threat_type = threat.LOSS_OF_SEPARATION;
                                             threat.uav_ids.push_back(req.uav_id);
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(req.deconflicted_wp.at(i).stamp);
@@ -427,9 +427,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             threat.uav_ids.push_back(i);
             threat.times.push_back(trajectory.waypoints.at(0).stamp);
             if (distance<operation.operational_volume)
-                threat.threat_id=threat.UAS_IN_CV;
+                threat.threat_type=threat.UAS_IN_CV;
             else
-                threat.threat_id=threat.UAS_OUT_OV;
+                threat.threat_type=threat.UAS_OUT_OV;
             threats_msg.request.uav_ids.push_back(i);
             threats_msg.request.threats.push_back(threat);
         }
@@ -448,9 +448,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                 threat.geofence_ids.push_back(geofence_intrusion);
                 threat.times.push_back(trajectory.waypoints.at(j).stamp);
                 if (j==0)
-                    threat.threat_id=threat.GEOFENCE_INTRUSION;
+                    threat.threat_type=threat.GEOFENCE_INTRUSION;
                 else
-                    threat.threat_id=threat.GEOFENCE_CONFLICT;
+                    threat.threat_type=threat.GEOFENCE_CONFLICT;
                 threats_msg.request.uav_ids.push_back(i);
                 threats_msg.request.threats.push_back(threat);
             }
@@ -512,7 +512,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
                                             threat.priority_ops.push_back(msg_op.response.operation.front().priority);
                                             threat.priority_ops.push_back(msg_op2.response.operation.front().priority);
-                                            threat.threat_id=threat.LOSS_OF_SEPARATION;
+                                            threat.threat_type=threat.LOSS_OF_SEPARATION;
 
                                             threats_msg.request.uav_ids.push_back(i);
                                             threats_msg.request.threats.push_back(threat);

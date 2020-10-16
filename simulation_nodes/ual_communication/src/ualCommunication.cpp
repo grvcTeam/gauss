@@ -56,7 +56,7 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
     bool merge_to_the_end = false;
     int flight_plan_section = 0;
     
-    switch (_threat.threat_id) // TODO: Check using examples. Geofence conflict working. 
+    switch (_threat.threat_type) // TODO: Check using examples. Geofence conflict working. 
     {
     case _threat.GEOFENCE_CONFLICT: 
         switch (_maneuver_type)

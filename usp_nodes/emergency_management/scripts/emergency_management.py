@@ -98,7 +98,7 @@ class EmergencyManagement():
     def action_decision_maker(self, threat2solve):
         threat = Threat()
         threat = threat2solve
-        threat_id = threat.threat_id
+        threat_type = threat.threat_type
         threat_time = threat.header.stamp
         uavs_threatened = threat.uav_ids
         notification = Notification()
@@ -107,7 +107,7 @@ class EmergencyManagement():
 
             '''Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
 
-            if threat_id == Threat.UAS_IN_CV:   #OK
+            if threat_type == Threat.UAS_IN_CV:   #OK
 
                 ctrl_c = False        
                 while not ctrl_c:
@@ -123,7 +123,7 @@ class EmergencyManagement():
                             
             '''Threat UAS OUT OV: we ask to tactical possible solution trajectories'''
 
-            if threat_id == Threat.UAS_OUT_OV: #OK
+            if threat_type == Threat.UAS_OUT_OV: #OK
 
                 self.send_threat2deconfliction(threat)
                 best_solution = self.select_optimal_route(uavs_threatened[0])
@@ -143,7 +143,7 @@ class EmergencyManagement():
 
             '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
-            if threat_id == Threat.LOSS_OF_SEPARATION: #OK
+            if threat_type == Threat.LOSS_OF_SEPARATION: #OK
                 for uav in uavs_threatened:
                     self.send_threat2deconfliction(threat)
                     best_solution = self.select_optimal_route(uav)
@@ -161,7 +161,7 @@ class EmergencyManagement():
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
                
-            if threat_id == Threat.ALERT_WARNING:     #OK
+            if threat_type == Threat.ALERT_WARNING:     #OK
                     
                 #We send a notification for every UAV.
                 for uav in uavs_threatened:
@@ -198,7 +198,7 @@ class EmergencyManagement():
 
             '''Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
-            if threat_id == Threat.GEOFENCE_INTRUSION:   #OK
+            if threat_type == Threat.GEOFENCE_INTRUSION:   #OK
                     
                 #Publish the action which the UAV has to make.
                     
@@ -218,7 +218,7 @@ class EmergencyManagement():
                     
             '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
 
-            if threat_id == Threat.GEOFENCE_CONFLICT:  #OK
+            if threat_type == Threat.GEOFENCE_CONFLICT:  #OK
                     
                 #Publish the action which the UAV has to make.
                     
@@ -238,7 +238,7 @@ class EmergencyManagement():
 
             '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
 
-            if threat_id == Threat.TECHNICAL_FAILURE:  #OK
+            if threat_type == Threat.TECHNICAL_FAILURE:  #OK
                                 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -271,7 +271,7 @@ class EmergencyManagement():
             '''Threat COMMUNICATION FAILURE: we EM can not do anything if there is a lost of the link communication between the GCS and/or the
                 UAV and USP.'''
 
-            if threat_id == Threat.COMMUNICATION_FAILURE: #OK
+            if threat_type == Threat.COMMUNICATION_FAILURE: #OK
                     
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -290,7 +290,7 @@ class EmergencyManagement():
 
         #TODO waiting for tactical deconfliction development in order to validate this Threat.
 
-            if threat_id == Threat.LACK_OF_BATTERY:  #OK
+            if threat_type == Threat.LACK_OF_BATTERY:  #OK
                     
                 #Publish the action which the UAV has to make.
                     
@@ -312,7 +312,7 @@ class EmergencyManagement():
             '''Threat JAMMING ATTACK: We send a message for landing within the geofence created
                 around the UAV.'''
 
-            if threat_id == Threat.JAMMING_ATTACK: #OK
+            if threat_type == Threat.JAMMING_ATTACK: #OK
                     
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -345,7 +345,7 @@ class EmergencyManagement():
             '''Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
                 and we create a geofence around the UAV.'''
 
-            if threat_id == Threat.SPOOFING_ATTACK: #OK
+            if threat_type == Threat.SPOOFING_ATTACK: #OK
                 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -381,7 +381,7 @@ class EmergencyManagement():
 
         #TODO waiting for tactical deconfliction development in order to validate this Threat.
 
-            if threat_id == Threat.GNSS_DEGRADATION: 
+            if threat_type == Threat.GNSS_DEGRADATION: 
                     
                 #Publish the action which the UAV has to make.
                     

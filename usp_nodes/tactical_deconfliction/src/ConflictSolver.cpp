@@ -469,7 +469,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             return false;
         }
 
-        if (req.threat.threat_id==req.threat.LOSS_OF_SEPARATION)
+        if (req.threat.threat_type==req.threat.LOSS_OF_SEPARATION)
         {
            /* gauss_msgs::ReadTraj traj_msg;
             traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
@@ -656,7 +656,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";
             res.success = true;
         }
-        else if (req.threat.threat_id==req.threat.GEOFENCE_CONFLICT)
+        else if (req.threat.threat_type==req.threat.GEOFENCE_CONFLICT)
         {
             nav_msgs::Path res_path;
             std::vector<double> res_times;
@@ -753,7 +753,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";    
             res.success = true;
         } 
-        else if (req.threat.threat_id==req.threat.GEOFENCE_INTRUSION) 
+        else if (req.threat.threat_type==req.threat.GEOFENCE_INTRUSION) 
         {
             nav_msgs::Path res_path;
             std::vector<double> res_times;
@@ -905,7 +905,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";    
             res.success = true;
         }
-        else if (req.threat.threat_id==req.threat.UAS_OUT_OV)
+        else if (req.threat.threat_type==req.threat.UAS_OUT_OV)
         {
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
@@ -946,7 +946,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";    
             res.success = true;
         }
-        else if (req.threat.threat_id==req.threat.LACK_OF_BATTERY)
+        else if (req.threat.threat_type==req.threat.LACK_OF_BATTERY)
         {
             for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
                 gauss_msgs::Waypoint temp_wp;
@@ -977,7 +977,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";    
             res.success = true;
         }
-        else if (req.threat.threat_id==req.threat.GNSS_DEGRADATION)
+        else if (req.threat.threat_type==req.threat.GNSS_DEGRADATION)
         {
             for (auto wp_land : operation_msg.response.operation.front().landing_spots.waypoints){
                 gauss_msgs::Waypoint temp_wp;

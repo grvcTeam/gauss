@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 
     gauss_msgs::Deconfliction deconfliction;
     // deconfliction.request.threat.geofence_ids.push_back(test_geofence_id); // Comment for -> Loss of separation
-    deconfliction.request.threat.threat_id = deconfliction.request.threat.LOSS_OF_SEPARATION;
+    deconfliction.request.threat.threat_type = deconfliction.request.threat.LOSS_OF_SEPARATION;
     deconfliction.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
     deconfliction.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
     deconfliction.request.threat.times.push_back(ros::Time(15.0));
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
 
     gauss_msgs::Notification notification, notification2;
     notification.uav_id = notification2.uav_id = 0;
-    notification.threat.threat_id = notification2.threat.threat_id = notification.threat.LOSS_OF_SEPARATION;
+    notification.threat.threat_type = notification2.threat.threat_type = notification.threat.LOSS_OF_SEPARATION;
     notification.maneuver_type = notification2.maneuver_type = 1;
         
     for (auto i : astar_path_2.poses){
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
                 return false;
             }
             gauss_msgs::Deconfliction deconfliction2;
-            deconfliction2.request.threat.threat_id = deconfliction.request.threat.LOSS_OF_SEPARATION;
+            deconfliction2.request.threat.threat_type = deconfliction.request.threat.LOSS_OF_SEPARATION;
             deconfliction2.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
             deconfliction2.request.threat.priority_ops.push_back(1); // Uncomment for -> Loss of separation
             deconfliction2.request.threat.times.push_back(ros::Time(37.5)); // If using 3D path follower 37.5 else 30.0
