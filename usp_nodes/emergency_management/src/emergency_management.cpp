@@ -98,21 +98,21 @@ EmergencyManagement::EmergencyManagement()
      if (num>0)
      {
          gauss_msgs::Threat first_threat=lista.front();
-         if (first_threat.threat_id==first_threat.GEOFENCE_CONFLICT)
+         if (first_threat.threat_type==first_threat.GEOFENCE_CONFLICT)
              ROS_INFO("Geofence conflict threat: UAV %d, geofence %d, time %d",first_threat.uav_ids.at(0), first_threat.geofence_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_id==first_threat.GEOFENCE_INTRUSION)
+         if (first_threat.threat_type==first_threat.GEOFENCE_INTRUSION)
              ROS_INFO("Geofence intrusion threat: UAV %d, geofence %d, time %d",first_threat.uav_ids.at(0), first_threat.geofence_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_id==first_threat.UAS_IN_CV)
+         if (first_threat.threat_type==first_threat.UAS_IN_CV)
              ROS_INFO("UAS in CV threat: UAV %d, time %d",first_threat.uav_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_id==first_threat.UAS_OUT_OV)
+         if (first_threat.threat_type==first_threat.UAS_OUT_OV)
              ROS_INFO("UAS out OV threat: UAV %d, time %d",first_threat.uav_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_id==first_threat.LOSS_OF_SEPARATION)
+         if (first_threat.threat_type==first_threat.LOSS_OF_SEPARATION)
          {
              ROS_INFO("UAS LOSS OF SEPARATION threat: UAVs %d and %d, times %d and %d",first_threat.uav_ids.at(0), first_threat.uav_ids.at(1),first_threat.times.at(0).sec,first_threat.times.at(1).sec);
              gauss_msgs::Deconfliction deconfliction_msg;
 
              deconfliction_msg.request.tactical=true;
-             deconfliction_msg.request.threat.threat_id=deconfliction_msg.request.threat.LOSS_OF_SEPARATION;
+             deconfliction_msg.request.threat.threat_type=deconfliction_msg.request.threat.LOSS_OF_SEPARATION;
              deconfliction_msg.request.threat.uav_ids.push_back(first_threat.uav_ids.at(0));
              deconfliction_msg.request.threat.uav_ids.push_back(first_threat.uav_ids.at(1));
              deconfliction_msg.request.threat.times.push_back(first_threat.times.at(0));

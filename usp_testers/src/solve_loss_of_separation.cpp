@@ -137,6 +137,8 @@ int main(int argc, char *argv[])
     int test_uav_id = 0;
     gauss_msgs::ReadFlightPlan plan_msg;
     plan_msg.request.uav_ids.push_back(0);
+    plan_msg.request.uav_ids.push_back(1);
+    plan_msg.request.uav_ids.push_back(2);
     if (!tester.read_plan_client_.call(plan_msg) || !plan_msg.response.success)
     {
         ROS_ERROR("Failed to read a flight plan");
@@ -168,11 +170,14 @@ int main(int argc, char *argv[])
     }
 
     gauss_msgs::Deconfliction deconfliction;
-    deconfliction.request.threat.geofence_ids.push_back(test_geofence_id);
-    deconfliction.request.threat.threat_type = deconfliction.request.threat.GEOFENCE_CONFLICT;
+    // deconfliction.request.threat.geofence_ids.push_back(test_geofence_id); // Comment for -> Loss of separation
+    deconfliction.request.threat.threat_type = deconfliction.request.threat.LOSS_OF_SEPARATION;
+    deconfliction.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
+    deconfliction.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
     deconfliction.request.threat.times.push_back(ros::Time(15.0));
     deconfliction.request.threat.times.push_back(ros::Time(15.0));
     deconfliction.request.threat.uav_ids.push_back(0);
+    deconfliction.request.threat.uav_ids.push_back(1); // Uncomment for -> Loss of separation
     deconfliction.request.tactical = true;
 
     if (!tester.write_deconfliction_client_.call(deconfliction) || !deconfliction.response.success)
@@ -180,7 +185,6 @@ int main(int argc, char *argv[])
         ROS_ERROR("Call write deconfliction error 1");
         return false;
     } 
-
 
     int change_path_to_pub = 1;
     nav_msgs::Path astar_path_1, astar_path_2, astar_path_3;
@@ -203,12 +207,12 @@ int main(int argc, char *argv[])
         change_path_to_pub++;
     }
 
-    gauss_msgs::Notification notification;
-    notification.uav_id = 0;
-    notification.threat.threat_type = notification.threat.GEOFENCE_CONFLICT;
-    notification.maneuver_type = 1;
+    gauss_msgs::Notification notification, notification2;
+    notification.uav_id = notification2.uav_id = 0;
+    notification.threat.threat_type = notification2.threat.threat_type = notification.threat.LOSS_OF_SEPARATION;
+    notification.maneuver_type = notification2.maneuver_type = 1;
         
-    for (auto i : astar_path_1.poses){
+    for (auto i : astar_path_2.poses){
         gauss_msgs::Waypoint wp;
         wp.x = i.pose.position.x;
         wp.y = i.pose.position.y;
@@ -217,18 +221,24 @@ int main(int argc, char *argv[])
         notification.waypoints.push_back(wp);
     }
 
-
-    double check_distance_send_conflict = 1.0;
+    double check_distance_send_conflict = 2.0;
     int pos_on_flight_plan_send_conflict = 1;
     geometry_msgs::Pose wp_send_conflict, wp_send_conflict2;
     wp_send_conflict.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
     wp_send_conflict.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
     wp_send_conflict.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
+    pos_on_flight_plan_send_conflict = 3;
+    wp_send_conflict2.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
+    wp_send_conflict2.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
+    wp_send_conflict2.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
 
     bool send_conflict_once = true; // Send a conflict while flying for UAV 0 and UAV 1
+    bool send_conflict_once2 = false; // Send a conflict while flying for UAV 0 and UAV 2
 
     while(ros::ok()){
         tester.pub_flight_plan_1_.publish(res_paths.at(0));
+        tester.pub_flight_plan_2_.publish(res_paths.at(1));
+        tester.pub_flight_plan_3_.publish(res_paths.at(2));
         tester.pub_geofence_.publish(res_polygon);
         tester.pub_astar_plan_1_.publish(astar_path_1);
         tester.pub_astar_plan_2_.publish(astar_path_2);
@@ -237,7 +247,60 @@ int main(int argc, char *argv[])
             tester.pub_notification_.publish(notification);
             send_conflict_once = false;
         }
-
+        if (tester.checkDistanceLessThan(tester.ual_0_pose_.pose, wp_send_conflict2, check_distance_send_conflict) && send_conflict_once2){
+            gauss_msgs::ReadOperation operation_read;
+            operation_read.request.uav_ids.push_back(0);
+            if (!tester.read_operation_client_.call(operation_read) || !operation_read.response.success)
+            {
+                ROS_ERROR("Failed to read an operation");
+                return false;
+            }
+            gauss_msgs::WriteOperation operation_write;
+            operation_write.request.uav_ids.push_back(0);
+            operation_write.request.operation.push_back(operation_read.response.operation.front());
+            operation_write.request.operation.front().current_wp = 3;
+            operation_write.request.operation.front().estimated_trajectory.waypoints.clear();
+            for (int i = 0; i < 3; i++){
+                gauss_msgs::Waypoint temp_wp;
+                temp_wp.x = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).x;
+                temp_wp.y = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).y;
+                temp_wp.z = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).z;
+                temp_wp.stamp = operation_write.request.operation.front().flight_plan.waypoints.at(operation_write.request.operation.front().current_wp + i).stamp;
+                operation_write.request.operation.front().estimated_trajectory.waypoints.push_back(temp_wp);
+            }
+            operation_write.request.operation.front().estimated_trajectory.waypoints.at(0).stamp = ros::Time(30.0); // Uncomment if using 3D path follower 
+            operation_write.request.operation.front().estimated_trajectory.waypoints.at(1).stamp = ros::Time(37.5); // Uncomment if using 3D path follower
+            operation_write.request.operation.front().estimated_trajectory.waypoints.at(2).stamp = ros::Time(45.0); // Uncomment if using 3D path follower
+            if(!tester.write_operation_client_.call(operation_write) || !operation_write.response.success){
+                ROS_ERROR("Failed to write an operation");
+                return false;
+            }
+            gauss_msgs::Deconfliction deconfliction2;
+            deconfliction2.request.threat.threat_type = deconfliction.request.threat.LOSS_OF_SEPARATION;
+            deconfliction2.request.threat.priority_ops.push_back(0); // Uncomment for -> Loss of separation
+            deconfliction2.request.threat.priority_ops.push_back(1); // Uncomment for -> Loss of separation
+            deconfliction2.request.threat.times.push_back(ros::Time(37.5)); // If using 3D path follower 37.5 else 30.0
+            deconfliction2.request.threat.times.push_back(ros::Time(37.5));
+            deconfliction2.request.threat.uav_ids.push_back(0);
+            deconfliction2.request.threat.uav_ids.push_back(2); // Uncomment for -> Loss of separation
+            deconfliction2.request.tactical = true;
+            if (!tester.write_deconfliction_client_.call(deconfliction2) || !deconfliction2.response.success)
+            {
+                ROS_ERROR("Call write deconfliction error 2");
+                return false;
+            }
+            for (auto i : deconfliction2.response.deconfliction_plans.front().waypoint_list){
+                gauss_msgs::Waypoint wp;
+                wp.x = i.x;
+                wp.y = i.y;
+                wp.z = i.z;
+                wp.stamp = i.stamp;
+                notification2.waypoints.push_back(wp);
+            }
+            tester.pub_notification_.publish(notification2);
+            send_conflict_once2 = false;
+        }
+        
         rate.sleep();
         ros::spinOnce();
     }

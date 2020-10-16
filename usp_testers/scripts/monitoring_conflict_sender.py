@@ -34,7 +34,7 @@ class Monitoring():
     def conflict_definition_menu(self, conflict_id): 
         self._conflict_flaged = []
         conflict = Threat()
-        conflict.threat_id = conflict_id
+        conflict.threat_type = conflict_id
         
         
         if conflict_id == Threat.UAS_IN_CV:
