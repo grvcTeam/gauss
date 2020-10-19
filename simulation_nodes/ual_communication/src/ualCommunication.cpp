@@ -219,7 +219,7 @@ gauss_msgs::PositionReport updatePositionReport(gauss_msgs::PositionReport &_pos
     _position_report.speed = sqrt(ual_vel_.twist.linear.x * ual_vel_.twist.linear.x + 
                                     ual_vel_.twist.linear.y * ual_vel_.twist.linear.y + 
                                     ual_vel_.twist.linear.z * ual_vel_.twist.linear.z);
-    // _position_report.source == ?
+    _position_report.source = _position_report.SOURCE_RPA;
     _position_report.uav_id = uav_id_;
     return _position_report;
 }

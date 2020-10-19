@@ -73,7 +73,7 @@
 					}
 				]
 			},
-			"time_horizon": 30,
+			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
 					{
@@ -181,7 +181,7 @@
 					}
 				]
 			},
-			"dT": 0,
+			"dT": 5,
 			"time_tracked": 0,
 			"track": {
 				"waypoints": [
@@ -208,7 +208,7 @@
 					}
 				]
 			},
-			"time_horizon": 30,
+			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
 					{
@@ -316,7 +316,7 @@
 					}
 				]
 			},
-			"dT": 0,
+			"dT": 5,
 			"time_tracked": 0,
 			"track": {
 				"waypoints": [
@@ -343,7 +343,7 @@
 					}
 				]
 			},
-			"time_horizon": 30,
+			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
 					{

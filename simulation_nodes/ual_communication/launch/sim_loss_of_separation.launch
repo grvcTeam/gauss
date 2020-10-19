@@ -31,9 +31,9 @@
     </include>
 
     <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true"/>
-    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
-    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true"/>
-    <node pkg="usp_testers" type="solve_geofence" name="tester_1" output="screen" required="true"/>
+    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" required="true"/>
+    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" />
+    <!-- <node pkg="usp_testers" type="solve_geofence" name="tester_1" required="true"/> -->
     <node pkg="upat_follower" type="multi_uav_log_node" name="multi_uav_log" if="$(arg save_experiment_data)"/> 
     <!-- <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/> -->
 
