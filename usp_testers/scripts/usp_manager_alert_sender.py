@@ -38,7 +38,7 @@ class UspManager():
     def alert_definition_menu(self, alert_id): 
         self._alert_flaged = []
         alert = Threat()
-        alert.threat_id = alert_id
+        alert.threat_type = alert_id
         reference_time = rospy.Time.now()
         alert.header.stamp = reference_time
         self._location = Waypoint()

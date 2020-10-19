@@ -30,6 +30,11 @@
         <!-- <arg name="robot_model" value="$(arg robot_model)"/> -->
     </include>
 
+    <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
+        <param name="operations_json" value="OPERATIONS"/>
+        <param name="geofences_json" value= "UTM_GEOFENCE_CREATION"/>
+    </node>
+
     <!-- UAV Path Manager nodes -->
     <group ns="upat_follower">
         <group ns="$(arg ns_prefix)0">

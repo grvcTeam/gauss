@@ -35,6 +35,7 @@ private:
 
     // Auxilary methods
     int checkGeofences(gauss_msgs::Waypoint position4D, int geofence_size, double safety_distance);
+    gauss_msgs::Threats manageThreatList(const gauss_msgs::Threats _in_threats);
 
 
     // Auxilary variables
@@ -43,7 +44,8 @@ private:
     double dX,dY,dZ,dT;
     double minX,maxX,minY,maxY,minZ,maxZ,maxT;
     double minDist;
-
+    int threat_list_id_ = 0;
+    map <int, pair<gauss_msgs::Threat, double>> threat_list_;
 
     cell ****grid;
 
@@ -129,10 +131,73 @@ Monitoring::Monitoring()
     // Timer
     timer_sub_=nh_.createTimer(ros::Duration(dT),&Monitoring::timerCallback,this);
 
-    ROS_INFO("Started Monitoring node!");
+    ROS_INFO("[Monitoring] Started Monitoring node!");
 }
 
 // Auxilary methods
+gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats _in_threats){
+    gauss_msgs::Threats out_threats;
+    if (threat_list_.size() == 0) {
+        threat_list_[0] = make_pair(_in_threats.request.threats.front(), ros::Time::now().toSec());
+        threat_list_[0].first.threat_id = 0;
+        out_threats.request.threats.push_back(threat_list_[0].first);
+        out_threats.request.uav_ids.push_back(threat_list_[0].first.uav_ids.front());
+        threat_list_id_++;
+    }
+    if (threat_list_.size() > 0){
+        for (int i = 0; i < _in_threats.request.threats.size(); i++){
+            static bool save_threat;
+            gauss_msgs::Threat threat_to_save;
+            for (int j = 0; j < threat_list_.size(); j++){
+                gauss_msgs::Threat temp_threat = _in_threats.request.threats.at(i);
+                save_threat = false;
+                // If loss of separation, check 2 uav ids else check 1 uav id. If a geofence is involved, check geofence id.
+                if (temp_threat.threat_type == threat_list_[j].first.threat_type){
+                    if (temp_threat.threat_type == temp_threat.LOSS_OF_SEPARATION){
+                        if (temp_threat.uav_ids.front() == threat_list_[j].first.uav_ids.front() ||
+                            temp_threat.uav_ids.end() == threat_list_[j].first.uav_ids.end()){
+                            break;
+                        }
+                    } else if (temp_threat.threat_type == temp_threat.GEOFENCE_CONFLICT){
+                        if (temp_threat.uav_ids.front() == threat_list_[j].first.uav_ids.front() ||
+                            temp_threat.geofence_ids.front() == threat_list_[j].first.geofence_ids.front()){
+                            break;
+                        }
+                    } else if (temp_threat.threat_type == temp_threat.GEOFENCE_INTRUSION){
+                        if (temp_threat.uav_ids.front() == threat_list_[j].first.uav_ids.front() ||
+                            temp_threat.geofence_ids.front() == threat_list_[j].first.geofence_ids.front()){
+                            break;
+                        }
+                    } else {
+                        if (temp_threat.uav_ids.front() == threat_list_[j].first.uav_ids.front()){
+                            break;
+                        }
+                    }
+                }
+                threat_to_save = temp_threat;
+                save_threat = true;
+            }
+            if(save_threat){
+                threat_list_[threat_list_id_] = make_pair(threat_to_save, ros::Time::now().toSec());
+                threat_list_[threat_list_id_].first.threat_id = threat_list_id_;
+                out_threats.request.threats.push_back(threat_list_[threat_list_id_].first);
+                out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.front());
+                threat_list_id_++;
+            }
+        }
+    } 
+    // Uncomment to check list
+    // for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
+    //     std::cout << "[" << it->first << "] Time: " << it->second.second << " Thread: " << it->second.first << "\n";
+    //     std::cout << " -------------------------------------------------------- \n";
+    // }
+
+    std::string cout_threats;
+    for (auto i : out_threats.request.threats) cout_threats = cout_threats + " " + std::to_string(i.threat_id);
+    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] New threats detected: " + cout_threats);
+
+    return out_threats;
+}
 
 int Monitoring::checkGeofences(gauss_msgs::Waypoint position4D, int geofence_size, double safety_distance)
 {
@@ -270,7 +335,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
             threat.uav_ids.push_back(req.uav_id);
             threat.geofence_ids.push_back(geofence_intrusion);
             threat.times.push_back(req.deconflicted_wp.at(i).stamp);
-            threat.threat_id=threat.GEOFENCE_CONFLICT;
+            threat.threat_type=threat.GEOFENCE_CONFLICT;
             res.threats.push_back(threat);
         }
         else if (geofence_intrusion==-2)
@@ -302,15 +367,15 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                 {
                                     if (*it != req.uav_id)
                                     {
-                                        gauss_msgs::ReadTraj msg_traj2;
-                                        msg_traj2.request.uav_ids.push_back(*it);
-                                        if(!(read_trajectory_client_.call(msg_traj2)) || !(msg_traj2.response.success))
+                                        gauss_msgs::ReadOperation msg_op2;
+                                        msg_op2.request.uav_ids.push_back(*it);
+                                        if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
                                         {
-                                            ROS_ERROR("Failed to read a trajectory");
+                                            ROS_ERROR("Failed to read an operation");
                                             //locker=false;
                                             return false;
                                         }
-                                        gauss_msgs::WaypointList trajectory2 = msg_traj2.response.tracks[0];
+                                        gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation.front().track;
 
                                         if (sqrt(pow(req.deconflicted_wp.at(i).x-trajectory2.waypoints.at(*it_wp).x,2)+
                                                  pow(req.deconflicted_wp.at(i).y-trajectory2.waypoints.at(*it_wp).y,2)+
@@ -319,11 +384,13 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                         {
                                             gauss_msgs::Threat threat;
                                             threat.header.stamp=ros::Time::now();
-                                            threat.threat_id = threat.LOSS_OF_SEPARATION;
+                                            threat.threat_type = threat.LOSS_OF_SEPARATION;
                                             threat.uav_ids.push_back(req.uav_id);
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(req.deconflicted_wp.at(i).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
+                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op2.response.operation.front().priority);
                                             res.threats.push_back(threat);
                                         }
                                     }
@@ -343,8 +410,6 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
 // Timer Callback
 void Monitoring::timerCallback(const ros::TimerEvent &)
 {
-    ROS_INFO_ONCE("Monitoring");
-
     int missions;
     int geofeces;
 
@@ -425,9 +490,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             threat.uav_ids.push_back(i);
             threat.times.push_back(trajectory.waypoints.at(0).stamp);
             if (distance<operation.operational_volume)
-                threat.threat_id=threat.UAS_IN_CV;
+                threat.threat_type=threat.UAS_IN_CV;
             else
-                threat.threat_id=threat.UAS_OUT_OV;
+                threat.threat_type=threat.UAS_OUT_OV;
             threats_msg.request.uav_ids.push_back(i);
             threats_msg.request.threats.push_back(threat);
         }
@@ -446,9 +511,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                 threat.geofence_ids.push_back(geofence_intrusion);
                 threat.times.push_back(trajectory.waypoints.at(j).stamp);
                 if (j==0)
-                    threat.threat_id=threat.GEOFENCE_INTRUSION;
+                    threat.threat_type=threat.GEOFENCE_INTRUSION;
                 else
-                    threat.threat_id=threat.GEOFENCE_CONFLICT;
+                    threat.threat_type=threat.GEOFENCE_CONFLICT;
                 threats_msg.request.uav_ids.push_back(i);
                 threats_msg.request.threats.push_back(threat);
             }
@@ -508,7 +573,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(trajectory.waypoints.at(j).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                            threat.threat_id=threat.LOSS_OF_SEPARATION;
+                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op2.response.operation.front().priority);
+                                            threat.threat_type=threat.LOSS_OF_SEPARATION;
 
                                             threats_msg.request.uav_ids.push_back(i);
                                             threats_msg.request.threats.push_back(threat);
@@ -523,15 +590,18 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     }
     locker=false;
 
-
     // LLamar al servicio alerta
-    if (threats_msg.request.threats.size()>0)
+    if (threats_msg.request.threats.size() > 0)
     {
-        if(!(threats_client_.call(threats_msg)) || !(threats_msg.response.success))
-        {
-            ROS_ERROR("Failed to send alert message");
-            return;
+        gauss_msgs::Threats new_threats_msgs = manageThreatList(threats_msg);
+        if (new_threats_msgs.request.threats.size() > 0){
+            if(!(threats_client_.call(new_threats_msgs)) || !(new_threats_msgs.response.success))
+            {
+                ROS_ERROR("Failed to send alert message");
+                return;
+            }
         }
+
     }
 }
 
