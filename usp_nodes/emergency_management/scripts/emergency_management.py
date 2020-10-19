@@ -50,19 +50,7 @@ class EmergencyManagement():
         'Read the operation of UAVs in conflict and return the Deconfliction response'
         request = DeconflictionRequest()
         request.tactical = True
-        request.threat = threat2deconflicted #le meto aquí threat. 
-        uavs_in_conflict = threat2deconflicted.uav_ids
-        self._readoperation_response = ReadOperationResponse()
-        self._readoperation_response = self._readOperation_service_handle(uavs_in_conflict)
-        priority_ops = []
-
-        for uav in uavs_in_conflict:
-            if len(self._readoperation_response.operation) > uav:
-                uav_operation = self._readoperation_response.operation[uav]
-                uav_priority = uav_operation.priority
-                priority_ops.append(uav_priority)    
-        
-        request.threat.priority_ops = priority_ops
+        request.threat = threat2deconflicted 
         self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response
@@ -71,7 +59,7 @@ class EmergencyManagement():
         'Select the optimal deconfliction route '
         #Lista de deconfliction plans.msg
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
-        print(deconfliction_plans_list)
+        #print(deconfliction_plans_list)
         values = []
         
         for deconfliction_plan in deconfliction_plans_list:
@@ -408,12 +396,11 @@ class EmergencyManagement():
     def timer_cb(self, timer):
         num = len(self._threats2solve_list)
         rospy.loginfo("There are %d active threats", num)
-        rospy.loginfo("Let's solve a new threat!")
+        rospy.loginfo("Let's solve the threats by severity order!")
         
         if num > 0:
-            first_threat = self._threats2solve_list[0]
-            self._threats2solve_list.pop(0)
-            self.action_decision_maker(first_threat)         
+            for threat in self._threats2solve_list:
+                self.action_decision_maker(threat)         
    
 ''' The node and the EmergencyManagement class are initialized'''
 
