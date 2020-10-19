@@ -95,7 +95,7 @@ ConflictSolver::ConflictSolver()
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
 
-    ROS_INFO("Started ConflictSolver node!");
+    ROS_INFO("[Deconfliction] Started ConflictSolver node!");
 }
 
 int ConflictSolver::pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy) {
@@ -453,7 +453,8 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res)
 {
-
+    ROS_INFO("[Deconfliction] New conflict received!");
+    std::cout << req.threat << "\n";
     //Deconfliction
     if (req.tactical)
     {
