@@ -73,9 +73,9 @@ class EmergencyManagement():
         
         value_min = min(values)
         pos_min = values.index(min(values))
-        print(values)
+        #print(values)
         best_solution = deconfliction_plans_list[pos_min]
-        print("The best solution is", best_solution)
+        #print("The best solution is", best_solution)
         return best_solution
 
     def action_decision_maker(self, threat2solve):
@@ -177,7 +177,7 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
-                print(response.message)
+                #print(response.message)
 
             '''Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
@@ -249,7 +249,7 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
-                print(response.message)
+                #print(response.message)
 
             '''Threat COMMUNICATION FAILURE: we EM can not do anything if there is a lost of the link communication between the GCS and/or the
                 UAV and USP.'''
@@ -322,7 +322,7 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."       
-                print(response.message)
+                #print(response.message)
 
             '''Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
                 and we create a geofence around the UAV.'''
@@ -355,7 +355,7 @@ class EmergencyManagement():
                 response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."   
-                print(response.message)
+                #print(response.message)
 
             '''Threat GNSS DEGRADATION: we wait a period of time and then we ask to tactical
                 possible trajectories to landing spots'''
