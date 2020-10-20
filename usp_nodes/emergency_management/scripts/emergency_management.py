@@ -55,7 +55,7 @@ class EmergencyManagement():
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response
    
-    def select_optimal_route(self, uav):
+    def select_optimal_route(self):
         'Select the optimal deconfliction route '
         #Lista de deconfliction plans.msg
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
@@ -63,14 +63,11 @@ class EmergencyManagement():
         values = []
         
         for deconfliction_plan in deconfliction_plans_list:
-             if deconfliction_plan.uav_id == uav:
-                 alfa = 0.25 # Weight of cost
-                 beta = 0.75 # Weight of riskiness
-                 value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
-                 values.append(value)
-                 value_min = min(values)
-                 pos_min = values.index(min(values))
-        
+            alfa = 0.25 # Weight of cost
+            beta = 0.75 # Weight of riskiness
+            value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
+            values.append(value)
+         
         value_min = min(values)
         pos_min = values.index(min(values))
         #print(values)
@@ -113,7 +110,7 @@ class EmergencyManagement():
             if threat_type == Threat.UAS_OUT_OV: 
 
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
+                best_solution = self.select_optimal_route()
                 ctrl_c = False        
                 while not ctrl_c:
                     connections = self._notification_publisher.get_num_connections()
@@ -128,21 +125,13 @@ class EmergencyManagement():
 
             '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.LOSS_OF_SEPARATION: 
-                for uav in uavs_threatened:
-                    self.send_threat2deconfliction(threat)
-                    best_solution = self.select_optimal_route(uav)
-                    ctrl_c = False        
-                    while not ctrl_c:
-                        connections = self._notification_publisher.get_num_connections()
-                        if connections > 0:   
-                            notification.uav_id = best_solution.uav_id
-                            notification.action = best_solution.maneuver_type
-                            notification.waypoints = best_solution.waypoint_list
-                            ctrl_c = True
-                            self._notification_publisher.publish(notification)
-                        else:
-                            rate.sleep()
+            if threat_type == Threat.LOSS_OF_SEPARATION:
+                self.send_threat2deconfliction(threat)
+                best_solution = self.select_optimal_route()
+                notification.uav_id = best_solution.uav_id
+                notification.action = best_solution.maneuver_type
+                notification.waypoints = best_solution.waypoint_list
+                self._notification_publisher.publish(notification)
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
                
@@ -188,7 +177,7 @@ class EmergencyManagement():
                 #Publish the action which the UAV has to make.
                     
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
+                best_solution = self.select_optimal_route()
                 ctrl_c = False
                 while not ctrl_c:
                     connections = self._notification_publisher.get_num_connections()
@@ -208,7 +197,7 @@ class EmergencyManagement():
                 #Publish the action which the UAV has to make.
                     
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
+                best_solution = self.select_optimal_route()
                 ctrl_c = False
                 while not ctrl_c:
                     connections = self._notification_publisher.get_num_connections()
@@ -278,7 +267,7 @@ class EmergencyManagement():
                 #Publish the action which the UAV has to make.
                     
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
+                best_solution = self.select_optimal_route()
                 ctrl_c = False
                 while not ctrl_c:
                     connections = self._notification_publisher.get_num_connections()
@@ -367,7 +356,7 @@ class EmergencyManagement():
                 #Publish the action which the UAV has to make.
                     
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
+                best_solution = self.select_optimal_route()
                 ctrl_c = False
                 while not ctrl_c:
                     connections = self._notification_publisher.get_num_connections()
