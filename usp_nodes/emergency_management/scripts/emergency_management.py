@@ -84,13 +84,17 @@ class EmergencyManagement():
         threat_type = threat.threat_type
         threat_time = threat.header.stamp
         uavs_threatened = threat.uav_ids
+        maneuvers = {1:'Route to my destiny avoiding a geofence', 2:'Route to my destiny for the shortest way',
+        3:'Route back home', 4:'Hovering waiting for geofence deactivation', 5:'Route landing in a landing spot',
+        6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
+        9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
         rate = rospy.Rate(1)
         if len(uavs_threatened) > 0: 
 
             '''Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
 
-            if threat_type == Threat.UAS_IN_CV:   #OK
+            if threat_type == Threat.UAS_IN_CV:   
 
                 ctrl_c = False        
                 while not ctrl_c:
@@ -106,7 +110,7 @@ class EmergencyManagement():
                             
             '''Threat UAS OUT OV: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.UAS_OUT_OV: #OK
+            if threat_type == Threat.UAS_OUT_OV: 
 
                 self.send_threat2deconfliction(threat)
                 best_solution = self.select_optimal_route(uavs_threatened[0])
@@ -122,11 +126,9 @@ class EmergencyManagement():
                     else:
                         rate.sleep()
 
-        #TODO waiting for tactical deconfliction development in order to validate this Threat.
-
             '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.LOSS_OF_SEPARATION: #OK
+            if threat_type == Threat.LOSS_OF_SEPARATION: 
                 for uav in uavs_threatened:
                     self.send_threat2deconfliction(threat)
                     best_solution = self.select_optimal_route(uav)
@@ -144,7 +146,7 @@ class EmergencyManagement():
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
                
-            if threat_type == Threat.ALERT_WARNING:     #OK
+            if threat_type == Threat.ALERT_WARNING:    
                     
                 #We send a notification for every UAV.
                 for uav in uavs_threatened:
@@ -181,7 +183,7 @@ class EmergencyManagement():
 
             '''Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.GEOFENCE_INTRUSION:   #OK
+            if threat_type == Threat.GEOFENCE_INTRUSION:   
                     
                 #Publish the action which the UAV has to make.
                     
@@ -201,7 +203,7 @@ class EmergencyManagement():
                     
             '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.GEOFENCE_CONFLICT:  #OK
+            if threat_type == Threat.GEOFENCE_CONFLICT:  
                     
                 #Publish the action which the UAV has to make.
                     
@@ -221,7 +223,7 @@ class EmergencyManagement():
 
             '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
 
-            if threat_type == Threat.TECHNICAL_FAILURE:  #OK
+            if threat_type == Threat.TECHNICAL_FAILURE:  
                                 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -254,7 +256,7 @@ class EmergencyManagement():
             '''Threat COMMUNICATION FAILURE: we EM can not do anything if there is a lost of the link communication between the GCS and/or the
                 UAV and USP.'''
 
-            if threat_type == Threat.COMMUNICATION_FAILURE: #OK
+            if threat_type == Threat.COMMUNICATION_FAILURE: 
                     
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -271,9 +273,7 @@ class EmergencyManagement():
                 
             '''Threat LACK OF BATTERY: we ask to tactical possible solution trajectories'''
 
-        #TODO waiting for tactical deconfliction development in order to validate this Threat.
-
-            if threat_type == Threat.LACK_OF_BATTERY:  #OK
+            if threat_type == Threat.LACK_OF_BATTERY:  
                     
                 #Publish the action which the UAV has to make.
                     
@@ -294,7 +294,7 @@ class EmergencyManagement():
             '''Threat JAMMING ATTACK: We send a message for landing within the geofence created
                 around the UAV.'''
 
-            if threat_type == Threat.JAMMING_ATTACK: #OK
+            if threat_type == Threat.JAMMING_ATTACK: 
                     
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -327,7 +327,7 @@ class EmergencyManagement():
             '''Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
                 and we create a geofence around the UAV.'''
 
-            if threat_type == Threat.SPOOFING_ATTACK: #OK
+            if threat_type == Threat.SPOOFING_ATTACK: 
                 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
@@ -388,7 +388,8 @@ class EmergencyManagement():
         
         for i in range(num):
             self._threats2solve_list.append(req.threats[i])
-        
+            print(req.threats[i])
+        self._threats2solve_list = sorted(self._threats2solve_list, key=lambda x:x.threat_type) #ordenamos la lista de mayor a menor severidad.
         res = ThreatsResponse()
         res.success = True
         return res 
@@ -397,7 +398,7 @@ class EmergencyManagement():
         num = len(self._threats2solve_list)
         rospy.loginfo("There are %d active threats", num)
         rospy.loginfo("Let's solve the threats by severity order!")
-        
+        #print(self._threats2solve_list)
         if num > 0:
             for threat in self._threats2solve_list:
                 self.action_decision_maker(threat)         
