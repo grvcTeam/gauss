@@ -3,8 +3,6 @@
 #include <gauss_msgs/Threat.h>
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/CheckConflicts.h>
-#include <gauss_msgs/ReadTraj.h>
-#include <gauss_msgs/ReadFlightPlan.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/ReadGeofences.h>
 #include <gauss_msgs/DeconflictionPlan.h>
@@ -57,8 +55,6 @@ private:
 
     // Clients
     ros::ServiceClient check_client_;
-    ros::ServiceClient read_trajectory_client_;
-    ros::ServiceClient read_flightplan_client_;
     ros::ServiceClient read_geofence_client_;
     ros::ServiceClient read_operation_client_;
 
@@ -90,8 +86,6 @@ ConflictSolver::ConflictSolver()
 
     // Cient
     check_client_ = nh_.serviceClient<gauss_msgs::CheckConflicts>("/gauss/check_conflicts");
-    read_trajectory_client_ = nh_.serviceClient<gauss_msgs::ReadTraj>("/gauss/read_estimated_trajectory");
-    read_flightplan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/read_flight_plan");
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
 
@@ -472,18 +466,6 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
 
         if (req.threat.threat_type==req.threat.LOSS_OF_SEPARATION)
         {
-           /* gauss_msgs::ReadTraj traj_msg;
-            traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
-            traj_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));
-            if (!read_trajectory_client_.call(traj_msg) || !traj_msg.response.success)
-            {
-                ROS_ERROR("Failed to read a trajectory");
-                res.success=false;
-                return false;
-            }
-            gauss_msgs::WaypointList traj1=traj_msg.response.tracks.at(0);
-            gauss_msgs::WaypointList traj2=traj_msg.response.tracks.at(1);*/
-
             gauss_msgs::ReadOperation op_msg;
             op_msg.request.uav_ids.push_back(conflict.uav_ids.at(0));
             op_msg.request.uav_ids.push_back(conflict.uav_ids.at(1));

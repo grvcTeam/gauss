@@ -18,9 +18,9 @@
 //----------------------------------------------------------------------------------------------------------------------
 
 #include <upat_follower/ual_communication.h>
-#include <gauss_msgs/ReadFlightPlan.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/Notification.h>
+#include <gauss_msgs/Notifications.h>
 #include <gauss_msgs/PositionReport.h>
 
 int uav_id_;
@@ -224,6 +224,22 @@ gauss_msgs::PositionReport updatePositionReport(gauss_msgs::PositionReport &_pos
     return _position_report;
 }
 
+bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res){
+    res.message = "Notification failed";
+    res.success = false;
+    for (auto i : req.notifications){
+        if(i.uav_id == uav_id_ && !new_notification_){
+            notification_ = i;
+            new_notification_ = true;
+            res.message = "Notification received";
+            res.success = true;
+        } 
+    }
+    
+    return true;
+}
+
+
 int main(int _argc, char **_argv) {
     ros::init(_argc, _argv, "ualCommunication_node");
 
@@ -244,6 +260,8 @@ int main(int _argc, char **_argv) {
     ros::Publisher pub_position_report_ = nh.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
 
     read_operation_client_ = nh.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
+    ros::ServiceServer notification_server_ = nh.advertiseService("/gauss/notifications", notificationsCB);
+
 
     // Let UAL and MAVROS get ready
     if (light) {

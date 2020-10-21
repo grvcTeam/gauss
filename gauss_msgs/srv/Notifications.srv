@@ -1,0 +1,4 @@
+Notification[] notifications
+---
+bool success
+string message

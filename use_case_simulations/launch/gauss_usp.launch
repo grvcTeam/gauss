@@ -20,10 +20,6 @@
 
 	</node>
 
-	<node pkg="flight_planning_management" type="FlightPlanManagement" name="FlightPlanManagement" output="screen">
-
-	</node>
-
 	<node pkg="emergency_management" type="emergency_management" name="emergency_management" output="screen">
 
 	</node>

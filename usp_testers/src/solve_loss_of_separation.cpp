@@ -1,8 +1,5 @@
 #include <ros/ros.h>
 #include <gauss_msgs/PositionReport.h>
-#include <gauss_msgs/ReadTracks.h>
-#include <gauss_msgs/ReadFlightPlan.h>
-#include <gauss_msgs/WriteTracks.h>
 #include <gauss_msgs/WriteOperation.h>
 #include <gauss_msgs/Operation.h>
 #include <gauss_msgs/ReadOperation.h>
@@ -24,7 +21,7 @@ class Tester
 public:
     Tester();
     bool writeDB();
-    ros::ServiceClient write_deconfliction_client_, write_operation_client_, read_operation_client_, read_plan_client_, read_geofence_client_;
+    ros::ServiceClient write_deconfliction_client_, write_operation_client_, read_operation_client_, read_geofence_client_;
     ros::Publisher pub_geofence_, pub_flight_plan_1_, pub_flight_plan_2_, pub_flight_plan_3_, pub_astar_plan_1_, pub_astar_plan_2_, pub_astar_plan_3_, pub_notification_;
     ros::Subscriber sub_ual_0_pose_;
     geometry_msgs::PoseStamped ual_0_pose_;
@@ -68,7 +65,6 @@ Tester::Tester()
     write_deconfliction_client_ = nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/tactical_deconfliction");
     write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/write_operation");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-    read_plan_client_ = nh_.serviceClient<gauss_msgs::ReadFlightPlan>("/gauss/read_flight_plan");
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
 
     ROS_INFO("Started Tester node!");
@@ -135,17 +131,18 @@ int main(int argc, char *argv[])
     ros::Rate rate(30);
     int test_geofence_id = 0;
     int test_uav_id = 0;
-    gauss_msgs::ReadFlightPlan plan_msg;
-    plan_msg.request.uav_ids.push_back(0);
-    plan_msg.request.uav_ids.push_back(1);
-    plan_msg.request.uav_ids.push_back(2);
-    if (!tester.read_plan_client_.call(plan_msg) || !plan_msg.response.success)
+    gauss_msgs::ReadOperation operation_msg;
+    operation_msg.request.uav_ids.push_back(0);
+    operation_msg.request.uav_ids.push_back(1);
+    operation_msg.request.uav_ids.push_back(2);
+    if (!tester.read_operation_client_.call(operation_msg) || !operation_msg.response.success)
     {
         ROS_ERROR("Failed to read a flight plan");
         return false;
     }
-    plan_msg.response.plans;
-    std::vector<nav_msgs::Path> res_paths = tester.convertFlightPlans(plan_msg.response.plans);
+    std::vector<gauss_msgs::WaypointList> all_flight_plans;
+    for (auto i : operation_msg.response.operation) all_flight_plans.push_back(i.flight_plan);
+    std::vector<nav_msgs::Path> res_paths = tester.convertFlightPlans(all_flight_plans);
 
     gauss_msgs::ReadGeofences geofence_msg;
     geofence_msg.request.geofences_ids.push_back(test_geofence_id);
@@ -224,13 +221,13 @@ int main(int argc, char *argv[])
     double check_distance_send_conflict = 2.0;
     int pos_on_flight_plan_send_conflict = 1;
     geometry_msgs::Pose wp_send_conflict, wp_send_conflict2;
-    wp_send_conflict.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
-    wp_send_conflict.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
-    wp_send_conflict.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
+    wp_send_conflict.position.x = operation_msg.response.operation.front().flight_plan.waypoints.at(pos_on_flight_plan_send_conflict).x;
+    wp_send_conflict.position.y = operation_msg.response.operation.front().flight_plan.waypoints.at(pos_on_flight_plan_send_conflict).y;
+    wp_send_conflict.position.z = operation_msg.response.operation.front().flight_plan.waypoints.at(pos_on_flight_plan_send_conflict).z;
     pos_on_flight_plan_send_conflict = 3;
-    wp_send_conflict2.position.x = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).x;
-    wp_send_conflict2.position.y = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).y;
-    wp_send_conflict2.position.z = plan_msg.response.plans.front().waypoints.at(pos_on_flight_plan_send_conflict).z;
+    wp_send_conflict2.position.x = operation_msg.response.operation.front().flight_plan.waypoints.at(pos_on_flight_plan_send_conflict).x;
+    wp_send_conflict2.position.y = operation_msg.response.operation.front().flight_plan.waypoints.at(pos_on_flight_plan_send_conflict).y;
+    wp_send_conflict2.position.z = operation_msg.response.operation.front().flight_plan.waypoints.at(pos_on_flight_plan_send_conflict).z;
 
     bool send_conflict_once = true; // Send a conflict while flying for UAV 0 and UAV 1
     bool send_conflict_once2 = false; // Send a conflict while flying for UAV 0 and UAV 2
