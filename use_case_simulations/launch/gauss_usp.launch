@@ -1,37 +1,23 @@
 <!--
 -->
 <launch>
-	<arg name="rate" default="0.5" />
 
+	<node pkg="db_manager" type="DBmanager" name="DBmanager" output="screen" launch_prefix="xterm-e"/>
 
-	<node pkg="tactical_deconfliction" type="ConflictSolver" name="conflictsolver" output="screen">
+	<!--/node-->
 
-	</node>
+	<node pkg="tactical_deconfliction" type="ConflictSolver" name="conflictsolver" output="screen" launch_prefix="xterm-e"/>
 
-	<node pkg="db_manager" type="DBmanager" name="DBmanager" output="screen">
+	<!--/node-->
 
-	</node>
+	<node pkg="simulation_nodes" type="ualCommunication" name="ualCommunication" output="screen" launch_prefix="xterm-e"/>
 
-	<node pkg="tracking" type="tracking" name="tracking" output="screen">
+	<!--/node-->
 
-	</node>
+	<node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" launch_prefix="xterm-e"/>
 
-	<node pkg="monitoring" type="monitoring" name="monitoring" output="screen">
+	<node pkg="monitoring" type="monitoring" name="monitoring" output="screen" launch_prefix="xterm-e"/>
 
-	</node>
-
-	<node pkg="flight_planning_management" type="FlightPlanManagement" name="FlightPlanManagement" output="screen">
-
-	</node>
-
-	<node pkg="emergency_management" type="emergency_management" name="emergency_management" output="screen">
-
-	</node>
-
-	<node pkg="usp_manager" type="USPmanager" name="USPmanager" output="screen">
-
-	</node>
-
-
+	<!--/node-->
 
 </launch>
