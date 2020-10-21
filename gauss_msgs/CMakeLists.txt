@@ -70,17 +70,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_service_files(
    FILES
    Deconfliction.srv
-   FlightPlanReq.srv
    Notifications.srv
-   ReadFlightPlanModT.srv
-   ReadFlightPlan.srv
-   WriteFlightPlan.srv
-   ReadFlightPlanUpdated.srv
-   WriteFlightPlanUpdated.srv
-   ReadTracks.srv
-   WriteTraj.srv
-   ReadTraj.srv
-   WriteTracks.srv
    ReadGeofences.srv
    WriteGeofences.srv
    Threats.srv	

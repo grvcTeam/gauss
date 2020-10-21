@@ -3,7 +3,6 @@
 #include <gauss_msgs/PositionReport.h>
 #include <gauss_msgs/Notification.h>
 // #include <gauss_msgs/Alert.h>
-#include <gauss_msgs/FlightPlanReq.h>
 
 
 // Class definition
@@ -58,7 +57,6 @@ USPManager::USPManager()
 
     // Client
     // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
-    FPreq_client_ = nh_.serviceClient<gauss_msgs::FlightPlanReq>("/gauss_msgs/flight_plan");
 
     // Timer
     timer_sub_=nh_.createTimer(ros::Duration(1.0/rate),&USPManager::timerCallback,this);

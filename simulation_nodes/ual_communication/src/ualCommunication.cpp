@@ -18,7 +18,6 @@
 //----------------------------------------------------------------------------------------------------------------------
 
 #include <upat_follower/ual_communication.h>
-#include <gauss_msgs/ReadFlightPlan.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/Notification.h>
 #include <gauss_msgs/Notifications.h>

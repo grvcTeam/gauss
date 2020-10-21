@@ -3,7 +3,6 @@
 #include <gauss_msgs/Threat.h>
 #include <gauss_msgs/ReadGeofences.h>
 #include <gauss_msgs/ReadOperation.h>
-#include <gauss_msgs/ReadTraj.h>
 #include <gauss_msgs/DB_size.h>
 #include <list>
 #include <geometry_msgs/Point.h>
@@ -70,7 +69,6 @@ private:
     ros::ServiceClient threats_client_;
     ros::ServiceClient read_geofence_client_;
     ros::ServiceClient read_operation_client_;
-    ros::ServiceClient read_trajectory_client_;
     ros::ServiceClient dbsize_cilent_;
 };
 
@@ -123,7 +121,6 @@ Monitoring::Monitoring()
 
     // Client
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-    read_trajectory_client_ = nh_.serviceClient<gauss_msgs::ReadTraj>("/gauss/read_estimated_trajectory");
     read_geofence_client_ = nh_.serviceClient<gauss_msgs::ReadGeofences>("/gauss/read_geofences");
     threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
     dbsize_cilent_ = nh_.serviceClient<gauss_msgs::DB_size>("/gauss/db_size");
@@ -561,15 +558,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                 {
                                     if (*it != i)
                                     {
-                                       /* gauss_msgs::ReadTraj msg_traj2;
-                                        msg_traj2.request.uav_ids.push_back(*it);
-                                        if(!(read_trajectory_client_.call(msg_traj2)) || !(msg_traj2.response.success))
-                                        {
-                                            ROS_ERROR("Failed to read a trajectory");
-                                            return;
-                                        }*/
-                                        //gauss_msgs::WaypointList trajectory2 = msg_traj2.response.tracks[0];
-
                                         gauss_msgs::ReadOperation msg_op2;
                                         msg_op2.request.uav_ids.push_back(*it);
                                         if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
