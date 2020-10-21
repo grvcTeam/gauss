@@ -181,7 +181,7 @@
 					}
 				]
 			},
-			"dT": 0,
+			"dT": 5,
 			"time_tracked": 0,
 			"track": {
 				"waypoints": [
@@ -316,7 +316,7 @@
 					}
 				]
 			},
-			"dT": 0,
+			"dT": 5,
 			"time_tracked": 0,
 			"track": {
 				"waypoints": [

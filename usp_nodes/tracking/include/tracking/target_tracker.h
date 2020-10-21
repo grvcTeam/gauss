@@ -54,8 +54,6 @@ protected:
 	std::string icao_address_;
 	uint8_t uav_id_;
 
-	bool non_cooperative_;
-
 	enum InfoSource {ADSB=0, POSITIONREPORT=1, BOTH=2};
 	InfoSource info_source_;
 
