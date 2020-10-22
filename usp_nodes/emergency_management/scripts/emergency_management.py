@@ -8,10 +8,11 @@ import rospy
 import time
 import copy
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
-from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
-from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
+from gauss_msgs.srv import ReadOperation, ReadOperationRequest
+from gauss_msgs.srv import Notifications, NotificationsRequest
+from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest 
 from gauss_msgs.msg import Threat, Circle, Notification, Waypoint, WaypointList, Operation, Geofence, DeconflictionPlan
-from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
+from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 
 class EmergencyManagement():
 
@@ -19,11 +20,13 @@ class EmergencyManagement():
         
         # Initialization
                
+        self._notifications_list = []
+
         self._threats2solve_list = []
 
         # Publish
 
-        self._notification_publisher = rospy.Publisher('notification', Notification, queue_size=1)
+        #self._notification_publisher = rospy.Publisher('notification', Notification, queue_size=1)
         
         # Wait until services are available and create connection
         
@@ -35,6 +38,9 @@ class EmergencyManagement():
 
         rospy.wait_for_service('/gauss/write_geofences')                    
         self._writeGeofences_service_handle = rospy.ServiceProxy('/gauss/write_geofences', WriteGeofences) 
+
+        rospy.wait_for_service('/gauss/notifications')                    
+        self._notifications_service_handle = rospy.ServiceProxy('/gauss/notifications', Notifications) 
                
         # Server     
 
@@ -46,11 +52,16 @@ class EmergencyManagement():
         
         print("Started Emergency Management module!")
     
+    def send_notifications(self):
+        request = NotificationsRequest()
+        request.notifications = self._notifications_list = []
+        response = self._notifications_service_handle(request)
+        return response
+    
     def send_threat2deconfliction(self,threat2deconflicted): 
         request = DeconflictionRequest()
         request.tactical = True
         request.threat = threat2deconflicted 
-        self._deconfliction_response = DeconflictionResponse()
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
         return self._deconfliction_response
    
@@ -81,7 +92,7 @@ class EmergencyManagement():
         6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
         9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
-        rate = rospy.Rate(1)
+        
         if len(uavs_threatened) > 0: 
             '''Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
             if threat_type == Threat.UAS_IN_CV:   
@@ -89,7 +100,7 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'Go back to your flight plan.'
                 notification.uav_id = uav_threatened
-                self._notification_publisher.publish(notification) 
+                self._notifications_list.append(notification) 
                             
             '''Threat UAS OUT OV: we ask to tactical possible solution trajectories'''
 
@@ -100,7 +111,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
-                self._notification_publisher.publish(notification)
+                self._notifications_list.append(notification) 
 
             '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
@@ -110,7 +121,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
-                self._notification_publisher.publish(notification)
+                self._notifications_list.append(notification) 
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
                
@@ -119,7 +130,7 @@ class EmergencyManagement():
                 for uav in uavs_threatened:
                     notification.description = 'Alert Warning: Bad weather Fire or NDZ detected in the zone.'
                     notification.uav_id = uavs_threatened[uav]
-                    self._notification_publisher.publish(notification)
+                    self._notifications_list.append(notification) 
                     
                 #Creation of the NDZ.
                 geofence_base = Circle()
@@ -136,7 +147,6 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
                 
@@ -151,7 +161,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
-                self._notification_publisher.publish(notification)
+                self._notifications_list.append(notification) 
                     
             '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
 
@@ -163,7 +173,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
-                self._notification_publisher.publish(notification)
+                self._notifications_list.append(notification) 
                 
             '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
 
@@ -172,7 +182,7 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'URGENT: Land now.'
                 notification.uav_id = uav_threatened
-                self._notification_publisher.publish(notification)           
+                self._notifications_list.append(notification) 
                 
                 # We create a geofence.
                 geofence = Geofence()
@@ -184,7 +194,6 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
                 
@@ -198,7 +207,7 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'Change UAV control mode from autonomous to manual.'
                 notification.uav_id = uav_threatened
-                self._notification_publisher.publish(notification) 
+                self._notifications_list.append(notification) 
                     
             '''Threat LACK OF BATTERY: we ask to tactical possible solution trajectories'''
 
@@ -209,7 +218,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
-                self._notification_publisher.publish(notification)
+                self._notifications_list.append(notification) 
                     
             '''Threat JAMMING ATTACK: We send a message for landing within the geofence created
                 around the UAV.'''
@@ -218,7 +227,7 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'Land within the geofence created around the UAV.'
                 notification.uav_id = uav_threatened
-                self._notification_publisher.publish(notification)           
+                self._notifications_list.append(notification) 
                 
                 # We create a geofence.
                 geofence = Geofence()
@@ -230,7 +239,6 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."       
                 
@@ -244,7 +252,7 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'Activate the Flight Termination System (FTS) of the UAV.'
                 notification.uav_id = uav_threatened
-                self._notification_publisher.publish(notification)           
+                self._notifications_list.append(notification) 
             
                 # We create a geofence.
                 geofence = Geofence()
@@ -256,7 +264,6 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."   
                 
@@ -273,8 +280,8 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
-                self._notification_publisher.publish(notification)
-                    
+                self._notifications_list.append(notification) 
+
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
@@ -295,7 +302,7 @@ class EmergencyManagement():
         if num > 0:
             for threat in self._threats2solve_list:
                 self.action_decision_maker(threat)         
-   
+        self.send_notifications()
 ''' The node and the EmergencyManagement class are initialized'''
 
 if __name__=='__main__':
