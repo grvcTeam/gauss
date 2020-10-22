@@ -658,6 +658,7 @@ void Tracking::estimateTrajectory()
 
                 // Estimate intermediate waypoints between current position and next waypoint
                 wp_aux = current_position;
+                ros::Time last_stamp = current_position.stamp;
                 #ifdef DEBUG
                 std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
                 std::cout << "Number of points to estimate: " << (wp_count_aux-1) << std::endl;
@@ -667,7 +668,8 @@ void Tracking::estimateTrajectory()
                     wp_aux.x = wp_aux.x + increment_vector.x();
                     wp_aux.y = wp_aux.y + increment_vector.y();
                     wp_aux.z = wp_aux.z + increment_vector.z();
-                    wp_aux.stamp = wp_aux.stamp + ros::Duration(dt);
+                    last_stamp = last_stamp + ros::Duration(dt);
+                    wp_aux.stamp = last_stamp;
                     estimated_trajectory.waypoints.push_back(wp_aux);
                     estimated_wp_count++;
                 }
@@ -678,7 +680,8 @@ void Tracking::estimateTrajectory()
                     std::cout << "Adding next waypoint to estimated trajectory" << std::endl;
                     #endif
                     wp_aux = flight_plan_ref.waypoints[b_waypoint_index];
-                    wp_aux.stamp = wp_aux.stamp + ros::Duration(dt);
+                    last_stamp = last_stamp + ros::Duration(dt);
+                    wp_aux.stamp = last_stamp;
                     estimated_trajectory.waypoints.push_back(wp_aux);
                     estimated_wp_count++;
                 }
@@ -706,7 +709,8 @@ void Tracking::estimateTrajectory()
                         wp_aux.x = wp_aux.x + increment_vector.x();
                         wp_aux.y = wp_aux.y + increment_vector.y();
                         wp_aux.z = wp_aux.z + increment_vector.z();
-                        wp_aux.stamp = wp_aux.stamp + ros::Duration(dt);
+                        last_stamp = last_stamp + ros::Duration(dt);
+                        wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                         aux_index++;
@@ -718,7 +722,8 @@ void Tracking::estimateTrajectory()
                         std::cout << "Adding flight plan second segment waypoint to estimated trajectory" << std::endl;
                         #endif
                         wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
-                        wp_aux.stamp = wp_aux.stamp + ros::Duration(dt);
+                        last_stamp = last_stamp + ros::Duration(dt);
+                        wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                         flight_plan_wp_index++;
