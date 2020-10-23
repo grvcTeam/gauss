@@ -5,7 +5,7 @@
 			"icao_address": "UAV0gauss2020",
 			"frame": "",
 			"autonomy": 10,
-			"priority": 0,
+			"priority": 1,
 			"current_wp": 1,
 			"flight_plan": {
 				"waypoints": [
@@ -57,53 +57,11 @@
 			"time_tracked": 10,
 			"track": {
 				"waypoints": [
-					{
-						"x": 0,
-						"y": 0,
-						"z": 5,
-						"stamp": 0.0,
-						"mandatory": 0
-					},
-					{
-						"x": 20,
-						"y": 0,
-						"z": 5,
-						"stamp": 7.5,
-						"mandatory": 0
-					}
 				]
 			},
 			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
-					{
-						"x": 20,
-						"y": 0,
-						"z": 5,
-						"stamp": 7.5,
-						"mandatory": 0
-					},
-					{
-						"x": 40,
-						"y": 0,
-						"z": 5,
-						"stamp": 15.0,
-						"mandatory": 0
-					},
-					{
-						"x": 60,
-						"y": 0,
-						"z": 5,
-						"stamp": 22.5,
-						"mandatory": 0
-					},
-					{
-						"x": 80,
-						"y": 0,
-						"z": 5,
-						"stamp": 30.0,
-						"mandatory": 0
-					}
 				]
 			},			
 			"landing_spots": {
@@ -185,60 +143,11 @@
 			"time_tracked": 0,
 			"track": {
 				"waypoints": [
-					{
-						"x": 40,
-						"y": 20,
-						"z": 5,
-						"stamp": 0.0,
-						"mandatory": 1
-					},
-					{
-						"x": 40,
-						"y": 0,
-						"z": 5,
-						"stamp": 15.0,
-						"mandatory": 1
-					},
-					{
-						"x": 40,
-						"y": -20,
-						"z": 15.0,
-						"stamp": 30,
-						"mandatory": 1
-					}
 				]
 			},
 			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
-					{
-						"x": 40,
-						"y": 20,
-						"z": 5,
-						"stamp": 7.5,
-						"mandatory": 0
-					},
-					{
-						"x": 40,
-						"y": 0,
-						"z": 5,
-						"stamp": 15.0,
-						"mandatory": 0
-					},
-					{
-						"x": 40,
-						"y": -20,
-						"z": 5,
-						"stamp": 22.5,
-						"mandatory": 0
-					},
-					{
-						"x": 40,
-						"y": -40,
-						"z": 5,
-						"stamp": 30.0,
-						"mandatory": 0
-					}
 				]
 			},
 			"landing_spots": {
@@ -262,7 +171,7 @@
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
-			"current_wp": 4,
+			"current_wp": 1,
 			"flight_plan": {
 				"waypoints": [
 					{
@@ -320,53 +229,11 @@
 			"time_tracked": 0,
 			"track": {
 				"waypoints": [
-					{
-						"x": 80,
-						"y": 40,
-						"z": 5,
-						"stamp": 0.0,
-						"mandatory": 1
-					},
-					{
-						"x": 80,
-						"y": 20,
-						"z": 5,
-						"stamp": 15.0,
-						"mandatory": 1
-					},
-					{
-						"x": 80,
-						"y": 0,
-						"z": 15.0,
-						"stamp": 30.0,
-						"mandatory": 1
-					}
 				]
 			},
 			"time_horizon": 90,
 			"estimated_trajectory": {
 				"waypoints": [
-					{
-						"x": 80,
-						"y": -20,
-						"z": 5,
-						"stamp": 30.0,
-						"mandatory": 1
-					},
-					{
-						"x": 80,
-						"y": 0,
-						"z": 5,
-						"stamp": 37.5,
-						"mandatory": 1
-					},
-					{
-						"x": 80,
-						"y": 20,
-						"z": 5.0,
-						"stamp": 45.0,
-						"mandatory": 1
-					}
 				]
 			},		
 			"landing_spots": {

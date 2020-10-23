@@ -32,13 +32,12 @@
 
     <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
         <param name="operations_json" value="operations_test_loss"/>
-        <param name="geofences_json" value= "geofences_test"/>
+        <param name="geofences_json" value= "geofences_loss"/>
     </node>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
-    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true"/>
-    <node pkg="usp_testers" type="solve_loss_of_separation" name="tester_loss_of_separation" output="screen" required="true"/>
-    <node pkg="upat_follower" type="multi_uav_log_node" name="multi_uav_log" if="$(arg save_experiment_data)"/> 
-    <!-- <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/> -->
+    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" /> -->
+    <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/>
+    <node pkg="tracking" type="tracking" name="tracking" required="true"/>
 
     <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="tf_map_world" args="0 0 0 0 0 0 1 world map" /> -->
 

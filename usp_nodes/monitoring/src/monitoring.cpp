@@ -8,6 +8,7 @@
 #include <geometry_msgs/Point.h>
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/CheckConflicts.h>
+#include <mutex>
 
 using namespace std;
 
@@ -49,6 +50,7 @@ private:
     cell ****grid;
 
     bool locker;
+    std::mutex mutex_lock_;
 
     ros::Time current_stamp;
 
@@ -98,7 +100,8 @@ Monitoring::Monitoring()
     T=ceil(maxT/dT);
 
     grid=NULL;
-    locker=true;
+    //locker=true;
+    mutex_lock_.lock();
 
     grid= new cell***[X];
     for (int i=0;i<X;i++)
@@ -111,6 +114,7 @@ Monitoring::Monitoring()
                 grid[i][j][k]=new cell[T];
         }
     }
+    mutex_lock_.unlock();
 
     // Publish
 
@@ -197,13 +201,13 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
             }
         }
     } 
-    // Uncomment to check list
-    // for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
-    //     std::cout << "[" << it->first << "] Time: " << it->second.second << 
-    //     " Thread: " << it->second.first <<
-    //      "\n";
-    //     std::cout << " -------------------------------------------------------- \n";
-    // }
+    //Uncomment to check list
+    for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
+        std::cout << "[" << it->first << "] Time: " << it->second.second << 
+        " Thread: " << it->second.first <<
+         "\n";
+        std::cout << " -------------------------------------------------------- \n";
+    }
 
     std::string cout_threats;
     for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
@@ -356,7 +360,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
             return false;
     }
 
-    if (!locker)
+    if (mutex_lock_.try_lock())
     {
         int wps = req.deconflicted_wp.size();
 
@@ -389,6 +393,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                             //locker=false;
                                             return false;
                                         }
+                                        std::cout << "HOLA\n";
                                         gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation.front().track;
 
                                         if (sqrt(pow(req.deconflicted_wp.at(i).x-trajectory2.waypoints.at(*it_wp).x,2)+
@@ -415,6 +420,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                         }
 
         }
+        mutex_lock_.unlock();
     }
 
     res.success=true;
@@ -446,7 +452,8 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
 
     gauss_msgs::Threats threats_msg;
 
-    locker=true;
+    //locker=true;
+    mutex_lock_.lock();
 
     //Clear previous grid
     for(int m=0;m<X;m++)
@@ -458,16 +465,16 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                     grid[m][n][p][t].wp.clear();
                 }
 
+    gauss_msgs::ReadOperation msg_op;
+    for (int i = 0; i < missions; i++) msg_op.request.uav_ids.push_back(i);
+    if(!(read_operation_client_.call(msg_op)) || !(msg_op.response.success))
+    {
+        ROS_ERROR("Failed to read a trajectory");
+        return;
+    }
     // Rellena grid con waypoints de las missiones
     for (int i=0; i<missions; i++)
     {
-        gauss_msgs::ReadOperation msg_op;
-        msg_op.request.uav_ids.push_back(i);
-        if(!(read_operation_client_.call(msg_op)) || !(msg_op.response.success))
-        {
-            ROS_ERROR("Failed to read a trajectory");
-            return;
-        }
 
         gauss_msgs::Operation operation = msg_op.response.operation[0];
         gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
@@ -476,6 +483,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         geometry_msgs::Point vd;
         geometry_msgs::Point pq;
         geometry_msgs::Point pv;
+        std::cout << "Flight plan size: " << plan.waypoints.size() << std::endl;
+        std::cout << "Current waypoint index: " << operation.current_wp << std::endl;
+        /*
         if (operation.current_wp >= plan.waypoints.size())
         {
             vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
@@ -488,6 +498,13 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             vd.y=plan.waypoints.at(operation.current_wp+1).y-plan.waypoints.at(operation.current_wp).y;
             vd.z=plan.waypoints.at(operation.current_wp+1).z-plan.waypoints.at(operation.current_wp).z;
         }
+        */
+
+        vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
+        vd.y=plan.waypoints.at(operation.current_wp).y-plan.waypoints.at(operation.current_wp-1).y;
+        vd.z=plan.waypoints.at(operation.current_wp).z-plan.waypoints.at(operation.current_wp-1).z;
+
+        std::cout << "ADIOS\n";
         pq.x=trajectory.waypoints.at(0).x-plan.waypoints.at(operation.current_wp).x;
         pq.y=trajectory.waypoints.at(0).y-plan.waypoints.at(operation.current_wp).y;
         pq.z=trajectory.waypoints.at(0).z-plan.waypoints.at(operation.current_wp).z;
@@ -558,16 +575,16 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                 {
                                     if (*it != i)
                                     {
-                                        gauss_msgs::ReadOperation msg_op2;
-                                        msg_op2.request.uav_ids.push_back(*it);
-                                        if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
-                                        {
-                                            ROS_ERROR("Failed to read an operation");
-                                            return;
-                                        }
-                                        gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation[0].estimated_trajectory;
+                                        // gauss_msgs::ReadOperation msg_op2;
+                                        // msg_op2.request.uav_ids.push_back(*it);
+                                        // if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
+                                        // {
+                                        //     ROS_ERROR("Failed to read an operation");
+                                        //     return;
+                                        // }
+                                        gauss_msgs::WaypointList trajectory2 = msg_op.response.operation[*it].estimated_trajectory;
 
-                                        double minDistAux=max(minDist,operation.operational_volume+msg_op2.response.operation[0].operational_volume);
+                                        double minDistAux=max(minDist,operation.operational_volume+msg_op.response.operation[*it].operational_volume);
 
 
                                         if (sqrt(pow(trajectory.waypoints.at(j).x-trajectory2.waypoints.at(*it_wp).x,2)+
@@ -582,7 +599,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                             threat.times.push_back(trajectory.waypoints.at(j).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
                                             threat.priority_ops.push_back(msg_op.response.operation.front().priority);
-                                            threat.priority_ops.push_back(msg_op2.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
                                             threat.threat_type=threat.LOSS_OF_SEPARATION;
 
                                             threats_msg.request.uav_ids.push_back(i);
@@ -596,7 +613,8 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                         }
         }
     }
-    locker=false;
+    //locker=false;
+    mutex_lock_.unlock();
 
     // LLamar al servicio alerta
     if (threats_msg.request.threats.size() > 0)
