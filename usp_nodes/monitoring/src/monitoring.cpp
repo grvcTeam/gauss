@@ -202,12 +202,12 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
         }
     } 
     //Uncomment to check list
-    for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
-        std::cout << "[" << it->first << "] Time: " << it->second.second << 
-        " Thread: " << it->second.first <<
-         "\n";
-        std::cout << " -------------------------------------------------------- \n";
-    }
+    // for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
+    //     std::cout << "[" << it->first << "] Time: " << it->second.second << 
+    //     " Thread: " << it->second.first <<
+    //      "\n";
+    //     std::cout << " -------------------------------------------------------- \n";
+    // }
 
     std::string cout_threats;
     for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
@@ -393,7 +393,6 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                             //locker=false;
                                             return false;
                                         }
-                                        std::cout << "HOLA\n";
                                         gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation.front().track;
 
                                         if (sqrt(pow(req.deconflicted_wp.at(i).x-trajectory2.waypoints.at(*it_wp).x,2)+
@@ -483,8 +482,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         geometry_msgs::Point vd;
         geometry_msgs::Point pq;
         geometry_msgs::Point pv;
-        std::cout << "Flight plan size: " << plan.waypoints.size() << std::endl;
-        std::cout << "Current waypoint index: " << operation.current_wp << std::endl;
         /*
         if (operation.current_wp >= plan.waypoints.size())
         {
@@ -504,7 +501,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         vd.y=plan.waypoints.at(operation.current_wp).y-plan.waypoints.at(operation.current_wp-1).y;
         vd.z=plan.waypoints.at(operation.current_wp).z-plan.waypoints.at(operation.current_wp-1).z;
 
-        std::cout << "ADIOS\n";
         pq.x=trajectory.waypoints.at(0).x-plan.waypoints.at(operation.current_wp).x;
         pq.y=trajectory.waypoints.at(0).y-plan.waypoints.at(operation.current_wp).y;
         pq.z=trajectory.waypoints.at(0).z-plan.waypoints.at(operation.current_wp).z;
