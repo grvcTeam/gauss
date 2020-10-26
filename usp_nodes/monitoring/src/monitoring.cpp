@@ -158,6 +158,8 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
         threat_list_[threat_list_id_].first.threat_id = threat_list_id_;
         out_threats.request.threats.push_back(threat_list_[threat_list_id_].first);
         out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.front());
+        if (threat_list_[threat_list_id_].first.threat_type == threat_list_[threat_list_id_].first.LOSS_OF_SEPARATION) 
+            out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.back());
         threat_list_id_++;
     }
     if (threat_list_.size() > 0){
@@ -197,6 +199,9 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
                 threat_list_[threat_list_id_].first.threat_id = threat_list_id_;
                 out_threats.request.threats.push_back(threat_list_[threat_list_id_].first);
                 out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.front());
+                if (threat_list_[threat_list_id_].first.threat_type == threat_list_[threat_list_id_].first.LOSS_OF_SEPARATION){
+                    out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.back());
+                }
                 threat_list_id_++;
             }
         }
@@ -385,15 +390,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                 {
                                     if (*it != req.uav_id)
                                     {
-                                        gauss_msgs::ReadOperation msg_op2;
-                                        msg_op2.request.uav_ids.push_back(*it);
-                                        if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
-                                        {
-                                            ROS_ERROR("Failed to read an operation");
-                                            //locker=false;
-                                            return false;
-                                        }
-                                        gauss_msgs::WaypointList trajectory2 = msg_op2.response.operation.front().track;
+                                        gauss_msgs::WaypointList trajectory2 = msg_op.response.operation.at(*it).track;
 
                                         if (sqrt(pow(req.deconflicted_wp.at(i).x-trajectory2.waypoints.at(*it_wp).x,2)+
                                                  pow(req.deconflicted_wp.at(i).y-trajectory2.waypoints.at(*it_wp).y,2)+
@@ -407,8 +404,8 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(req.deconflicted_wp.at(i).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
-                                            threat.priority_ops.push_back(msg_op2.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
+                                            threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
                                             res.threats.push_back(threat);
                                         }
                                     }
@@ -475,7 +472,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     for (int i=0; i<missions; i++)
     {
 
-        gauss_msgs::Operation operation = msg_op.response.operation[0];
+        gauss_msgs::Operation operation = msg_op.response.operation[i];
         gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
         gauss_msgs::WaypointList plan = operation.flight_plan;
 
@@ -571,13 +568,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                 {
                                     if (*it != i)
                                     {
-                                        // gauss_msgs::ReadOperation msg_op2;
-                                        // msg_op2.request.uav_ids.push_back(*it);
-                                        // if(!(read_operation_client_.call(msg_op2)) || !(msg_op2.response.success))
-                                        // {
-                                        //     ROS_ERROR("Failed to read an operation");
-                                        //     return;
-                                        // }
                                         gauss_msgs::WaypointList trajectory2 = msg_op.response.operation[*it].estimated_trajectory;
 
                                         double minDistAux=max(minDist,operation.operational_volume+msg_op.response.operation[*it].operational_volume);
@@ -594,7 +584,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(trajectory.waypoints.at(j).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
                                             threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
                                             threat.threat_type=threat.LOSS_OF_SEPARATION;
 
@@ -616,6 +606,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     if (threats_msg.request.threats.size() > 0)
     {
         gauss_msgs::Threats new_threats_msgs = manageThreatList(threats_msg, start_time);
+        for (auto i : new_threats_msgs.request.threats) std::cout << i << "\n";
         if (new_threats_msgs.request.threats.size() > 0){
             if(!(threats_client_.call(new_threats_msgs)) || !(new_threats_msgs.response.success))
             {

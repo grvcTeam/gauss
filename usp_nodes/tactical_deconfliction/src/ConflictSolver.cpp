@@ -481,8 +481,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             gauss_msgs::Waypoint wp1,wp2;
             std::cout << traj1.waypoints.front().stamp.toSec() << " " << conflict.times.at(0).toSec() << "\n";
             int j=0;
-            while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>=dT/2)
+            while (abs(traj1.waypoints.at(j).stamp.toSec()-conflict.times.at(0).toSec())>=dT/2){
+                std::cout << traj1.waypoints.at(j).stamp.toSec() << " - " << conflict.times.at(0).toSec() << " >= " << dT/2 << "\n";
                 j++;
+            }
             wp1=traj1.waypoints.at(j);
             int k=0;
             while (abs(traj2.waypoints.at(k).stamp.toSec()-conflict.times.at(1).toSec())>=dT/2)
