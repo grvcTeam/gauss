@@ -24,6 +24,8 @@ class EmergencyManagement():
 
         self._threats2solve_list = []
 
+        self._dictionary_all_threats = {}
+
         # Publish
 
         #self._notification_publisher = rospy.Publisher('notification', Notification, queue_size=1)
@@ -48,13 +50,13 @@ class EmergencyManagement():
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(5), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(4), self.timer_cb)
         
         print("Started Emergency Management module!")
     
-    def send_notifications(self):
+    def send_notifications(self,notifications):
         request = NotificationsRequest()
-        request.notifications = self._notifications_list = []
+        request.notifications = self._notifications_list
         response = self._notifications_service_handle(request)
         return response
     
@@ -81,6 +83,8 @@ class EmergencyManagement():
         #print("The best solution is:", best_solution)
         return best_solution
 
+#TODO crear notificaciones y llamar a la función que las manda.
+
     def action_decision_maker(self, threat2solve):
         threat = Threat()
         threat = threat2solve
@@ -100,7 +104,7 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'Go back to your flight plan.'
                 notification.uav_id = uav_threatened
-                self._notifications_list.append(notification) 
+                self._notifications_list.append(notification)
                             
             '''Threat UAS OUT OV: we ask to tactical possible solution trajectories'''
 
@@ -285,24 +289,37 @@ class EmergencyManagement():
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
-        num = len(req.threats)
-        rospy.loginfo("Received %d threats!", num) 
-        
-        for i in range(num):
+        num_1 = len(req.threats)
+        rospy.loginfo("Received %d threats!", num_1) 
+        for i in range(num_1): # Bucle para RELLENAR la lista de Threats recibido.
             self._threats2solve_list.append(req.threats[i])
         self._threats2solve_list = sorted(self._threats2solve_list, key=lambda x:x.threat_type) #ordenamos la lista de mayor a menor severidad.
+        
+        for threat in self._threats2solve_list: # Bucle para RELLENAR un diccionario con todos los threat_id y su estado actual.
+            key = threat.threat_id
+            value = 'TODO'
+            self._dictionary_all_threats[key] = value
+        print("This is the list of Threat_ids and their status:", self._dictionary_all_threats)
+        rospy.loginfo("Let's solve the threats by severity order!")
         res = ThreatsResponse()
         res.success = True
         return res 
 
     def timer_cb(self, timer):
-        num = len(self._threats2solve_list)
-        rospy.loginfo("There are %d active threats", num)
-        rospy.loginfo("Let's solve the threats by severity order!")
-        if num > 0:
+        num_1 = len(self._threats2solve_list)
+        num_2 = len(self._notifications_list)
+        rospy.loginfo("There are %d active threats", num_1)
+        rospy.loginfo("Let's change the status of the threats")
+        if num_1 > 0:
             for threat in self._threats2solve_list:
-                self.action_decision_maker(threat)         
-        self.send_notifications()
+                key = threat.threat_id
+                if self._dictionary_all_threats[key] == 'TODO':
+                    self._dictionary_all_threats[key] = 'DOING'
+                    self.action_decision_maker(threat)
+            print("This is the list of Threat_ids and their status", self._dictionary_all_threats)       
+            rospy.loginfo("Let's send notifications to the UAS!")
+            self.send_notifications(self._notifications_list)
+
 ''' The node and the EmergencyManagement class are initialized'''
 
 if __name__=='__main__':
