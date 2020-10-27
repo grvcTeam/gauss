@@ -8,6 +8,7 @@ import rospy
 import time
 import copy
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
+from gauss_msgs.srv import PilotAnswer, PilotAnswerResponse, PilotAnswerRequest
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest
 from gauss_msgs.srv import Notifications, NotificationsRequest
 from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest 
@@ -24,19 +25,15 @@ class EmergencyManagement():
 
         self._threats2solve_list = []
 
-        self._dictionary_all_threats = {}
-
-        # Publish
-
-        #self._notification_publisher = rospy.Publisher('notification', Notification, queue_size=1)
+        self._dictionary_all_threats = {}     
         
         # Wait until services are available and create connection
         
         rospy.wait_for_service('/gauss/tactical_deconfliction')                    
         self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/tactical_deconfliction', Deconfliction) 
 
-        rospy.wait_for_service('/gauss/read_operation')                    
-        self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
+        #rospy.wait_for_service('/gauss/read_operation')                    
+        #self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
 
         rospy.wait_for_service('/gauss/write_geofences')                    
         self._writeGeofences_service_handle = rospy.ServiceProxy('/gauss/write_geofences', WriteGeofences) 
@@ -47,10 +44,12 @@ class EmergencyManagement():
         # Server     
 
         self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
+        
+        #self._pilot_answer_service = rospy.Service('/gauss/pilotanswer', PilotAnswer, self.service_pilot_answer_cb)
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(4), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
         
         print("Started Emergency Management module!")
     
@@ -305,20 +304,37 @@ class EmergencyManagement():
         res.success = True
         return res 
 
+    # def service_pilot_answer_cb(self, request):
+    #     req = PilotAnswerRequest()
+    #     req = copy.deepcopy(request)
+    #     rospy.loginfo("There are new pilot answers")
+    #     threat_ids = req.threat_ids 
+    #     answers = req.pilot_answers
+    #     res = PilotAnswerResponse()
+    #     res.success = True
+    #     return res
+
     def timer_cb(self, timer):
         num_1 = len(self._threats2solve_list)
         num_2 = len(self._notifications_list)
         rospy.loginfo("There are %d active threats", num_1)
         rospy.loginfo("Let's change the status of the threats")
         if num_1 > 0:
-            for threat in self._threats2solve_list:
+            for threat in self._threats2solve_list: # Bucle para CAMBIAR el estado de los Threats de TODO a DOING.
                 key = threat.threat_id
                 if self._dictionary_all_threats[key] == 'TODO':
                     self._dictionary_all_threats[key] = 'DOING'
-                    self.action_decision_maker(threat)
+                    if self._dictionary_all_threats[key] == 'DOING':
+                        self.action_decision_maker(threat)
             print("This is the list of Threat_ids and their status", self._dictionary_all_threats)       
             rospy.loginfo("Let's send notifications to the UAS!")
             self.send_notifications(self._notifications_list)
+            for threat in self._threats2solve_list: # Bucle para CAMBIAR el estado de los Threats de DOING a NOTIFIED
+                key = threat.threat_id
+                if self._dictionary_all_threats[key] == 'DOING':
+                    self._dictionary_all_threats[key] = 'NOTIFIED'
+            print("This is the list of Threat_ids and their status", self._dictionary_all_threats)
+   
 
 ''' The node and the EmergencyManagement class are initialized'''
 

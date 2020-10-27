@@ -5,6 +5,7 @@ import rospy
 #import time
 import copy
 #from os import system
+from gauss_msgs.srv import PilotAnswer, PilotAnswerRequest 
 #from gauss_msgs.srv import Threats, ThreatsRequest
 from gauss_msgs.srv import Notifications, NotificationsRequest, NotificationsResponse
 #from gauss_msgs.msg import Threat, Waypoint
@@ -23,7 +24,10 @@ class UspManager():
         # Wait until service is available and creat connection
         
         #rospy.wait_for_service('/gauss/threats')         
-        #self._threats_service = rospy.ServiceProxy('/gauss/threats', Threats) 
+        #self._threats_service = rospy.ServiceProxy('/gauss/threats', Threats)
+        
+        # rospy.wait_for_service('/gauss/pilot_answer')
+        # self._pilot_answers_service = rospy.ServiceProxy('/gauss/pilot_answer', PilotAnswer) 
 
         # Reference time
 
@@ -56,6 +60,13 @@ class UspManager():
         res.success = True
         return res 
     
+    # def send_answers(self):
+    #     request = PilotAnswerRequest()
+    #     request.threat_ids = [0]
+    #     request.pilot_answers = ['ACCEPTED']
+    #     response = self._pilot_answers_service(request)
+    #     return response
+
     # This method defines the alert configuration.
     
     #def alert_definition_menu(self, alert_id): 
@@ -141,6 +152,7 @@ if __name__=='__main__':
     
     rospy.init_node('usp_manager')
     m = UspManager()
+    #m.send_answers()
     rospy.spin()
     
     #while not rospy.is_shutdown():
