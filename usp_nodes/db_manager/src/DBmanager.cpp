@@ -127,8 +127,8 @@ bool DataBase::operationsFromJson(std::string _file_name)
         operation.flight_plan = wp_list;
         //gauss_msgs::WaypointList wp_list_aux;
         //wp_list_aux.waypoints = std::vector<gauss_msgs::Waypoint>(3,gauss_msgs::Waypoint());
-        // Fill estimated trajectory with the 3 first waypoints of the flight plan
-        for(int index_1=0; index_1 < 5; index_1++)
+        // Fill estimated trajectory with at most 18 waypoints from flight plan
+        for(int index_1=0; index_1 < std::min((int)operation.flight_plan.waypoints.size(),18); index_1++)
         {
             operation.estimated_trajectory.waypoints.push_back(operation.flight_plan.waypoints.at(index_1));
         }

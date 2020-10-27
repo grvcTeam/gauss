@@ -494,6 +494,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         }
         */
 
+        // TODO: Next sentences fail when current_wp is 0 (that could happen if database is initialized with current_wp=0 and tracking hasn't updated it before monitoring reads)
         vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
         vd.y=plan.waypoints.at(operation.current_wp).y-plan.waypoints.at(operation.current_wp-1).y;
         vd.z=plan.waypoints.at(operation.current_wp).z-plan.waypoints.at(operation.current_wp-1).z;
@@ -578,6 +579,12 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                                  pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDistAux &&
                                                 abs(trajectory.waypoints.at(j).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
                                         {
+                                            std::cout << "Threat detected between uav_ids: " << i << " and " << *it << "\n";
+                                            std::cout << "waypoints (x,y,z,t): (";
+                                            std::cout << trajectory.waypoints.at(j).x << "," << trajectory.waypoints.at(j).y << "," << trajectory.waypoints.at(j).z << "," << trajectory.waypoints.at(j).stamp.toSec() << ")";
+                                            std::cout << ",(";
+                                            std::cout << trajectory2.waypoints.at(*it_wp).x << "," << trajectory2.waypoints.at(*it_wp).y << "," << trajectory2.waypoints.at(*it_wp).z << "," << trajectory2.waypoints.at(*it_wp).stamp.toSec() << ")";
+                                            std::cout << "\n";
                                             gauss_msgs::Threat threat;
                                             threat.header.stamp=ros::Time::now();
                                             threat.uav_ids.push_back(i);
@@ -605,6 +612,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     // LLamar al servicio alerta
     if (threats_msg.request.threats.size() > 0)
     {
+        std::cout << "Calling threat service\n"; 
         gauss_msgs::Threats new_threats_msgs = manageThreatList(threats_msg, start_time);
         for (auto i : new_threats_msgs.request.threats) std::cout << i << "\n";
         if (new_threats_msgs.request.threats.size() > 0){
