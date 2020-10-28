@@ -326,10 +326,12 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
 
     gauss_msgs::ReadGeofences msg_geofence;
     for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(i);
-    if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
-    {
-        ROS_ERROR("Failed to read a geofence");
-        return false;
+    if (msg_ids.response.geofence_id.size() > 0){
+        if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
+        {
+            ROS_ERROR("Failed to read a geofence");
+            return false;
+        }
     }
 
 
@@ -450,11 +452,13 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         return;
     }
     gauss_msgs::ReadGeofences msg_geofence;
-    for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(i);
-    if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
-    {
-        ROS_ERROR("Failed to read a geofence");
-        return;
+    if (msg_ids.response.geofence_id.size() > 0){
+        for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(i);
+        if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
+        {
+            ROS_ERROR("Failed to read a geofence");
+            return;
+        }
     }
     // Rellena grid con waypoints de las missiones
     for (int i=0; i<missions; i++)
@@ -507,20 +511,22 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         for (int j=0; j<trajectory.waypoints.size(); j++)
         {
             // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
-            int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, trajectory.waypoints.at(j),max(minDist,operation.operational_volume));
-            if (geofence_intrusion>=0)
-            {
-                gauss_msgs::Threat threat;
-                threat.header.stamp=ros::Time::now();
-                threat.uav_ids.push_back(i);
-                threat.geofence_ids.push_back(geofence_intrusion);
-                threat.times.push_back(trajectory.waypoints.at(j).stamp);
-                if (j==0)
-                    threat.threat_type=threat.GEOFENCE_INTRUSION;
-                else
-                    threat.threat_type=threat.GEOFENCE_CONFLICT;
-                threats_msg.request.uav_ids.push_back(i);
-                threats_msg.request.threats.push_back(threat);
+            if (msg_ids.response.geofence_id.size()>0){
+                int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, trajectory.waypoints.at(j),max(minDist,operation.operational_volume));
+                if (geofence_intrusion>=0)
+                {
+                    gauss_msgs::Threat threat;
+                    threat.header.stamp=ros::Time::now();
+                    threat.uav_ids.push_back(i);
+                    threat.geofence_ids.push_back(geofence_intrusion);
+                    threat.times.push_back(trajectory.waypoints.at(j).stamp);
+                    if (j==0)
+                        threat.threat_type=threat.GEOFENCE_INTRUSION;
+                    else
+                        threat.threat_type=threat.GEOFENCE_CONFLICT;
+                    threats_msg.request.uav_ids.push_back(i);
+                    threats_msg.request.threats.push_back(threat);
+                }
             }
             int posx = floor((trajectory.waypoints.at(j).x-minX)/dX);
             int posy = floor((trajectory.waypoints.at(j).y-minY)/dY);
