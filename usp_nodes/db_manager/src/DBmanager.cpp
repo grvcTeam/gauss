@@ -247,6 +247,9 @@ bool DataBase::readIcaoCB(gauss_msgs::ReadIcao::Request &req, gauss_msgs::ReadIc
         res.uav_id.push_back(it->uav_id);
         res.icao_address.push_back(it->icao_address);
     }
+    for (list<gauss_msgs::Geofence>::iterator it = geofence_db.begin(); it != geofence_db.end(); it++){
+        res.geofence_id.push_back(it->id);
+    }
     res.message = "All ICAO address were returned";
     res.success = true;
     

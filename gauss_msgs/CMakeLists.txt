@@ -53,6 +53,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    PositionReport.msg
+   ConflictiveOperation.msg
    DeconflictionPlan.msg
    Waypoint.msg
    WaypointList.msg

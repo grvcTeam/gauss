@@ -20,6 +20,8 @@ class EmergencyManagement():
         # Initialization
                
         self._threats2solve_list = []
+        self._conflictive_operations = []
+        self._conflictive_geofences = []
 
         # Publish
 
@@ -57,6 +59,8 @@ class EmergencyManagement():
         request = DeconflictionRequest()
         request.tactical = True
         request.threat = threat2deconflicted #le meto aquí threat. OK.
+        request.geofences = self._conflictive_geofences
+        request.operations = self._conflictive_operations
         uavs_in_conflict = threat2deconflicted.uav_ids
         self._readoperation_response = ReadOperationResponse()
         self._readoperation_response = self._readOperation_service_handle(uavs_in_conflict)
@@ -407,7 +411,13 @@ class EmergencyManagement():
         
         for i in range(num):
             self._threats2solve_list.append(req.threats[i])
-        
+
+        for i in range(req.operations):
+            self._conflictive_operations.append(req.operations[i])
+
+        for i in range(req.geofences):
+            self._conflictive_geofences.append(req.geofences[i])
+
         res = ThreatsResponse()
         res.success = True
         return res 
