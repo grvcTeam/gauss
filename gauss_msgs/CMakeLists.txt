@@ -73,6 +73,8 @@ find_package(catkin REQUIRED COMPONENTS
    Notifications.srv
    ReadGeofences.srv
    WriteGeofences.srv
+   WriteTracking.srv
+   WritePlans.srv
    Threats.srv	
    ReadOperation.srv
    ReadIcao.srv

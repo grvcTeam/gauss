@@ -1,0 +1,8 @@
+int8[] uav_ids
+int32[] current_wps
+float64[] times_tracked
+WaypointList[] tracks
+WaypointList[] estimated_trajectories
+---
+bool success
+string message

@@ -7,6 +7,8 @@
 #include <gauss_msgs/Operation.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/WriteOperation.h>
+#include <gauss_msgs/WriteTracking.h>
+#include <gauss_msgs/WritePlans.h>
 #include <gauss_msgs/DB_size.h>
 #include <gauss_msgs/Polygon.h>
 #include <list>
@@ -31,6 +33,8 @@ private:
     bool readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msgs::ReadGeofences::Response &res);
     bool writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_msgs::WriteGeofences::Response &res);
     bool returnDBsizeCB(gauss_msgs::DB_size::Request &req, gauss_msgs::DB_size::Response &res);
+    bool writeTrackingCB(gauss_msgs::WriteTracking::Request &req, gauss_msgs::WriteTracking::Response &res);
+    bool writePlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::WritePlans::Response &res);
 
     // Auxilary variables
     int size_plans;
@@ -52,12 +56,7 @@ private:
     // Timer
 
     // Server
-    ros::ServiceServer read_operation_server_;
-    ros::ServiceServer write_operation_server_;
-    ros::ServiceServer read_icao_server_;
-    ros::ServiceServer read_geofences_server_;
-    ros::ServiceServer write_geofences_server_;
-    ros::ServiceServer dbsize_server_;
+    ros::ServiceServer read_operation_server_, write_operation_server_, read_icao_server_, read_geofences_server_, write_geofences_server_, dbsize_server_, write_tracking_server_, write_plan_server_;
 };
 
 // DataBase Constructor
@@ -88,6 +87,8 @@ DataBase::DataBase() : nh_(), pnh_("~")
     read_geofences_server_=nh_.advertiseService("/gauss/read_geofences",&DataBase::readGeofenceCB,this);
     write_geofences_server_=nh_.advertiseService("/gauss/write_geofences",&DataBase::writeGeofenceCB,this);
     dbsize_server_=nh_.advertiseService("/gauss/db_size",&DataBase::returnDBsizeCB,this);
+    write_tracking_server_=nh_.advertiseService("/gauss/write_tracking",&DataBase::writeTrackingCB,this);
+    write_plan_server_=nh_.advertiseService("/gauss/write_plans",&DataBase::writePlansCB,this);
 
     ROS_INFO("Started DBManager node!");
 }
@@ -364,6 +365,75 @@ bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_m
     }
     size_geofences = geofence_db.size();
     res.message="All requested geofences were written on the DataBase";
+    return true;
+}
+
+bool DataBase::writeTrackingCB(gauss_msgs::WriteTracking::Request &req, gauss_msgs::WriteTracking::Response &res)
+{
+    std::string message = "";
+    if (operation_db.empty()){
+        res.success = false;
+        message = "No operations saved on the DataBase. Can not update requested tracking fields.";
+    } else {
+        std::vector<int> not_found_ids;
+        for (int i = 0; i < req.uav_ids.size(); i++)
+        {
+            res.success = false;
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    it->track = req.tracks[i];
+                    it->current_wp = req.current_wps[i];
+                    it->time_tracked = req.times_tracked[i];
+                    it->estimated_trajectory = req.estimated_trajectories[i];
+                    break;
+                }
+                not_found_ids.push_back(i);
+            }
+        }
+        if (!not_found_ids.empty()){
+            message = "Data base does not contain requested ids ["; 
+            for (int idx = 0; idx < not_found_ids.size(); idx++) message = message + " " + std::to_string(not_found_ids.at(idx));
+            message = message + "].";
+            res.success = false;
+        } else {
+            message = "All requested tracking fields were written on the DataBase.";
+            res.success = true;
+        }
+    }
+    res.message = message;
+    return true;
+}
+
+bool DataBase::writePlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::WritePlans::Response &res)
+{
+    std::string message = "";
+    if (operation_db.empty()){
+        res.success = false;
+        message = "No operations saved on the DataBase. Can not update requested flight plans.";
+    } else {
+        std::vector<int> not_found_ids;
+        for (int i = 0; i < req.uav_ids.size(); i++)
+        {
+            res.success = false;
+            for(list<gauss_msgs::Operation>::iterator it = operation_db.begin(); it != operation_db.end(); it++){
+                if (it->uav_id == req.uav_ids[i]){
+                    it->flight_plan = req.flight_plans[i];
+                    break;
+                }
+                not_found_ids.push_back(i);
+            }
+        }
+        if (!not_found_ids.empty()){
+            message = "Data base does not contain requested ids ["; 
+            for (int idx = 0; idx < not_found_ids.size(); idx++) message = message + " " + std::to_string(not_found_ids.at(idx));
+            message = message + "].";
+            res.success = false;
+        } else {
+            message = "All requested flight plans were written on the DataBase.";
+            res.success = true;
+        }
+    }
+    res.message = message;
     return true;
 }
 
