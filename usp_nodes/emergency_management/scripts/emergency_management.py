@@ -412,10 +412,10 @@ class EmergencyManagement():
         for i in range(num):
             self._threats2solve_list.append(req.threats[i])
 
-        for i in range(req.operations):
+        for i in range(len(req.operations)):
             self._conflictive_operations.append(req.operations[i])
 
-        for i in range(req.geofences):
+        for i in range(len(req.geofences)):
             self._conflictive_geofences.append(req.geofences[i])
 
         res = ThreatsResponse()
