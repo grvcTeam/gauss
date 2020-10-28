@@ -67,7 +67,7 @@ DataBase::DataBase() : nh_(), pnh_("~")
     std::string geofences_name = "UTM_GEOFENCE_CREATION";
     pnh_.getParam("operations_json", operations_name);
     pnh_.getParam("geofences_json",  geofences_name);
-    
+    std::cout << geofences_name << "\n";
     // Initialization
     size_plans=size_geofences=0;
 
@@ -126,6 +126,14 @@ bool DataBase::operationsFromJson(std::string _file_name)
             wp_list.waypoints.push_back(wp);
         } 
         operation.flight_plan = wp_list;
+        //gauss_msgs::WaypointList wp_list_aux;
+        //wp_list_aux.waypoints = std::vector<gauss_msgs::Waypoint>(3,gauss_msgs::Waypoint());
+        // Fill estimated trajectory with at most 18 waypoints from flight plan
+        for(int index_1=0; index_1 < std::min((int)operation.flight_plan.waypoints.size(),18); index_1++)
+        {
+            operation.estimated_trajectory.waypoints.push_back(operation.flight_plan.waypoints.at(index_1));
+        }
+        
         wp_list.waypoints.clear();
         for(const auto& it : item.value()["track"].front().items()){
             gauss_msgs::Waypoint wp;
@@ -138,6 +146,7 @@ bool DataBase::operationsFromJson(std::string _file_name)
         } 
         operation.track = wp_list;
         wp_list.waypoints.clear();
+        /*
         for(const auto& it : item.value()["estimated_trajectory"].front().items()){
             gauss_msgs::Waypoint wp;
             wp.x = it.value()["x"].get<double>();
@@ -146,9 +155,10 @@ bool DataBase::operationsFromJson(std::string _file_name)
             wp.stamp = ros::Time(it.value()["stamp"].get<double>());
             wp.mandatory = it.value()["mandatory"].get<double>();
             wp_list.waypoints.push_back(wp);
-        } 
+        }
         operation.estimated_trajectory = wp_list;
         wp_list.waypoints.clear();
+        */
         for(const auto& it : item.value()["landing_spots"].front().items()){
             gauss_msgs::Waypoint wp;
             wp.x = it.value()["x"].get<double>();
@@ -162,14 +172,16 @@ bool DataBase::operationsFromJson(std::string _file_name)
         json_operation.request.operation.push_back(operation);
         json_operation.request.uav_ids.push_back(operation.uav_id);
     }
-    writeOperationCB(json_operation.request, json_operation.response);
-    if (!json_operation.response.success){
-        ROS_ERROR("Error initializing DataBase from JSON!");
-        return false;
-    } else {
-        ROS_INFO_STREAM(json_operation.response.message);
+    if(json_operation.request.uav_ids.size() > 0)
+    {
+        writeOperationCB(json_operation.request, json_operation.response);
+        if (!json_operation.response.success){
+            ROS_ERROR("Error initializing DataBase from JSON!");
+            return false;
+        } else {
+            ROS_INFO_STREAM(json_operation.response.message);
+        }
     }
-
     return true;
 }
 
@@ -200,14 +212,16 @@ bool DataBase::geofencesFromJson(std::string _file_name)
         json_geofence.request.geofences.push_back(geofence);
         json_geofence.request.geofence_ids.push_back(geofence.id);
     }
-    writeGeofenceCB(json_geofence.request, json_geofence.response);
-    if (!json_geofence.response.success){
-        ROS_ERROR("Error initializing DataBase from JSON!");
-        return false;
-    } else {
-        ROS_INFO_STREAM(json_geofence.response.message);
+    if(json_geofence.request.geofence_ids.size() > 0)
+    {
+        writeGeofenceCB(json_geofence.request, json_geofence.response);
+        if (!json_geofence.response.success){
+            ROS_ERROR("Error initializing DataBase from JSON!");
+            return false;
+        } else {
+            ROS_INFO_STREAM(json_geofence.response.message);
+        }
     }
-
     return true;
 }
 

@@ -11,8 +11,10 @@
 #include <ros/duration.h>
 #include <iostream>
 
-#define VEL_NOISE_VAR 0.2 
+#define VEL_NOISE_VAR 0.5
 #define MIN_SIZE_DISTANCE 0.15
+
+//#define DEBUG
 
 using namespace std;
 
@@ -25,8 +27,6 @@ TargetTracker::TargetTracker(int id): update_timer_(ros::Time(0))
 
 	pose_ = Eigen::MatrixXd::Zero(4,1);
 	pose_cov_ = Eigen::MatrixXd::Identity(4,4);
-
-	non_cooperative_ = false;
 }
 
 /// Destructor
@@ -63,7 +63,9 @@ void TargetTracker::initialize(Candidate* z)
 		pose_(3,0) = z->speed(0);
 		pose_(4,0) = z->speed(1);
 		pose_(5,0) = z->speed(2);
+		#ifdef DEBUG
 		std::cout << "\n## INITIALIZE STEP USING SPEED INFO #########\n";
+		#endif
 	}
 	else
 	{
@@ -71,14 +73,17 @@ void TargetTracker::initialize(Candidate* z)
 		pose_(3,0) = 0.0; 
 		pose_(4,0) = 0.0;
 		pose_(5,0) = 0.0;
+		#ifdef DEBUG
 		std::cout << "\n## INITIALIZE STEP NOT USING SPEED INFO ########\n";
+		#endif
 	}
-	
+	/*
 	std::cout << "TARGET ID: " << this->id_ << "\n";
 	std::cout << "position (x,y,z): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
 	std::cout << ") in meters\n";
 	std::cout << "speed (x,y,z): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
 	std::cout << ") in m/s" << std::endl;
+	*/
 
 	// Setup cov matrix
 	pose_cov_.setIdentity(6, 6);
@@ -114,14 +119,16 @@ void TargetTracker::predict(ros::Time &prediction_time)
 	double dt = update_timer_.elapsed(prediction_time).toSec();
 	
 	// static factors do not vary. Position depending on whether it is dynamic or not.
+	#ifdef DEBUG
 	std::cout << "\n## PREDICTION STEP #########\n";
 	std::cout << "TARGET ID: " << this->id_ << "\n";
-	std::cout << "position (x,y): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2); 
+	std::cout << "position (x,y,z): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2); 
 	std::cout << ") in meters\n";
-	std::cout << "speed (x,y): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
+	std::cout << "speed (x,y,z): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
 	std::cout << ") in m/s" << std::endl;
+	#endif
 	// State vector prediction
-	std::cout << "dt: " << dt << std::endl;
+	//std::cout << "dt: " << dt << std::endl;
 	//std::cout << "reference timer: " << update_timer_.referenceTime().toSec() << std::endl;
 	pose_(0,0) += pose_(3,0)*dt;
 	pose_(1,0) += pose_(4,0)*dt;
@@ -142,11 +149,13 @@ void TargetTracker::predict(ros::Time &prediction_time)
 
 	pose_cov_ = F*pose_cov_*F.transpose() + Q;
 
+	#ifdef DEBUG
 	std::cout << "New position and speed after prediction\n";
-	std::cout << "position (x,y): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2); 
+	std::cout << "position (x,y,z): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2); 
 	std::cout << ") in meters\n";
-	std::cout << "speed (x,y): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);	
+	std::cout << "speed (x,y,z): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);	
 	std::cout << ") in m/s" << std::endl;
+	#endif
 
 	this->update_timer_.reset(prediction_time);
 }
@@ -186,15 +195,17 @@ bool TargetTracker::update(Candidate* z)
 
 	if(!z->speed_available)
 	{
+		#ifdef DEBUG
 		std::cout << "\n## UPDATE STEP DON'T USING SPEED INFO #########\n";
 		std::cout << "TARGET ID: " << this->id_ << "\n";
-		std::cout << "position (x,y): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
+		std::cout << "position (x,y,z): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
 		std::cout << ") in meters" << "\n";
-		std::cout << "speed (x,y): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
+		std::cout << "speed (x,y,z): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
 		std::cout << ") in m/s" << "\n";
 		std::cout << "Matched candidate info\n";
-		std::cout << "position (x,y): " << "(" << z->location(0) << "," << z->location(1) << z->location(2) << ")\n";
-		std::cout << "speed (x,y): " << "(" << z->speed(0) << "," << z->speed(1) << "," << z->speed(2) << ")" << std::endl;
+		std::cout << "position (x,y,z): " << "(" << z->location(0) << "," << z->location(1) << z->location(2) << ")\n";
+		std::cout << "speed (x,y,z): " << "(" << z->speed(0) << "," << z->speed(1) << "," << z->speed(2) << ")" << std::endl;
+		#endif
 		// Update when there are no speed measurements
 		// Compute update jacobian
 		Eigen::Matrix<double, 3, 6> H;
@@ -218,10 +229,18 @@ bool TargetTracker::update(Candidate* z)
 		// Calculate innovation matrix
 		Eigen::Matrix<double, 3, 3> S;
 		S = H*pose_cov_*H.transpose() + R;
+		#ifdef DEBUG
+		std::cout << "S matrix " << "\n";
+		std::cout << S << std::endl;
+		#endif
 
 		// Calculate kalman gain
 		Eigen::Matrix<double, 6, 3> K;
 		K = pose_cov_*H.transpose()*S.inverse();
+		#ifdef DEBUG
+		std::cout << "K matrix " << "\n";
+		std::cout << K << std::endl;
+		#endif
 
 		// Calculate innovation vector
 		Eigen::Matrix<double, 3, 1> y;
@@ -240,16 +259,17 @@ bool TargetTracker::update(Candidate* z)
 	}
 	else
 	{
-		// TODO: Print target data before update for DEBUGGING
+		#ifdef DEBUG
 		std::cout << "\n## UPDATE STEP USING SPEED INFO #########\n";
 		std::cout << "TARGET ID: " << this->id_ << "\n";
-		std::cout << "position (x,y): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
+		std::cout << "position (x,y,z): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
 		std::cout << ") in meters" << "\n";
-		std::cout << "speed (x,y): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
+		std::cout << "speed (x,y,z): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
 		std::cout << ") in m/s" << "\n";
 		std::cout << "Matched candidate info\n";
-		std::cout << "position (x,y): " << "(" << z->location(0) << "," << z->location(1) << "," << z->location(2) << ")\n";
-		std::cout << "speed (x,y): " << "(" << z->speed(0) << "," << z->speed(1) << "," << z->speed(2) << ")" << std::endl;
+		std::cout << "position (x,y,z): " << "(" << z->location(0) << "," << z->location(1) << "," << z->location(2) << ")\n";
+		std::cout << "speed (x,y,z): " << "(" << z->speed(0) << "," << z->speed(1) << "," << z->speed(2) << ")" << std::endl;
+		#endif
 		// Update when there are speed measurements
 		// Compute update jacobian
 		Eigen::Matrix<double, 6, 6> H;
@@ -285,14 +305,18 @@ bool TargetTracker::update(Candidate* z)
 		// Calculate innovation matrix
 		Eigen::Matrix<double, 6, 6> S;
 		S = H * pose_cov_ * H.transpose() + R;
-		//std::cout << "S matrix\n";
-		//std::cout << S << "\n\n";
+		#ifdef DEBUG
+		std::cout << "S matrix\n";
+		std::cout << S << "\n\n";
+		#endif
 
 		// Calculate kalman gain
 		Eigen::Matrix<double, 6, 6> K;
 		K = pose_cov_ * H.transpose() * S.inverse();
-		//std::cout << "K matrix\n";
-		//std::cout << K << "\n\n";
+		#ifdef DEBUG
+		std::cout << "K matrix\n";
+		std::cout << K << "\n\n";
+		#endif
 
 		// Calculate innovation vector
 		Eigen::Matrix<double, 6, 1> y;
@@ -304,15 +328,20 @@ bool TargetTracker::update(Candidate* z)
 		y(4,0) = z->speed(1) - y(4,0);
 		y(5,0) = z->speed(2) - y(5,0);
 
-		//std::cout << "y vector\n";
-		//std::cout << y <<"\n\n";
+		#ifdef DEBUG
+		std::cout << "y vector\n";
+		std::cout << y <<"\n\n";
+		#endif
 		// Calculate new state vector
 		pose_ = pose_ + K*y;
-		std::cout << "New position and speed after update" << std::endl;
-		std::cout << "position (x,y): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
+		
+		#ifdef DEBUG
+		std::cout << "New position and speed after update" << "\n";
+		std::cout << "position (x,y,z): " << "(" << this->pose_(0) << "," << this->pose_(1) << "," << this->pose_(2);
 		std::cout << ") in meters\n";
-		std::cout << "speed (x,y): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
+		std::cout << "speed (x,y,z): " << "(" << this->pose_(3) << "," << this->pose_(4) << "," << this->pose_(5);
 		std::cout << ") in m/s" << std::endl;
+		#endif		
 
 		Eigen::Matrix<double, 6, 6> I;
 		I.setIdentity(6,6);

@@ -14,13 +14,16 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   std_msgs
+  gauss_msgs
+  gauss_msgs_mqtt
+  geodesy
 )
 find_package(Eigen3 REQUIRED)
-
+find_package(GeographicLib REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(Boost REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -108,10 +111,10 @@ find_package(Eigen3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+ INCLUDE_DIRS include
  LIBRARIES usp_nodes
  CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs
- DEPENDS EIGEN3
+ DEPENDS EIGEN3 Boost
 )
 
 ###########
@@ -121,9 +124,10 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-#  include
+ include
  ${catkin_INCLUDE_DIRS}
  ${EIGEN3_INCLUDE_DIR}
+ ${Boost_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
@@ -144,6 +148,10 @@ include_directories(
 add_executable(USPmanager src/USPmanager.cpp)
 target_link_libraries(USPmanager ${catkin_LIBRARIES})
 add_dependencies(USPmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
+add_executable(usp_manager_ual_bridge src/usp_manager_ual_bridge.cpp)
+target_link_libraries(usp_manager_ual_bridge ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${GeographicLib_LIBRARIES})
+add_dependencies(usp_manager_ual_bridge ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

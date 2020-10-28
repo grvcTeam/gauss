@@ -80,19 +80,19 @@ class EmergencyManagement():
     def select_optimal_route(self, uav):
         #Lista de deconfliction plans.msg
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
+        print("----------")
         print(deconfliction_plans_list)
         values = []
         
         for deconfliction_plan in deconfliction_plans_list:
-             if deconfliction_plan.uav_id == uav:
-                 alfa = 0.25 # Peso de coste
-                 beta = 0.75 # Peso de peligrosidad
-                 value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
-                 values.append(value)
-                 value_min = min(values)
-                 pos_min = values.index(min(values))
+            print(deconfliction_plan.uav_id)
+            print(uav)
+            if deconfliction_plan.uav_id == uav:
+                alfa = 0.25 # Peso de coste
+                beta = 0.75 # Peso de peligrosidad
+                value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
+                values.append(value)
         
-        value_min = min(values)
         pos_min = values.index(min(values))
         print(values)
         best_solution = deconfliction_plans_list[pos_min]

@@ -10,6 +10,7 @@
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/CheckConflicts.h>
 #include <algorithm>
+#include <mutex>
 
 using namespace std;
 
@@ -51,6 +52,7 @@ private:
     cell ****grid;
 
     bool locker;
+    std::mutex mutex_lock_;
 
     ros::Time current_stamp;
 
@@ -97,7 +99,8 @@ Monitoring::Monitoring()
     T=ceil(maxT/dT);
 
     grid=NULL;
-    locker=true;
+    //locker=true;
+    mutex_lock_.lock();
 
     grid= new cell***[X];
     for (int i=0;i<X;i++)
@@ -110,6 +113,7 @@ Monitoring::Monitoring()
                 grid[i][j][k]=new cell[T];
         }
     }
+    mutex_lock_.unlock();
 
     // Publish
 
@@ -154,6 +158,8 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
         threat_list_[threat_list_id_].first.threat_id = threat_list_id_;
         out_threats.request.threats.push_back(threat_list_[threat_list_id_].first);
         out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.front());
+        if (threat_list_[threat_list_id_].first.threat_type == threat_list_[threat_list_id_].first.LOSS_OF_SEPARATION) 
+            out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.back());
         threat_list_id_++;
     }
     if (threat_list_.size() > 0){
@@ -193,11 +199,14 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
                 threat_list_[threat_list_id_].first.threat_id = threat_list_id_;
                 out_threats.request.threats.push_back(threat_list_[threat_list_id_].first);
                 out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.front());
+                if (threat_list_[threat_list_id_].first.threat_type == threat_list_[threat_list_id_].first.LOSS_OF_SEPARATION){
+                    out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.back());
+                }
                 threat_list_id_++;
             }
         }
     } 
-    // Uncomment to check list
+    //Uncomment to check list
     // for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
     //     std::cout << "[" << it->first << "] Time: " << it->second.second << 
     //     " Thread: " << it->second.first <<
@@ -350,7 +359,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
             return false;
     }
 
-    if (!locker)
+    if (mutex_lock_.try_lock())
     {
         for (int i=0; i<req.deconflicted_wp.size(); i++)
         {
@@ -387,7 +396,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(req.deconflicted_wp.at(i).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
                                             threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
                                             res.threats.push_back(threat);
                                         }
@@ -399,6 +408,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                         }
 
         }
+        mutex_lock_.unlock();
     }
 
     res.success=true;
@@ -430,7 +440,8 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
 
     gauss_msgs::Threats threats_msg;
 
-    locker=true;
+    //locker=true;
+    mutex_lock_.lock();
 
     //Clear previous grid
     for(int m=0;m<X;m++)
@@ -466,6 +477,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         geometry_msgs::Point vd;
         geometry_msgs::Point pq;
         geometry_msgs::Point pv;
+        /*
         if (operation.current_wp >= plan.waypoints.size())
         {
             vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
@@ -478,6 +490,13 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             vd.y=plan.waypoints.at(operation.current_wp+1).y-plan.waypoints.at(operation.current_wp).y;
             vd.z=plan.waypoints.at(operation.current_wp+1).z-plan.waypoints.at(operation.current_wp).z;
         }
+        */
+
+        // TODO: Next sentences fail when current_wp is 0 (that could happen if database is initialized with current_wp=0 and tracking hasn't updated it before monitoring reads)
+        vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
+        vd.y=plan.waypoints.at(operation.current_wp).y-plan.waypoints.at(operation.current_wp-1).y;
+        vd.z=plan.waypoints.at(operation.current_wp).z-plan.waypoints.at(operation.current_wp-1).z;
+
         pq.x=trajectory.waypoints.at(0).x-plan.waypoints.at(operation.current_wp).x;
         pq.y=trajectory.waypoints.at(0).y-plan.waypoints.at(operation.current_wp).y;
         pq.z=trajectory.waypoints.at(0).z-plan.waypoints.at(operation.current_wp).z;
@@ -556,13 +575,19 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                                  pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDistAux &&
                                                 abs(trajectory.waypoints.at(j).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
                                         {
+                                            std::cout << "Threat detected between uav_ids: " << i << " and " << *it << "\n";
+                                            std::cout << "waypoints (x,y,z,t): (";
+                                            std::cout << trajectory.waypoints.at(j).x << "," << trajectory.waypoints.at(j).y << "," << trajectory.waypoints.at(j).z << "," << trajectory.waypoints.at(j).stamp.toSec() << ")";
+                                            std::cout << ",(";
+                                            std::cout << trajectory2.waypoints.at(*it_wp).x << "," << trajectory2.waypoints.at(*it_wp).y << "," << trajectory2.waypoints.at(*it_wp).z << "," << trajectory2.waypoints.at(*it_wp).stamp.toSec() << ")";
+                                            std::cout << "\n";
                                             gauss_msgs::Threat threat;
                                             threat.header.stamp=ros::Time::now();
                                             threat.uav_ids.push_back(i);
                                             threat.uav_ids.push_back(*it);
                                             threat.times.push_back(trajectory.waypoints.at(j).stamp);
                                             threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                            threat.priority_ops.push_back(msg_op.response.operation.front().priority);
+                                            threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
                                             threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
                                             threat.threat_type=threat.LOSS_OF_SEPARATION;
 
@@ -577,7 +602,8 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                         }
         }
     }
-    locker=false;
+    //locker=false;
+    mutex_lock_.unlock();
 
     // LLamar al servicio alerta
     if (threats_msg.request.threats.size() > 0)

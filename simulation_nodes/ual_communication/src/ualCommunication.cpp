@@ -47,6 +47,8 @@ void notificationCb(const gauss_msgs::Notification msg) {
     if (msg.uav_id == uav_id_ && !new_notification_){
         notification_ = msg;
         new_notification_ = true;
+        notification_.maneuver_type = msg.action;
+        notification_.threat.threat_type = notification_.threat.LOSS_OF_SEPARATION;
     }
 }
 
