@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # This Python file uses the following encoding: utf-8
+# Author: Carlos Capitán Fernández
 
 '''This script is the emergency management module developed in the UTM to decide what is the best action 
 to take in the U-space when some Threats are showed up.'''
@@ -27,6 +28,12 @@ class EmergencyManagement():
 
         self._dictionary_all_threats = {}     
         
+        # Server     
+
+        self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
+        
+        self._pilot_answer_service = rospy.Service('/gauss/pilotanswer', PilotAnswer, self.service_pilot_answer_cb)
+        
         # Wait until services are available and create connection
         
         rospy.wait_for_service('/gauss/tactical_deconfliction')                    
@@ -40,18 +47,12 @@ class EmergencyManagement():
 
         rospy.wait_for_service('/gauss/notifications')                    
         self._notifications_service_handle = rospy.ServiceProxy('/gauss/notifications', Notifications) 
-               
-        # Server     
-
-        self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
-        
-        #self._pilot_answer_service = rospy.Service('/gauss/pilotanswer', PilotAnswer, self.service_pilot_answer_cb)
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(20), self.timer_cb)
         
-        print("Started Emergency Management module!")
+        print("Started Emergency Management(EM) module!. This module proposes threats solutions to the USP module.")
     
     def send_notifications(self,notifications):
         request = NotificationsRequest()
@@ -90,13 +91,14 @@ class EmergencyManagement():
         threat_type = threat.threat_type
         threat_time = threat.header.stamp
         uavs_threatened = threat.uav_ids
-        maneuvers = {1:'Route to my destiny avoiding a geofence', 2:'Route to my destiny for the shortest way',
+        actions_dictionary = {1:'Route to my destiny avoiding a geofence', 2:'Route to my destiny for the shortest way',
         3:'Route back home', 4:'Hovering waiting for geofence deactivation', 5:'Route landing in a landing spot',
         6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
         9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
         
         if len(uavs_threatened) > 0: 
+
             '''Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
             if threat_type == Threat.UAS_IN_CV:   
 
@@ -113,6 +115,7 @@ class EmergencyManagement():
                 best_solution = self.select_optimal_route()                
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
+                notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
                 self._notifications_list.append(notification) 
 
@@ -123,6 +126,7 @@ class EmergencyManagement():
                 best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
+                notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
                 self._notifications_list.append(notification) 
 
@@ -151,8 +155,7 @@ class EmergencyManagement():
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
                 response = self._writeGeofences_service_handle(request)
-                response.message = "Geofence stored in the Data Base."
-                
+                response.message = "Geofence stored in the Data Base."   
 
             '''Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
@@ -163,6 +166,7 @@ class EmergencyManagement():
                 best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
+                notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
                 self._notifications_list.append(notification) 
                     
@@ -175,6 +179,7 @@ class EmergencyManagement():
                 best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
+                notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
                 self._notifications_list.append(notification) 
                 
@@ -199,7 +204,6 @@ class EmergencyManagement():
                 request.geofences = [geofence]
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
-                
 
             '''Threat COMMUNICATION FAILURE: we EM can not do anything if there is a lost of the link communication between the GCS and/or the
                 UAV and USP.'''
@@ -220,6 +224,7 @@ class EmergencyManagement():
                 best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
+                notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
                 self._notifications_list.append(notification) 
                     
@@ -244,7 +249,6 @@ class EmergencyManagement():
                 request.geofences = [geofence]
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."       
-                
 
             '''Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
                 and we create a geofence around the UAV.'''
@@ -269,7 +273,6 @@ class EmergencyManagement():
                 request.geofences = [geofence]
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."   
-                
 
             '''Threat GNSS DEGRADATION: we wait a period of time and then we ask to tactical
                 possible trajectories to landing spots'''
@@ -282,60 +285,78 @@ class EmergencyManagement():
                 best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
+                notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
                 self._notifications_list.append(notification) 
 
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
-        num_1 = len(req.threats)
-        rospy.loginfo("Received %d threats!", num_1) 
-        for i in range(num_1): # Bucle para RELLENAR la lista de Threats recibido.
+        num = len(req.threats)
+        rospy.loginfo("EM has received %d threats!", num) 
+        for i in range(num): # Bucle para RELLENAR la lista de Threats recibido.
             self._threats2solve_list.append(req.threats[i])
-        self._threats2solve_list = sorted(self._threats2solve_list, key=lambda x:x.threat_type) #ordenamos la lista de mayor a menor severidad.
+        
+        #ordenamos la lista de mayor a menor severidad.
+        self._threats2solve_list = sorted(self._threats2solve_list, key=lambda x:x.threat_type) 
         
         for threat in self._threats2solve_list: # Bucle para RELLENAR un diccionario con todos los threat_id y su estado actual.
             key = threat.threat_id
             value = 'TODO'
             self._dictionary_all_threats[key] = value
-        print("This is the list of Threat_ids and their status:", self._dictionary_all_threats)
-        rospy.loginfo("Let's solve the threats by severity order!")
+        #print("This is the list of Threat_ids and their status:", self._dictionary_all_threats)
         res = ThreatsResponse()
         res.success = True
         return res 
 
-    # def service_pilot_answer_cb(self, request):
-    #     req = PilotAnswerRequest()
-    #     req = copy.deepcopy(request)
-    #     rospy.loginfo("There are new pilot answers")
-    #     threat_ids = req.threat_ids 
-    #     answers = req.pilot_answers
-    #     res = PilotAnswerResponse()
-    #     res.success = True
-    #     return res
+    def service_pilot_answer_cb(self, request):
+        req = PilotAnswerRequest()
+        req = copy.deepcopy(request)
+        rospy.loginfo("There are new pilot answers")
+        threat_ids = req.threat_ids 
+        answers = req.pilot_answers 
+        num = len(threat_ids)
+        if num > 0:
+            for i in range(num):
+                # Actualizamos el diccionario con las respuestas del piloto.
+                self._dictionary_all_threats[threat_ids[i]] = answers[i] 
+                if answers[i] == 'ACCEPTED':
+                    del self._dictionary_all_threats[threat_ids[i]]
+                    index2delete = 0
+                    for threat in self._threats2solve_list:
+                        key = threat.threat_id
+                        if key == threat_ids[i]:
+                            break
+                        else:
+                            index2delete = index2delete + 1 
+                    if index2delete < len(self._threats2solve_list):
+                        self._threats2solve_list.pop(index2delete)
+                    if index2delete < len(self._notifications_list):
+                        self._notifications_list.pop(index2delete)
+        #print(self._threats2solve_list)
+        #print(self._dictionary_all_threats)
+        res = PilotAnswerResponse()
+        res.success = True
+        return res
 
     def timer_cb(self, timer):
-        num_1 = len(self._threats2solve_list)
-        num_2 = len(self._notifications_list)
-        rospy.loginfo("There are %d active threats", num_1)
-        rospy.loginfo("Let's change the status of the threats")
-        if num_1 > 0:
-            for threat in self._threats2solve_list: # Bucle para CAMBIAR el estado de los Threats de TODO a DOING.
+        num = len(self._threats2solve_list)
+        rospy.loginfo("Right now, there are %d active threats in the U-space", num)
+        if num > 0:
+            # Bucle para RESOLVER los Threats en estado TODO.
+            for threat in self._threats2solve_list: 
                 key = threat.threat_id
                 if self._dictionary_all_threats[key] == 'TODO':
-                    self._dictionary_all_threats[key] = 'DOING'
-                    if self._dictionary_all_threats[key] == 'DOING':
+                    if self._dictionary_all_threats[key] == 'TODO':
                         self.action_decision_maker(threat)
-            print("This is the list of Threat_ids and their status", self._dictionary_all_threats)       
-            rospy.loginfo("Let's send notifications to the UAS!")
-            self.send_notifications(self._notifications_list)
-            for threat in self._threats2solve_list: # Bucle para CAMBIAR el estado de los Threats de DOING a NOTIFIED
+                    self.send_notifications(self._notifications_list)
+            # Bucle para CAMBIAR el estado de los Threats de TODO a NOTIFIED
+            for threat in self._threats2solve_list: 
                 key = threat.threat_id
-                if self._dictionary_all_threats[key] == 'DOING':
+                if self._dictionary_all_threats[key] == 'TODO':
                     self._dictionary_all_threats[key] = 'NOTIFIED'
-            print("This is the list of Threat_ids and their status", self._dictionary_all_threats)
-   
-
+        rospy.loginfo("The number of Threats active in the U-space is %d", num)
+        print(self._notifications_list)
 ''' The node and the EmergencyManagement class are initialized'''
 
 if __name__=='__main__':

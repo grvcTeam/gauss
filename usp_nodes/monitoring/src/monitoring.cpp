@@ -623,7 +623,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         }
 
     }
-    double delete_time = 600.0; // seconds
+    double delete_time = 100.0; // seconds
     // Delete old threats on the list
     deleteOldThreats(start_time, delete_time);
 
