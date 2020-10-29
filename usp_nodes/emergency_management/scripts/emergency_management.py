@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 # This Python file uses the following encoding: utf-8
 
-'''This script is the emergency manager node developed to decide what is the best action 
+'''This script is the emergency management module developed in the UTM to decide what is the best action 
 to take in the U-space when some Threats are showed up.'''
 
 import rospy
 import time
 import copy
 from gauss_msgs.srv import Threats, ThreatsResponse, ThreatsRequest
-from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
-from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
+from gauss_msgs.srv import PilotAnswer, PilotAnswerResponse, PilotAnswerRequest
+from gauss_msgs.srv import ReadOperation, ReadOperationRequest
+from gauss_msgs.srv import Notifications, NotificationsRequest
+from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest 
 from gauss_msgs.msg import Threat, Circle, Notification, Waypoint, WaypointList, Operation, Geofence, DeconflictionPlan
-from gauss_msgs.srv import Deconfliction, DeconflictionRequest, DeconflictionResponse
+from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 
 class EmergencyManagement():
 
@@ -19,85 +21,73 @@ class EmergencyManagement():
         
         # Initialization
                
+        self._notifications_list = []
+
         self._threats2solve_list = []
+
         self._conflictive_operations = []
         self._conflictive_geofences = []
 
-        # Publish
-
-        self._notification_publisher = rospy.Publisher('notification', Notification, queue_size=1)
+        self._dictionary_all_threats = {}     
         
         # Wait until services are available and create connection
         
         rospy.wait_for_service('/gauss/tactical_deconfliction')                    
         self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/tactical_deconfliction', Deconfliction) 
 
-        rospy.wait_for_service('/gauss/read_operation')                    
-        self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
+        #rospy.wait_for_service('/gauss/read_operation')                    
+        #self._readOperation_service_handle = rospy.ServiceProxy('/gauss/read_operation', ReadOperation) 
 
         rospy.wait_for_service('/gauss/write_geofences')                    
         self._writeGeofences_service_handle = rospy.ServiceProxy('/gauss/write_geofences', WriteGeofences) 
+
+        rospy.wait_for_service('/gauss/notifications')                    
+        self._notifications_service_handle = rospy.ServiceProxy('/gauss/notifications', Notifications) 
                
         # Server     
 
         self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
+        
+        #self._pilot_answer_service = rospy.Service('/gauss/pilotanswer', PilotAnswer, self.service_pilot_answer_cb)
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(5), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
         
-        print("Started Emergency Management node!")
+        print("Started Emergency Management module!")
     
-    def send_priority_ops(self, uav_ids):
-        request = ReadOperationRequest()
-        request.uav_ids = uav_ids # Lista de uavs
-        result = ReadOperationResponse()
-        result = self._readOperation_service_handle(request) # lista de Operaciones de los uavs
-        return result
-
+    def send_notifications(self,notifications):
+        request = NotificationsRequest()
+        request.notifications = self._notifications_list
+        response = self._notifications_service_handle(request)
+        return response
+    
     def send_threat2deconfliction(self,threat2deconflicted): 
         request = DeconflictionRequest()
         request.tactical = True
-        request.threat = threat2deconflicted #le meto aquí threat. OK.
-        request.geofences = self._conflictive_geofences
+        request.threat = threat2deconflicted 
         request.operations = self._conflictive_operations
-        uavs_in_conflict = threat2deconflicted.uav_ids
-        self._readoperation_response = ReadOperationResponse()
-        self._readoperation_response = self._readOperation_service_handle(uavs_in_conflict)
-        priority_ops = []
-
-        for uav in uavs_in_conflict:
-            if len(self._readoperation_response.operation) > uav:
-                uav_operation = self._readoperation_response.operation[uav]
-                uav_priority = uav_operation.priority
-                priority_ops.append(uav_priority)    
-        
-        request.threat.priority_ops = priority_ops
-        self._deconfliction_response = DeconflictionResponse()
+        request.geofences = self._conflictive_geofences
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
-        return self._deconfliction_response 
+        return self._deconfliction_response
    
-    def select_optimal_route(self, uav):
-        #Lista de deconfliction plans.msg
+    def select_optimal_route(self):
+        'Select the optimal deconfliction route '
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
-        print("----------")
-        print(deconfliction_plans_list)
         values = []
-        
         for deconfliction_plan in deconfliction_plans_list:
-            print(deconfliction_plan.uav_id)
-            print(uav)
-            if deconfliction_plan.uav_id == uav:
-                alfa = 0.25 # Peso de coste
-                beta = 0.75 # Peso de peligrosidad
-                value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
-                values.append(value)
-        
+            alfa = 0.25 # Weight of cost
+            beta = 0.75 # Weight of riskiness
+            value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
+            values.append(value)
+         
+        value_min = min(values)
         pos_min = values.index(min(values))
-        print(values)
         best_solution = deconfliction_plans_list[pos_min]
-        print("The best solution is", best_solution)
+        #print("The best solution is:", best_solution)
         return best_solution
+
+#TODO crear notificaciones y llamar a la función que las manda.
 
     def action_decision_maker(self, threat2solve):
         threat = Threat()
@@ -105,80 +95,52 @@ class EmergencyManagement():
         threat_type = threat.threat_type
         threat_time = threat.header.stamp
         uavs_threatened = threat.uav_ids
+        maneuvers = {1:'Route to my destiny avoiding a geofence', 2:'Route to my destiny for the shortest way',
+        3:'Route back home', 4:'Hovering waiting for geofence deactivation', 5:'Route landing in a landing spot',
+        6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
+        9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
-        rate = rospy.Rate(1)
+        
         if len(uavs_threatened) > 0: 
-
             '''Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
+            if threat_type == Threat.UAS_IN_CV:   
 
-            if threat_type == Threat.UAS_IN_CV:   #OK
-
-                ctrl_c = False        
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        uav_threatened = uavs_threatened[0]
-                        notification.description = 'Go back to your flight plan.'
-                        notification.uav_id = uav_threatened
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification) 
-                    else:
-                        rate.sleep()
+                uav_threatened = uavs_threatened[0]
+                notification.description = 'Go back to your flight plan.'
+                notification.uav_id = uav_threatened
+                self._notifications_list.append(notification)
                             
             '''Threat UAS OUT OV: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.UAS_OUT_OV: #OK
+            if threat_type == Threat.UAS_OUT_OV: 
 
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
-                ctrl_c = False        
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:    
-                        notification.uav_id = best_solution.uav_id
-                        notification.action = best_solution.maneuver_type
-                        notification.waypoints = best_solution.waypoint_list
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification)
-                    else:
-                        rate.sleep()
-
-        #TODO waiting for tactical deconfliction development in order to validate this Threat.
+                for uav in uav_threatened:
+                    if uav == self._deconfliction_response.deconfliction_plans[0].uav_id:
+                        best_solution = self.select_optimal_route()                
+                notification.uav_id = best_solution.uav_id
+                notification.action = best_solution.maneuver_type
+                notification.waypoints = best_solution.waypoint_list
+                self._notifications_list.append(notification) 
 
             '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.LOSS_OF_SEPARATION: #OK
-                for uav in uavs_threatened:
-                    self.send_threat2deconfliction(threat)
-                    best_solution = self.select_optimal_route(uav)
-                    ctrl_c = False        
-                    while not ctrl_c:
-                        connections = self._notification_publisher.get_num_connections()
-                        if connections > 0:   
-                            notification.uav_id = best_solution.uav_id
-                            notification.action = best_solution.maneuver_type
-                            notification.waypoints = best_solution.waypoint_list
-                            ctrl_c = True
-                            self._notification_publisher.publish(notification)
-                        else:
-                            rate.sleep()
+            if threat_type == Threat.LOSS_OF_SEPARATION:
+                self.send_threat2deconfliction(threat)
+                best_solution = self.select_optimal_route()
+                notification.uav_id = best_solution.uav_id
+                notification.action = best_solution.maneuver_type
+                notification.waypoints = best_solution.waypoint_list
+                self._notifications_list.append(notification) 
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
                
-            if threat_type == Threat.ALERT_WARNING:     #OK
-                    
+            if threat_type == Threat.ALERT_WARNING:    
                 #We send a notification for every UAV.
                 for uav in uavs_threatened:
-                    ctrl_c = False
-                    while not ctrl_c:
-                        connections = self._notification_publisher.get_num_connections()
-                        if connections > 0:
-                            notification.description = 'Alert Warning: Bad weather Fire or NDZ detected in the zone.'
-                            notification.uav_id = uavs_threatened[uav]
-                            ctrl_c = True
-                            self._notification_publisher.publish(notification)
-                        else:
-                            rate.sleep()    
+                    notification.description = 'Alert Warning: Bad weather Fire or NDZ detected in the zone.'
+                    notification.uav_id = uavs_threatened[uav]
+                    self._notifications_list.append(notification) 
                     
                 #Creation of the NDZ.
                 geofence_base = Circle()
@@ -195,68 +157,43 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
-                print(response.message)
+                
 
             '''Threat GEOFENCE INTRUSION: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.GEOFENCE_INTRUSION:   #OK
-                    
+            if threat_type == Threat.GEOFENCE_INTRUSION:   
                 #Publish the action which the UAV has to make.
                     
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.uav_id = best_solution.uav_id
-                        notification.action = best_solution.maneuver_type
-                        notification.waypoints = best_solution.waypoint_list
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification)
-                    else:
-                        rate.sleep()    
+                best_solution = self.select_optimal_route()
+                notification.uav_id = best_solution.uav_id
+                notification.action = best_solution.maneuver_type
+                notification.waypoints = best_solution.waypoint_list
+                self._notifications_list.append(notification) 
                     
             '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.GEOFENCE_CONFLICT:  #OK
-                    
+            if threat_type == Threat.GEOFENCE_CONFLICT:  
                 #Publish the action which the UAV has to make.
                     
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.uav_id = best_solution.uav_id
-                        notification.action = best_solution.maneuver_type
-                        notification.waypoints = best_solution.waypoint_list
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification)
-                    else:
-                        rate.sleep()
-
+                best_solution = self.select_optimal_route()
+                notification.uav_id = best_solution.uav_id
+                notification.action = best_solution.maneuver_type
+                notification.waypoints = best_solution.waypoint_list
+                self._notifications_list.append(notification) 
+                
             '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
 
-            if threat_type == Threat.TECHNICAL_FAILURE:  #OK
-                                
+            if threat_type == Threat.TECHNICAL_FAILURE:  
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.description = 'URGENT: Land now.'
-                        notification.uav_id = uav_threatened
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification)           
-                    else:
-                        rate.sleep()
-
+                notification.description = 'URGENT: Land now.'
+                notification.uav_id = uav_threatened
+                self._notifications_list.append(notification) 
+                
                 # We create a geofence.
                 geofence = Geofence()
                 geofence.id = 3
@@ -267,70 +204,41 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."
-                print(response.message)
+                
 
             '''Threat COMMUNICATION FAILURE: we EM can not do anything if there is a lost of the link communication between the GCS and/or the
                 UAV and USP.'''
 
-            if threat_type == Threat.COMMUNICATION_FAILURE: #OK
+            if threat_type == Threat.COMMUNICATION_FAILURE: 
                     
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.description = 'Change UAV control mode from autonomous to manual.'
-                        notification.uav_id = uav_threatened
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification) 
-                    else:
-                        rate.sleep()
-                
+                notification.description = 'Change UAV control mode from autonomous to manual.'
+                notification.uav_id = uav_threatened
+                self._notifications_list.append(notification) 
+                    
             '''Threat LACK OF BATTERY: we ask to tactical possible solution trajectories'''
 
-        #TODO waiting for tactical deconfliction development in order to validate this Threat.
-
-            if threat_type == Threat.LACK_OF_BATTERY:  #OK
-                    
+            if threat_type == Threat.LACK_OF_BATTERY:  
                 #Publish the action which the UAV has to make.
-                    
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.uav_id = best_solution.uav_id
-                        notification.action = best_solution.maneuver_type
-                        notification.waypoints = best_solution.waypoint_list
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification)
-                    else:
-                        rate.sleep()    
-
-                
+                best_solution = self.select_optimal_route()
+                notification.uav_id = best_solution.uav_id
+                notification.action = best_solution.maneuver_type
+                notification.waypoints = best_solution.waypoint_list
+                self._notifications_list.append(notification) 
+                    
             '''Threat JAMMING ATTACK: We send a message for landing within the geofence created
                 around the UAV.'''
-
-            if threat_type == Threat.JAMMING_ATTACK: #OK
-                    
+            if threat_type == Threat.JAMMING_ATTACK: 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.description = 'Land within the geofence created around the UAV.'
-                        notification.uav_id = uav_threatened
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification)           
-                    else:
-                        rate.sleep()
-
+                notification.description = 'Land within the geofence created around the UAV.'
+                notification.uav_id = uav_threatened
+                self._notifications_list.append(notification) 
+                
                 # We create a geofence.
                 geofence = Geofence()
                 geofence.id = 3
@@ -341,30 +249,21 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."       
-                print(response.message)
+                
 
             '''Threat SPOOFING ATTACK: We send a recommendation to the UAV in order to activate the FTS
                 and we create a geofence around the UAV.'''
 
-            if threat_type == Threat.SPOOFING_ATTACK: #OK
+            if threat_type == Threat.SPOOFING_ATTACK: 
                 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.description = 'Activate the Flight Termination System (FTS) of the UAV.'
-                        notification.uav_id = uav_threatened
-                        ctrl_c = True
-                        self._notification_publisher.publish(notification)           
-                    else:
-                        rate.sleep()
-
-                    
+                notification.description = 'Activate the Flight Termination System (FTS) of the UAV.'
+                notification.uav_id = uav_threatened
+                self._notifications_list.append(notification) 
+            
                 # We create a geofence.
                 geofence = Geofence()
                 geofence.id = 3
@@ -375,42 +274,32 @@ class EmergencyManagement():
                 request = WriteGeofencesRequest()
                 request.geofence_ids = [geofence.id]
                 request.geofences = [geofence]
-                response = WriteGeofencesResponse()
                 response = self._writeGeofences_service_handle(request)
                 response.message = "Geofence stored in the Data Base."   
-                print(response.message)
+                
 
             '''Threat GNSS DEGRADATION: we wait a period of time and then we ask to tactical
                 possible trajectories to landing spots'''
-
-        #TODO waiting for tactical deconfliction development in order to validate this Threat.
 
             if threat_type == Threat.GNSS_DEGRADATION: 
                     
                 #Publish the action which the UAV has to make.
                     
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route(uavs_threatened[0])
-                ctrl_c = False
-                while not ctrl_c:
-                    connections = self._notification_publisher.get_num_connections()
-                    if connections > 0:
-                        notification.uav_id = best_solution.uav_id
-                        notification.action = best_solution.maneuver_type
-                        notification.waypoints = best_solution.waypoint_list
-                        ctrl_c = False
-                        self._notification_publisher.publish(notification)
-                    else:
-                        rate.sleep()
+                best_solution = self.select_optimal_route()
+                notification.uav_id = best_solution.uav_id
+                notification.action = best_solution.maneuver_type
+                notification.waypoints = best_solution.waypoint_list
+                self._notifications_list.append(notification) 
 
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
-        num = len(req.threats)
-        rospy.loginfo("Received %d threats!", num) 
-        
-        for i in range(num):
+        num_1 = len(req.threats)
+        rospy.loginfo("Received %d threats!", num_1) 
+        for i in range(num_1): # Bucle para RELLENAR la lista de Threats recibido.
             self._threats2solve_list.append(req.threats[i])
+        self._threats2solve_list = sorted(self._threats2solve_list, key=lambda x:x.threat_type) #ordenamos la lista de mayor a menor severidad.
 
         for i in range(len(req.operations)):
             self._conflictive_operations.append(req.operations[i])
@@ -418,23 +307,47 @@ class EmergencyManagement():
         for i in range(len(req.geofences)):
             self._conflictive_geofences.append(req.geofences[i])
 
+        for threat in self._threats2solve_list: # Bucle para RELLENAR un diccionario con todos los threat_id y su estado actual.
+            key = threat.threat_id
+            value = 'TODO'
+            self._dictionary_all_threats[key] = value
+        print("This is the list of Threat_ids and their status:", self._dictionary_all_threats)
+        rospy.loginfo("Let's solve the threats by severity order!")
         res = ThreatsResponse()
         res.success = True
         return res 
 
-    def timer_cb(self, timer):
-        num = len(self._threats2solve_list)
-        rospy.loginfo("There are %d active threats", num)
-        rospy.loginfo("Let's solve a new threat!")
-        
-        if num > 0:
-            first_threat = self._threats2solve_list[0]
-            self._threats2solve_list.pop(0)
-            self.action_decision_maker(first_threat)
-            
+    # def service_pilot_answer_cb(self, request):
+    #     req = PilotAnswerRequest()
+    #     req = copy.deepcopy(request)
+    #     rospy.loginfo("There are new pilot answers")
+    #     threat_ids = req.threat_ids 
+    #     answers = req.pilot_answers
+    #     res = PilotAnswerResponse()
+    #     res.success = True
+    #     return res
 
-    def send_uavs_threatened(self, request): 
-        return self._readOperation_service_handle(request.uav_ids)
+    def timer_cb(self, timer):
+        num_1 = len(self._threats2solve_list)
+        num_2 = len(self._notifications_list)
+        rospy.loginfo("There are %d active threats", num_1)
+        rospy.loginfo("Let's change the status of the threats")
+        if num_1 > 0:
+            for threat in self._threats2solve_list: # Bucle para CAMBIAR el estado de los Threats de TODO a DOING.
+                key = threat.threat_id
+                if self._dictionary_all_threats[key] == 'TODO':
+                    self._dictionary_all_threats[key] = 'DOING'
+                    if self._dictionary_all_threats[key] == 'DOING':
+                        self.action_decision_maker(threat)
+            print("This is the list of Threat_ids and their status", self._dictionary_all_threats)       
+            rospy.loginfo("Let's send notifications to the UAS!")
+            self.send_notifications(self._notifications_list)
+            for threat in self._threats2solve_list: # Bucle para CAMBIAR el estado de los Threats de DOING a NOTIFIED
+                key = threat.threat_id
+                if self._dictionary_all_threats[key] == 'DOING':
+                    self._dictionary_all_threats[key] = 'NOTIFIED'
+            print("This is the list of Threat_ids and their status", self._dictionary_all_threats)
+   
 
 ''' The node and the EmergencyManagement class are initialized'''
 

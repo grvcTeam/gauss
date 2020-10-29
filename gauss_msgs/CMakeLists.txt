@@ -72,6 +72,7 @@ find_package(catkin REQUIRED COMPONENTS
    FILES
    Deconfliction.srv
    Notifications.srv
+   PilotAnswer.srv
    ReadGeofences.srv
    WriteGeofences.srv
    WriteTracking.srv

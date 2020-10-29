@@ -1,22 +1,12 @@
 <!--
 -->
 <launch>
-	<arg name="rate" default="0.5" />
-
-
-	<node pkg="tactical_deconfliction" type="ConflictSolver" name="conflictsolver" output="screen">
-
-	</node>
 
 	<node pkg="db_manager" type="DBmanager" name="DBmanager" output="screen">
 
 	</node>
 
-	<node pkg="tracking" type="tracking" name="tracking" output="screen">
-
-	</node>
-
-	<node pkg="monitoring" type="monitoring" name="monitoring" output="screen">
+	<node pkg="tactical_deconfliction" type="ConflictSolver" name="conflictsolver" output="screen">
 
 	</node>
 
@@ -24,10 +14,8 @@
 
 	</node>
 
-	<node pkg="usp_manager" type="USPmanager" name="USPmanager" output="screen">
+	<node pkg="monitoring" type="monitoring" name="monitoring" output="screen">
 
 	</node>
-
-
 
 </launch>
