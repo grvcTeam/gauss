@@ -581,12 +581,12 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                                  pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDistAux &&
                                                 abs(trajectory.waypoints.at(j).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
                                         {
-                                            std::cout << "Threat detected between uav_ids: " << i << " and " << *it << "\n";
-                                            std::cout << "waypoints (x,y,z,t): (";
-                                            std::cout << trajectory.waypoints.at(j).x << "," << trajectory.waypoints.at(j).y << "," << trajectory.waypoints.at(j).z << "," << trajectory.waypoints.at(j).stamp.toSec() << ")";
-                                            std::cout << ",(";
-                                            std::cout << trajectory2.waypoints.at(*it_wp).x << "," << trajectory2.waypoints.at(*it_wp).y << "," << trajectory2.waypoints.at(*it_wp).z << "," << trajectory2.waypoints.at(*it_wp).stamp.toSec() << ")";
-                                            std::cout << "\n";
+                                            // std::cout << "Threat detected between uav_ids: " << i << " and " << *it << "\n";
+                                            // std::cout << "waypoints (x,y,z,t): (";
+                                            // std::cout << trajectory.waypoints.at(j).x << "," << trajectory.waypoints.at(j).y << "," << trajectory.waypoints.at(j).z << "," << trajectory.waypoints.at(j).stamp.toSec() << ")";
+                                            // std::cout << ",(";
+                                            // std::cout << trajectory2.waypoints.at(*it_wp).x << "," << trajectory2.waypoints.at(*it_wp).y << "," << trajectory2.waypoints.at(*it_wp).z << "," << trajectory2.waypoints.at(*it_wp).stamp.toSec() << ")";
+                                            // std::cout << "\n";
                                             gauss_msgs::Threat threat;
                                             threat.header.stamp=ros::Time::now();
                                             threat.uav_ids.push_back(i);

@@ -59,6 +59,7 @@ class EmergencyManagement():
     def send_notifications(self,notifications):
         request = NotificationsRequest()
         request.notifications = self._notifications_list
+        request.operations = self._conflictive_operations
         response = self._notifications_service_handle(request)
         return response
     
@@ -115,9 +116,7 @@ class EmergencyManagement():
             if threat_type == Threat.UAS_OUT_OV: 
 
                 self.send_threat2deconfliction(threat)
-                for uav in uav_threatened:
-                    if uav == self._deconfliction_response.deconfliction_plans[0].uav_id:
-                        best_solution = self.select_optimal_route()                
+                best_solution = self.select_optimal_route()                
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
@@ -127,7 +126,9 @@ class EmergencyManagement():
 
             if threat_type == Threat.LOSS_OF_SEPARATION:
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route()
+                for uav in uavs_threatened:
+                    if uav == self._deconfliction_response.deconfliction_plans[0].uav_id:
+                        best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.waypoints = best_solution.waypoint_list
