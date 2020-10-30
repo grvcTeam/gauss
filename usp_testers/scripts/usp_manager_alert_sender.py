@@ -19,29 +19,31 @@ class UspManager():
         
         # Initialization
         
+        self._notification_received = False
+
         #self._notifications_list = []
 
+        # Server
+
+        self._notifications_service = rospy.Service('/gauss/notifications', Notifications, self.service_notifications_cb)
+        
         # Wait until service is available and creat connection
         
         #rospy.wait_for_service('/gauss/threats')         
         #self._threats_service = rospy.ServiceProxy('/gauss/threats', Threats)
         
-        # rospy.wait_for_service('/gauss/pilot_answer')
-        # self._pilot_answers_service = rospy.ServiceProxy('/gauss/pilot_answer', PilotAnswer) 
+        rospy.wait_for_service('/gauss/pilotanswer')
+        self._pilot_answers_service = rospy.ServiceProxy('/gauss/pilotanswer', PilotAnswer) 
 
         # Reference time
 
         #self._reference_time = rospy.Time.now()
 
-        # Server
-
-        self._notifications_service = rospy.Service('/gauss/notifications', Notifications, self.service_notifications_cb) 
-
-        print("Started Notification server module!")
+        print("Started USP module!. This module receives notifications and gives answers from the pilots.")
 
     # This method sends a subscrition to the threats.srv service.
 
-    #def send_threats(self): 
+    # def send_threats(self): 
     #    request = ThreatsRequest()
     #    request.uav_ids = self._alerted_uas
     #    request.threats = self._alert_flaged   
@@ -52,20 +54,35 @@ class UspManager():
         req = NotificationsRequest()
         req = copy.deepcopy(request)
         num = len(req.notifications)
-        rospy.loginfo("Received %d notifications!", num) 
-        
-        #for i in range(num):
-        #    self._notifications_list.append(req.notifications[i])
+        #rospy.loginfo("USP manager has received %d notifications from EM!", num) 
+        self._notification_received = True
         res = NotificationsResponse()
         res.success = True
         return res 
     
-    # def send_answers(self):
-    #     request = PilotAnswerRequest()
-    #     request.threat_ids = [0]
-    #     request.pilot_answers = ['ACCEPTED']
-    #     response = self._pilot_answers_service(request)
-    #     return response
+    def send_answers_1(self):
+        rospy.loginfo("USP has sent answers") 
+        request = PilotAnswerRequest()
+        request.threat_ids = [0,2]
+        request.pilot_answers = ['ACCEPTED','ACCEPTED']
+        response = self._pilot_answers_service(request)
+        return response
+
+    def send_answers_2(self):
+        rospy.loginfo("USP has sent answers") 
+        request = PilotAnswerRequest()
+        request.threat_ids = [1,3,4]
+        request.pilot_answers = ['ACCEPTED','ACCEPTED','ACCEPTED']
+        response = self._pilot_answers_service(request)
+        return response
+
+    def send_answers_3(self):
+        rospy.loginfo("USP has sent answers") 
+        request = PilotAnswerRequest()
+        request.threat_ids = [7,8,9]
+        request.pilot_answers = ['ACCEPTED','ACCEPTED','ACCEPTED']
+        response = self._pilot_answers_service(request)
+        return response
 
     # This method defines the alert configuration.
     
@@ -152,12 +169,18 @@ if __name__=='__main__':
     
     rospy.init_node('usp_manager')
     m = UspManager()
-    #m.send_answers()
-    rospy.spin()
     
-    #while not rospy.is_shutdown():
-    
-    #We fill the request.
+    rate = rospy.Rate(1) # en Hz.
+        
+    while not rospy.is_shutdown():
+        if m._notification_received:
+            rospy.sleep(20) # se duerme cuatro segundos.
+            m.send_answers_1() # envio la respuesta.
+            rospy.sleep(20) # se duerme cuatro segundos.
+            m.send_answers_2() # envio la respuesta.
+            rospy.sleep(30) # se duerme cuatro segundos.
+            m.send_answers_3() # envio la respuesta.
+        rate.sleep()
 
      #   m.main_menu()      
       #  m.send_threats()
