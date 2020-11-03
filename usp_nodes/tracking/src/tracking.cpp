@@ -696,9 +696,59 @@ void Tracking::estimateTrajectory()
                 int estimated_wp_count = 0;
                 gauss_msgs::Waypoint previous_waypoint;
                 gauss_msgs::Waypoint wp_aux;
+                Eigen::Vector3d speed_vector;
                 int wp_count_aux = 0;
                 
                 ros::Time last_stamp = current_position.stamp;
+                double time_to_next_waypoint = 0;
+                double distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[a_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index]);
+                double distance_from_current_pos_to_next_wp = distanceBetweenWaypoints(current_position, flight_plan_ref.waypoints[b_waypoint_index]);
+                double time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index].stamp - flight_plan_ref.waypoints[a_waypoint_index].stamp).toSec();
+                time_to_next_waypoint = distance_from_current_pos_to_next_wp/distance_between_waypoints * time_between_waypoints;
+
+                if(time_to_next_waypoint > dt)
+                {
+                    // Estimate intermediate waypoints between current position and next waypoint
+                    wp_aux = current_position;
+
+                    speed_vector.x() = (flight_plan_ref.waypoints[b_waypoint_index].x - current_position.x)/time_to_next_waypoint;
+                    speed_vector.y() = (flight_plan_ref.waypoints[b_waypoint_index].y - current_position.y)/time_to_next_waypoint;
+                    speed_vector.z() = (flight_plan_ref.waypoints[b_waypoint_index].z - current_position.z)/time_to_next_waypoint;
+
+                    double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
+
+                    if (epsilon > 0)
+                    {
+                        wp_aux.x = wp_aux.x + speed_vector.x()*epsilon;
+                        wp_aux.y = wp_aux.y + speed_vector.y()*epsilon;
+                        wp_aux.z = wp_aux.z + speed_vector.z()*epsilon;
+                        last_stamp = last_stamp + ros::Duration(epsilon);
+                        wp_aux.stamp = last_stamp;
+                        estimated_trajectory.waypoints.push_back(wp_aux);
+                        estimated_wp_count++;
+                    }
+
+                    wp_count_aux = time_to_next_waypoint/dt;
+                    
+                    #ifdef DEBUG
+                    std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
+                    std::cout << "Number of points to estimate: " << (wp_count_aux-1) << std::endl;
+                    #endif
+                    for(int index_1 = 0; index_1 < (wp_count_aux - 1); index_1++)
+                    {
+                        wp_aux.x = wp_aux.x + speed_vector.x()*dt;
+                        wp_aux.y = wp_aux.y + speed_vector.y()*dt;
+                        wp_aux.z = wp_aux.z + speed_vector.z()*dt;
+                        last_stamp = last_stamp + ros::Duration(dt);
+                        wp_aux.stamp = last_stamp;
+                        estimated_trajectory.waypoints.push_back(wp_aux);
+                        estimated_wp_count++;
+                    }
+                }
+                else if(time_to_next_waypoint <= dt)
+                {
+                    // Nothing
+                }                
 
                 // Add next waypoint to estimated trajectory (if estimated waypoint count is less than the max number of estimated waypoints)
                 if (estimated_wp_count < number_estimated_wps)
