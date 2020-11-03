@@ -2,6 +2,7 @@
 #include <gauss_msgs/PositionReport.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/WriteOperation.h>
+#include <gauss_msgs/WriteTracking.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadIcaoRequest.h>
 #include <gauss_msgs/ReadIcaoResponse.h>
@@ -56,6 +57,7 @@ private:
     bool checkTargetAlreadyExist(uint8_t uav_id);
     bool checkCooperativeOperationAlreadyExist(uint8_t uav_id);
     bool writeOperationsToDatabase();
+    bool writeTrackingInfoToDatabase();
     uint32_t findClosestWaypointIndex(gauss_msgs::WaypointList &waypoint_list, gauss_msgs::Waypoint &current_waypoint, 
                                       double &distance_to_waypoint);
     void findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_position, gauss_msgs::WaypointList &flight_plan, int &a_index, int &b_index,
@@ -69,6 +71,7 @@ private:
     ros::NodeHandle nh_;
     //gauss_msgs::ReadOperation read_operation_msg_;
     gauss_msgs::WriteOperation write_operation_msg_;
+    gauss_msgs::WriteTracking write_tracking_msg_;
     double distance_wp_threshold_; // Threshold from which we'll consider an UAV is not following its flight plan
 
     // Subscribers
@@ -84,6 +87,7 @@ private:
     // Client
     ros::ServiceClient read_operation_client_;
     ros::ServiceClient write_operation_client_;
+    ros::ServiceClient write_tracking_client_;
     ros::ServiceClient read_icao_client_;
 
     // Estimator
@@ -133,6 +137,7 @@ Tracking::Tracking()
     // Client
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
     write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/write_operation");
+    write_tracking_client_ = nh_.serviceClient<gauss_msgs::WriteTracking>("/gauss/write_tracking");
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
 
     // Modified Operation publisher TODO: Only for debugging purposes
@@ -496,6 +501,59 @@ bool Tracking::writeOperationsToDatabase()
     return result;
 }
 
+bool Tracking::writeTrackingInfoToDatabase()
+{
+    bool result = true;
+
+    // Write cooperative uavs operations
+    for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
+	{
+        if(modified_cooperative_operations_flags_[it->first] == true)
+        {
+            #ifdef DEBUG
+            std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
+            std::cout << "Estimated trajectory waypoint count: " << it->second.estimated_trajectory.waypoints.size() << std::endl;
+            #endif
+            
+            write_tracking_msg_.request.uav_ids.push_back(it->first);
+            write_tracking_msg_.request.current_wps.push_back(it->second.current_wp);
+            write_tracking_msg_.request.estimated_trajectories.push_back(it->second.estimated_trajectory);
+            write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
+            write_tracking_msg_.request.tracks.push_back(it->second.track);
+            write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
+
+            modified_cooperative_operations_flags_[it->first] = false;
+            new_operation_pub_.publish(it->second);
+        }
+	}
+    write_tracking_msg_.response.message.clear();
+    if(!write_tracking_msg_.request.uav_ids.empty())
+    {
+        if ( !write_tracking_client_.call(write_tracking_msg_) || !write_tracking_msg_.response.success )
+        {
+            // TODO: A more complex error handling mechanism must be implemented.
+            // This mechanism should retry the call to the service in case it has failed
+            ROS_ERROR("Failed writing operation to database");
+            ROS_ERROR_STREAM("Message: " << write_tracking_msg_.response.message);
+            result = false;
+        }
+        else
+        {
+            ROS_INFO("Succesful writing operation to database");
+            result = true;
+        }
+    }
+
+    write_tracking_msg_.request.uav_ids.clear();
+    write_tracking_msg_.request.current_wps.clear();
+    write_tracking_msg_.request.estimated_trajectories.clear();
+    write_tracking_msg_.request.times_tracked.clear();
+    write_tracking_msg_.request.tracks.clear();
+    write_tracking_msg_.request.flight_plans_updated.clear();
+
+    return result;
+}
+
 uint32_t Tracking::findClosestWaypointIndex(gauss_msgs::WaypointList &waypoint_list, gauss_msgs::Waypoint &current_waypoint, double &distance_to_waypoint)
 {
     uint32_t index = -1;
@@ -552,14 +610,19 @@ void Tracking::fillTrackingWaypointList()
 
 void Tracking::fillFlightPlanUpdated()
 {
+    /*
     // TODO: Fill the updated flight plan of every uav
     // That flight plan consist in the previously traversed waypoints in addition to the estimated trajectory without time horizon, i.e. until the end of the operation
     for (auto it=cooperative_operations_.begin(); it != cooperative_operations_.end(); it++)
     {
         gauss_msgs::Waypoint waypoint_aux;
         (*it).second.flight_plan_updated.waypoints.clear();
+
+        std::copy((*it).second.estimated_trajectory.waypoints.begin(), (*it).second.estimated_trajectory.waypoints.end(), std::back_inserter((*it).second.flight_plan_updated.waypoints));
+
         (*it).second.flight_plan_updated.waypoints.push_back(waypoint_aux);
     }
+    */
 }
 
 void Tracking::estimateTrajectory()
@@ -576,11 +639,13 @@ void Tracking::estimateTrajectory()
             gauss_msgs::Operation &operation_aux = it->second;
             gauss_msgs::Waypoint current_position;
             gauss_msgs::WaypointList &flight_plan_ref = operation_aux.flight_plan;
+            gauss_msgs::WaypointList &flight_plan_updated = operation_aux.flight_plan_updated;
             gauss_msgs::WaypointList &estimated_trajectory = operation_aux.estimated_trajectory;
             int flight_plan_waypoint_count = flight_plan_ref.waypoints.size();
             // TODO: An efficiency improvent will be to not clear completely the estimated trajectory, but remove
             // some elements and add others. That will require additional state control mechanism.
             estimated_trajectory.waypoints.clear();
+            flight_plan_updated.waypoints.clear();
 
             current_position.stamp = cooperative_targets_[uav_id]->currentPositionTimestamp();
             cooperative_targets_[uav_id]->getPose(current_position.x, current_position.y, current_position.z);
@@ -645,6 +710,7 @@ void Tracking::estimateTrajectory()
                     last_stamp = last_stamp + ros::Duration(dt);
                     wp_aux.stamp = last_stamp;
                     estimated_trajectory.waypoints.push_back(wp_aux);
+                    flight_plan_updated.waypoints.push_back(wp_aux);
                     estimated_wp_count++;
                 }
 
@@ -666,6 +732,15 @@ void Tracking::estimateTrajectory()
                         estimated_wp_count++;
                         flight_plan_wp_index++;
                     }
+                }
+
+                while(flight_plan_wp_index < flight_plan_ref.waypoints.size())
+                {
+                    wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
+                    last_stamp = last_stamp + ros::Duration(dt);
+                    wp_aux.stamp = last_stamp;
+                    flight_plan_updated.waypoints.push_back(wp_aux);
+                    flight_plan_wp_index++;
                 }
                 #ifdef DEBUG
                 std::cout << "Estimated trajectory size " << estimated_trajectory.waypoints.size() << std::endl;
@@ -919,7 +994,7 @@ void Tracking::main()
         this->estimateTrajectory();
         // TODO: Fill the field flight_plan_updated of every operation
         // 
-        this->fillFlightPlanUpdated();
+        //this->fillFlightPlanUpdated();
 
         for(int i = 0; i < candidates_.size(); i++)
 			delete candidates_[i];
@@ -931,7 +1006,7 @@ void Tracking::main()
         if (counter == 5)
         {
             counter = 0;
-            this->writeOperationsToDatabase();
+            this->writeTrackingInfoToDatabase();
         }
         rate.sleep();
         //std::cout << "Cycle time: " << rate.cycleTime() << std::endl;
