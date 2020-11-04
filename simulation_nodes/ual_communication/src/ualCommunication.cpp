@@ -138,7 +138,6 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
     } 
 
     bool change_path_reference = false;
-    std::cout << flight_plan_section << " " << merge_to_the_end << "\n";
     for (int i = 0; i < _flight_plan.waypoints.size(); i++){
         geometry_msgs::PoseStamped temp_pose;
         switch (flight_plan_section){
@@ -327,7 +326,11 @@ int main(int _argc, char **_argv) {
             alternative_path.poses.clear();
             alternative_times.clear();
             uav_operation = getOperation(uav_id_); // To get current_wp updated
-            alternative_path = mergeFlightPlan(notification_.flight_plan, notification_.threat, notification_.maneuver_type, uav_operation.current_wp);
+            std::cout << "-o-o-o-o-o-o-\nFlight plan (" << uav_operation.flight_plan.waypoints.size() << ") : \n";
+            for (auto i : uav_operation.flight_plan.waypoints) std::cout << i << "\n";
+            std::cout << "-o-o-o-o-o-o-\nFlight plan updated (" << notification_.flight_plan.waypoints.size() << ") : \n";
+            for (auto i : notification_.flight_plan.waypoints) std::cout << i << "\n";
+            alternative_path = mergeFlightPlan(notification_.flight_plan, notification_.threat, notification_.maneuver_type, notification_.current_wp);
             for (auto i : alternative_path.poses){
                 alternative_times.push_back(i.header.stamp.toSec());
             }

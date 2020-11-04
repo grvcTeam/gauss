@@ -289,7 +289,7 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
         if (!invalid_ids.empty()){
             res.success = false;
             res.operation.clear();
-            res.message = "Data base does not contain requested ids:" + invalid_ids;
+            res.message = "Data base does not contain requested operation ids:" + invalid_ids;
         }
     } else {
         res.success = false;
@@ -349,7 +349,7 @@ bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msg
         if (!invalid_ids.empty()){
             res.success = false;
             res.geofences.clear();
-            res.message = "Data base does not contain requested ids:" + invalid_ids;
+            res.message = "Data base does not contain requested geofence ids:" + invalid_ids;
         }
     } else {
         res.success = false;
@@ -402,13 +402,15 @@ bool DataBase::writeTrackingCB(gauss_msgs::WriteTracking::Request &req, gauss_ms
                     it->current_wp = req.current_wps[i];
                     it->time_tracked = req.times_tracked[i];
                     it->estimated_trajectory = req.estimated_trajectories[i];
+                    it->flight_plan_updated = req.flight_plans_updated[i];
                     break;
                 }
                 not_found_ids.push_back(i);
             }
         }
+        not_found_ids.clear(); // DO NOT COMMIT
         if (!not_found_ids.empty()){
-            message = "Data base does not contain requested ids ["; 
+            message = "Data base does not contain requested operation (tracking) ids ["; 
             for (int idx = 0; idx < not_found_ids.size(); idx++) message = message + " " + std::to_string(not_found_ids.at(idx));
             message = message + "].";
             res.success = false;
@@ -441,7 +443,7 @@ bool DataBase::writePlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::Wr
             }
         }
         if (!not_found_ids.empty()){
-            message = "Data base does not contain requested ids ["; 
+            message = "Data base does not contain requested flight plan ids ["; 
             for (int idx = 0; idx < not_found_ids.size(); idx++) message = message + " " + std::to_string(not_found_ids.at(idx));
             message = message + "].";
             res.success = false;

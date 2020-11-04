@@ -626,6 +626,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                 conflictive_operation.landing_spots = msg_op.response.operation.at(i).landing_spots;
                 conflictive_operation.operational_volume = msg_op.response.operation.at(i).operational_volume;
                 conflictive_operation.estimated_trajectory = msg_op.response.operation.at(i).estimated_trajectory;
+                conflictive_operation.flight_plan_updated = msg_op.response.operation.at(i).flight_plan_updated;
                 new_threats_msgs.request.operations.push_back(conflictive_operation);
             }
             // Check which geofences are conflictive and do not repeat it
