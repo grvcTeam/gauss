@@ -691,6 +691,7 @@ void Tracking::estimateTrajectory()
 
             if (distance_to_segment <= distance_wp_threshold_)
             {
+                bool closer_than_dt = false;
                 // If distance from current estimated position is close enough to flight plan, the estimated trajectory
                 // will be composed of the immediately following waypoints.
                 int estimated_wp_count = 0;
@@ -738,6 +739,7 @@ void Tracking::estimateTrajectory()
                         last_stamp = last_stamp + ros::Duration(epsilon);
                         wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
+                        flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                     }
 
@@ -755,12 +757,13 @@ void Tracking::estimateTrajectory()
                         last_stamp = last_stamp + ros::Duration(dt);
                         wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
+                        flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                     }
                 }
                 else if(time_to_next_waypoint <= dt)
                 {
-                    // Nothing
+                    closer_than_dt = true;
                 }
 
                 // Add next waypoint to estimated trajectory (if estimated waypoint count is less than the max number of estimated waypoints)
@@ -770,7 +773,11 @@ void Tracking::estimateTrajectory()
                     std::cout << "Adding next waypoint to estimated trajectory" << std::endl;
                     #endif
                     wp_aux = flight_plan_ref.waypoints[b_waypoint_index];
-                    last_stamp = last_stamp + ros::Duration(dt);
+                    if(closer_than_dt)
+                        last_stamp = last_stamp + ros::Duration(time_to_next_waypoint);
+                    else
+                        last_stamp = last_stamp + ros::Duration(dt);
+                    
                     wp_aux.stamp = last_stamp;
                     estimated_trajectory.waypoints.push_back(wp_aux);
                     flight_plan_updated.waypoints.push_back(wp_aux);
@@ -802,6 +809,7 @@ void Tracking::estimateTrajectory()
                         last_stamp = last_stamp + ros::Duration(epsilon);
                         wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
+                        flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                     }
 
@@ -819,6 +827,7 @@ void Tracking::estimateTrajectory()
                         last_stamp = last_stamp + ros::Duration(dt);
                         wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
+                        flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                         aux_index++;
                     }
@@ -832,6 +841,7 @@ void Tracking::estimateTrajectory()
                         last_stamp = last_stamp + ros::Duration(dt);
                         wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
+                        flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                         flight_plan_wp_index++;
                     }
