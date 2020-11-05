@@ -47,6 +47,12 @@ void notificationCb(const gauss_msgs::Notification msg) {
     if (msg.uav_id == uav_id_ && !new_notification_){
         notification_ = msg;
         new_notification_ = true;
+        // std::cout << " o- o - o - o - o - o -o -o \n";
+        // std::cout << msg << "\n";
+        // std::cout << " o- o - o - o - o - o -o -o \n";
+
+        // notification_.maneuver_type = msg.action;
+        // notification_.threat.threat_type = notification_.threat.LOSS_OF_SEPARATION;
     }
 }
 
@@ -187,7 +193,9 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
         }
     }
 
+    std::cout << "Merged plan\n"; 
     for (auto i : out_path.poses) std::cout << i << std::endl;
+    std::cout << "__________________________________\n"; 
 
     return out_path;
 }
@@ -224,20 +232,23 @@ gauss_msgs::PositionReport updatePositionReport(gauss_msgs::PositionReport &_pos
     return _position_report;
 }
 
-bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res){
-    res.message = "Notification failed";
-    res.success = false;
-    for (auto i : req.notifications){
-        if(i.uav_id == uav_id_ && !new_notification_){
-            notification_ = i;
-            new_notification_ = true;
-            res.message = "Notification received";
-            res.success = true;
-        } 
-    }
+// bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res){
+//     res.message = "Notification failed";
+//     res.success = false;
+//     for (auto i : req.notifications){
+//         if(i.uav_id == uav_id_ && !new_notification_){
+//             std::cout << " o - o - o - o - o - o -o -o \n";
+//             std::cout << i << "\n";
+//             std::cout << " o - o - o - o - o - o -o -o \n";
+//             notification_ = i;
+//             new_notification_ = true;
+//             res.message = "Notification received";
+//             res.success = true;
+//         } 
+//     }
     
-    return true;
-}
+//     return true;
+// }
 
 
 int main(int _argc, char **_argv) {
@@ -260,7 +271,7 @@ int main(int _argc, char **_argv) {
     ros::Publisher pub_position_report_ = nh.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
 
     read_operation_client_ = nh.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-    ros::ServiceServer notification_server_ = nh.advertiseService("/gauss/notifications", notificationsCB);
+    // ros::ServiceServer notification_server_ = nh.advertiseService("/gauss/notifications", notificationsCB);
 
 
     // Let UAL and MAVROS get ready
@@ -314,8 +325,8 @@ int main(int _argc, char **_argv) {
         if(new_notification_){
             alternative_path.poses.clear();
             alternative_times.clear();
-            uav_operation = getOperation(uav_id_); // To get current_wp updated
-            alternative_path = mergeFlightPlan(uav_operation.flight_plan, notification_.threat, notification_.maneuver_type, uav_operation.current_wp);
+            // uav_operation = getOperation(uav_id_); // To get current_wp updated
+            alternative_path = mergeFlightPlan(notification_.flight_plan, notification_.threat, notification_.maneuver_type, notification_.current_wp);
             for (auto i : alternative_path.poses){
                 alternative_times.push_back(i.header.stamp.toSec());
             }
