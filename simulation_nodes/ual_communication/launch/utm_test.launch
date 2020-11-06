@@ -13,7 +13,7 @@
     <arg name="generator_mode" default="0"/>
     <arg name="pkg_name" default="ual_communication"/>
     <arg name="use_class" default="true"/>
-    <arg name="multi" default="false"/>
+    <arg name="multi" default="true"/>
     <arg name="cruising_speed" default="3.0"/>
     <arg name="look_ahead" default="3.0"/>
     <arg name="light" default="false"/>
@@ -25,13 +25,15 @@
     <arg name="position_th" default="0.33"/>
     <arg name="orientation_th" default="0.65"/>
     <arg name="hold_pose_time" default="3.0"/>
+    <arg name="operations_json" default="loss_operations"/>
+    <arg name="geofences_json"  default="loss_geofences"/>
 
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/tester.rviz" required="true"/>
     <!-- GAUSS -->
     <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
-        <param name="operations_json" value="loss_operations"/>
-        <param name="geofences_json" value= "loss_geofences"/>
+        <param name="operations_json" value="$(arg operations_json)"/>
+        <param name="geofences_json" value= "$(arg geofences_json)"/>
     </node>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
     <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/>

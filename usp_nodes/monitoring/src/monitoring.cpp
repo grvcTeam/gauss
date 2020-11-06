@@ -246,18 +246,18 @@ int Monitoring::checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, ga
                     id_min=i;
                     distance=sqrt((_geofences.at(i).polygon.x[0]-position4D.x)*(_geofences.at(i).polygon.x[0]-position4D.x)+(_geofences.at(i).polygon.y[0]-position4D.y)*(_geofences.at(i).polygon.y[0]-position4D.y));
                 }
-                for (int i=1; i<vertexes; i++)
+                for (int j=1; j<vertexes; j++)
                 {
                     geometry_msgs::Point v1, v2;
-                    v2.x=_geofences.at(i).polygon.x[i]-position4D.x;
-                    v2.y=_geofences.at(i).polygon.y[i]-position4D.y;
-                    v1.x=_geofences.at(i).polygon.x[i-1]-position4D.x;
-                    v1.y=_geofences.at(i).polygon.y[i-1]-position4D.y;
+                    v2.x=_geofences.at(i).polygon.x[j]-position4D.x;
+                    v2.y=_geofences.at(i).polygon.y[j]-position4D.y;
+                    v1.x=_geofences.at(i).polygon.x[j-1]-position4D.x;
+                    v1.y=_geofences.at(i).polygon.y[j-1]-position4D.y;
                     angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
-                    if (sqrt((_geofences.at(i).polygon.x[i]-position4D.x)*(_geofences.at(i).polygon.x[i]-position4D.x)+(_geofences.at(i).polygon.y[i]-position4D.y)*(_geofences.at(i).polygon.y[i]-position4D.y))<distance)
+                    if (sqrt((_geofences.at(i).polygon.x[j]-position4D.x)*(_geofences.at(i).polygon.x[j]-position4D.x)+(_geofences.at(i).polygon.y[j]-position4D.y)*(_geofences.at(i).polygon.y[j]-position4D.y))<distance)
                     {
-                        id_min=i;
-                        distance=sqrt((_geofences.at(i).polygon.x[i]-position4D.x)*(_geofences.at(i).polygon.x[i]-position4D.x)+(_geofences.at(i).polygon.y[i]-position4D.y)*(_geofences.at(i).polygon.y[i]-position4D.y));
+                        id_min=j;
+                        distance=sqrt((_geofences.at(i).polygon.x[j]-position4D.x)*(_geofences.at(i).polygon.x[j]-position4D.x)+(_geofences.at(i).polygon.y[j]-position4D.y)*(_geofences.at(i).polygon.y[j]-position4D.y));
                     }
                 }
                 geometry_msgs::Point v1, v2, v3;
