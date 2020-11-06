@@ -32,20 +32,14 @@ bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifi
         if(i.uav_id == uav_id_){
             notification_ = i;
             notification_.maneuver_type = i.action;
-            // std::cout << (int)notification_.threat.threat_type << "\n";
-            notification_.threat.threat_type = i.threat.LOSS_OF_SEPARATION; 
             for (auto j : req.operations){
                 if (j.uav_id == i.uav_id){
                     notification_.flight_plan = j.flight_plan_updated;
                     notification_.current_wp = j.current_wp;
                 }
             }
-            // std::cout << (int)notification_.threat.threat_type << "\n";
             res.message = "Notification received";
             res.success = true;
-            // std::cout << " o- o - o - o - o - o -o -o \n";
-            // std::cout << notification_ << "\n";
-            // std::cout << " o- o - o - o - o - o -o -o \n";
             pub_notification_.publish(notification_);
         } 
     }

@@ -22,6 +22,7 @@
 #include <gauss_msgs/Notification.h>
 #include <gauss_msgs/Notifications.h>
 #include <gauss_msgs/PositionReport.h>
+#include <gauss_msgs/WritePlans.h>
 
 int uav_id_;
 bool new_notification_ = false;
@@ -47,12 +48,6 @@ void notificationCb(const gauss_msgs::Notification msg) {
     if (msg.uav_id == uav_id_ && !new_notification_){
         notification_ = msg;
         new_notification_ = true;
-        // std::cout << " o- o - o - o - o - o -o -o \n";
-        // std::cout << msg << "\n";
-        // std::cout << " o- o - o - o - o - o -o -o \n";
-
-        // notification_.maneuver_type = msg.action;
-        // notification_.threat.threat_type = notification_.threat.LOSS_OF_SEPARATION;
     }
 }
 
@@ -193,9 +188,9 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
         }
     }
 
-    std::cout << "Merged plan\n"; 
-    for (auto i : out_path.poses) std::cout << i << std::endl;
-    std::cout << "__________________________________\n"; 
+    // std::cout << "Merged plan\n"; 
+    // for (auto i : out_path.poses) std::cout << i << std::endl;
+    // std::cout << "__________________________________\n"; 
 
     return out_path;
 }
@@ -232,25 +227,6 @@ gauss_msgs::PositionReport updatePositionReport(gauss_msgs::PositionReport &_pos
     return _position_report;
 }
 
-// bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res){
-//     res.message = "Notification failed";
-//     res.success = false;
-//     for (auto i : req.notifications){
-//         if(i.uav_id == uav_id_ && !new_notification_){
-//             std::cout << " o - o - o - o - o - o -o -o \n";
-//             std::cout << i << "\n";
-//             std::cout << " o - o - o - o - o - o -o -o \n";
-//             notification_ = i;
-//             new_notification_ = true;
-//             res.message = "Notification received";
-//             res.success = true;
-//         } 
-//     }
-    
-//     return true;
-// }
-
-
 int main(int _argc, char **_argv) {
     ros::init(_argc, _argv, "ualCommunication_node");
 
@@ -271,7 +247,7 @@ int main(int _argc, char **_argv) {
     ros::Publisher pub_position_report_ = nh.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
 
     read_operation_client_ = nh.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-    // ros::ServiceServer notification_server_ = nh.advertiseService("/gauss/notifications", notificationsCB);
+    ros::ServiceClient write_plan_client = nh.serviceClient<gauss_msgs::WritePlans>("/gauss/write_plans");
 
 
     // Let UAL and MAVROS get ready
@@ -336,6 +312,27 @@ int main(int _argc, char **_argv) {
             ual_communication.init_path_.header = res_path.header;
             ual_communication.times_.clear();
             ual_communication.times_ = alternative_times;
+
+            gauss_msgs::WritePlans plan_msg;
+            plan_msg.request.uav_ids.push_back(uav_id_);
+            gauss_msgs::WaypointList temp_wp_list;
+            for (auto pose : alternative_path.poses){
+                gauss_msgs::Waypoint temp_wp;
+                temp_wp.x = pose.pose.position.x;
+                temp_wp.y = pose.pose.position.y;
+                temp_wp.z = pose.pose.position.z;
+                temp_wp.mandatory = 0;
+                temp_wp_list.waypoints.push_back(temp_wp);    
+            }
+            for (int i = 0; i < temp_wp_list.waypoints.size(); i++){
+                temp_wp_list.waypoints.at(i).stamp = ros::Time(alternative_times.at(i));
+            }
+            plan_msg.request.flight_plans.push_back(temp_wp_list);
+            if (!write_plan_client.call(plan_msg) || !plan_msg.response.success){
+                ROS_ERROR("UAV %d failed to write plan on data base", uav_id_);
+            } else {
+                ROS_WARN("UAV %d accepted the solution and wrote the new flight plan on data base", uav_id_);
+            }
 
             new_notification_ = false;
         }

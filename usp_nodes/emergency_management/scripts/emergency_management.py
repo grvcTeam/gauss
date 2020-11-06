@@ -102,6 +102,7 @@ class EmergencyManagement():
         6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
         9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
+        notification.threat = threat
         
         if len(uavs_threatened) > 0: 
 

@@ -34,10 +34,11 @@
         <param name="geofences_json" value= "loss_geofences"/>
     </node>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
-    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" /> -->
     <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/>
     <node pkg="tracking" type="tracking" name="tracking" required="true"/>
     <node pkg="ual_communication" type="notificationBridge" name="notification_bridge" output="screen" required="true"/>
+    <!-- Wait 30 seconds before launching monitoring -->
+    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 30.0; $0 $@' "/>
     <!-- PX4 -->
     <group if="$(eval mode=='sitl')">
         <!-- Launch Gazebo simulation -->
