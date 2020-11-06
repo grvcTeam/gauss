@@ -7,6 +7,7 @@ int8[] geofence_ids
 int8[] priority_ops
 Waypoint location
 
+
 uint8 SPOOFING_ATTACK = 0       # Detected by USP
 uint8 TECHNICAL_FAILURE = 1     # Detected by USP
 uint8 COMMUNICATION_FAILURE = 2 # Detected by USP
@@ -19,3 +20,5 @@ uint8 ALERT_WARNING = 8         # Detected by USP
 uint8 LACK_OF_BATTERY = 9       # Detected by USP
 uint8 GNSS_DEGRADATION = 10     # Detected by USP
 uint8 UAS_IN_CV = 11            # Detected by Monitoring
+
+
