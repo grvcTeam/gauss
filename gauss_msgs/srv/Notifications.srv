@@ -1,4 +1,5 @@
 Notification[] notifications
+ConflictiveOperation[] operations
 ---
 bool success
 string message

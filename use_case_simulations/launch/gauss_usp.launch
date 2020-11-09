@@ -10,11 +10,9 @@
 
 	</node>
 
-	<node pkg="simulation_nodes" type="ualCommunication" name="ualCommunication" output="screen">
+	<node pkg="emergency_management" type="emergency_management" name="emergency_management" output="screen">
 
 	</node>
-
-	<node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" >
 
 	<node pkg="monitoring" type="monitoring" name="monitoring" output="screen">
 

@@ -53,6 +53,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    PositionReport.msg
+   ConflictiveOperation.msg
    DeconflictionPlan.msg
    Waypoint.msg
    WaypointList.msg
@@ -70,20 +71,12 @@ find_package(catkin REQUIRED COMPONENTS
  add_service_files(
    FILES
    Deconfliction.srv
-   FlightPlanReq.srv
    Notifications.srv
-   ReadFlightPlanModT.srv
-   ReadFlightPlan.srv
-   WriteFlightPlan.srv
-   ReadFlightPlanUpdated.srv
-   WriteFlightPlanUpdated.srv
-   ReadTracks.srv
    PilotAnswer.srv
-   WriteTraj.srv
-   ReadTraj.srv
-   WriteTracks.srv
    ReadGeofences.srv
    WriteGeofences.srv
+   WriteTracking.srv
+   WritePlans.srv
    Threats.srv	
    ReadOperation.srv
    ReadIcao.srv

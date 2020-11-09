@@ -146,6 +146,10 @@ add_executable(ualCommunication src/ualCommunication.cpp)
 target_link_libraries(ualCommunication ${catkin_LIBRARIES})
 add_dependencies(ualCommunication ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+add_executable(notificationBridge src/notificationBridge.cpp)
+target_link_libraries(notificationBridge ${catkin_LIBRARIES})
+add_dependencies(notificationBridge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use

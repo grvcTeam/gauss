@@ -32,10 +32,13 @@ class EmergencyManagement():
 
         self._threats_list = [] # Lista de objetos Threat2Solve()               
 
-        self._notifications_list = []
+        self._notifications_list = []   
 
-        #self._dictionary_all_threats = {}     
+        self._conflictive_operations = []
+        self._conflictive_geofences = []
 
+        self._dictionary_all_threats = {}     
+        
         # Server     
 
         self._threats_service = rospy.Service('/gauss/threats', Threats, self.service_threats_cb) 
@@ -174,19 +177,22 @@ class EmergencyManagement():
     #             new_flight_plan.poses.append(temp_pose)    
     #             break
     #     return new_flight_plan
-        
-    def send_notifications(self, notifications):
+
+    def send_notifications(self,notifications):
         req = NotificationsRequest()
         req.notifications = self._notifications_list
+        req.operations = self._conflictive_operations
         res = self._notifications_service_handle(req)
         return res
     
-    def send_threat2deconfliction(self, threat2deconflicted): 
+    def send_threat2deconfliction(self,threat2deconflicted): 
         req = DeconflictionRequest()
         req.tactical = True
         req.threat = threat2deconflicted 
-        self._deconfliction_res = self._reqDeconfliction_service_handle(req) 
-        return self._deconfliction_res
+        req.operations = self._conflictive_operations
+        req.geofences = self._conflictive_geofences
+        self._deconfliction_response = self._requestDeconfliction_service_handle(req) 
+        return self._deconfliction_response
    
     def select_optimal_route(self):
         'Select the optimal deconfliction route '
@@ -214,6 +220,7 @@ class EmergencyManagement():
         6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
         9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
+        notification.threat = threat
         
         if len(uavs_threatened) > 0: 
 
@@ -241,7 +248,9 @@ class EmergencyManagement():
 
             if threat_type == Threat.LOSS_OF_SEPARATION:
                 self.send_threat2deconfliction(threat)
-                best_solution = self.select_optimal_route()
+                for uav in uavs_threatened:
+                    if uav == self._deconfliction_response.deconfliction_plans[0].uav_id:
+                        best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
