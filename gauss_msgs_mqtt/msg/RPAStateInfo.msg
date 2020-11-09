@@ -10,14 +10,12 @@ float32 covariance_h
 float32 covariance_v
 float32 hpl
 float32 hal
-float32 hpe
 float32 vpl
 float32 val
-float32 vpe
 string solution_mode
 uint32 timestamp # UTC in ms
-bool jamming
-bool spoofing
+float32 jamming
+float32 spoofing
 bool anomalous_clock_drift
 bool anomalous_pos_drift
 float32 signal_noise_ratio
