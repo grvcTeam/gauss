@@ -31,12 +31,9 @@ class EmergencyManagement():
         # Initialization
 
         self._threats_list = [] # Lista de objetos Threat2Solve()               
-
         self._notifications_list = []   
-
         self._conflictive_operations = []
         self._conflictive_geofences = []
-
         self._dictionary_all_threats = {}     
         
         # Server     
