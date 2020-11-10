@@ -78,6 +78,7 @@ find_package(catkin REQUIRED COMPONENTS
    WriteTracking.srv
    WritePlans.srv
    Threats.srv	
+   UpdateThreats.srv
    ReadOperation.srv
    ReadIcao.srv
    WriteOperation.srv

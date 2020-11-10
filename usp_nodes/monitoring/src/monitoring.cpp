@@ -5,6 +5,7 @@
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/DB_size.h>
 #include <gauss_msgs/ReadIcao.h>
+#include <gauss_msgs/UpdateThreats.h>
 #include <list>
 #include <geometry_msgs/Point.h>
 #include <gauss_msgs/Waypoint.h>
@@ -31,14 +32,15 @@ private:
 
     // Service Callbacks
     bool checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gauss_msgs::CheckConflicts::Response &res);
+    bool updateThreatsCB(gauss_msgs::UpdateThreats::Request &req, gauss_msgs::UpdateThreats::Response &res);
 
     // Timer Callbacks
     void timerCallback(const ros::TimerEvent&);
 
     // Auxilary methods
     int checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, gauss_msgs::Waypoint position4D, double safety_distance);
-    gauss_msgs::Threats manageThreatList(const gauss_msgs::Threats &_in_threats, const double &_start_time);
-    void deleteOldThreats(const double &_start_time, const double &_time_check);
+    gauss_msgs::Threats manageThreatList(const gauss_msgs::Threats &_in_threats);
+    gauss_msgs::Threats fillConflictiveFields(gauss_msgs::Threats &_in_threats, const gauss_msgs::ReadOperation &_msg_op, const gauss_msgs::ReadGeofences &_msg_geofence);
 
     // Auxilary variables
     double rate;
@@ -47,7 +49,7 @@ private:
     double minX,maxX,minY,maxY,minZ,maxZ,maxT;
     double minDist;
     int threat_list_id_ = 0;
-    map <int, pair<gauss_msgs::Threat, double>> threat_list_;
+    vector<gauss_msgs::Threat> threat_list_;
 
     cell ****grid;
 
@@ -67,7 +69,7 @@ private:
     ros::Timer timer_sub_;
 
     // Server
-    ros::ServiceServer check_conflicts_server_;
+    ros::ServiceServer check_conflicts_server_, update_threats_server_;
 
     // Client
     ros::ServiceClient threats_client_, read_geofence_client_, read_operation_client_, dbsize_cilent_, read_icao_client_;
@@ -121,6 +123,7 @@ Monitoring::Monitoring()
 
     // Server
     check_conflicts_server_=nh_.advertiseService("/gauss/check_conflicts",&Monitoring::checkConflictsCB,this);
+    update_threats_server_ = nh_.advertiseService("/gauss/update_threats",&Monitoring::updateThreatsCB,this);
 
     // Client
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
@@ -136,83 +139,74 @@ Monitoring::Monitoring()
 }
 
 // Auxilary methods
-void Monitoring::deleteOldThreats(const double &_start_time, const double &_time_check){
-    std::vector<int> delete_id;
-    for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
-        if (ros::Time::now().toSec() - _start_time - it->second.second > _time_check) {
-            delete_id.push_back(it->first);
-        }
-    }
-    for (int i = 0; i < delete_id.size(); i++){
-        map<int, pair<gauss_msgs::Threat, double>>::const_iterator it;
-        it=threat_list_.find(delete_id.at(i));
-        threat_list_.erase(it);
-    }
-}
-
-
-gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_threats, const double &_start_time){
+gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_threats){
     gauss_msgs::Threats out_threats;
+    std::vector<int> threat_list_ids_updated;
     if (threat_list_.size() == 0) {
-        threat_list_[threat_list_id_] = make_pair(_in_threats.request.threats.front(), ros::Time::now().toSec() - _start_time);
-        threat_list_[threat_list_id_].first.threat_id = threat_list_id_;
-        out_threats.request.threats.push_back(threat_list_[threat_list_id_].first);
-        out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.front());
-        if (threat_list_[threat_list_id_].first.threat_type == threat_list_[threat_list_id_].first.LOSS_OF_SEPARATION) 
-            out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.back());
+        threat_list_.push_back(_in_threats.request.threats.front());
+        threat_list_.front().threat_id = threat_list_id_;
+        threat_list_ids_updated.push_back(threat_list_id_);
+        out_threats.request.threats.push_back(threat_list_.front());
+        out_threats.request.uav_ids.push_back(threat_list_.front().uav_ids.front());
+        if (threat_list_.front().threat_type == threat_list_.front().LOSS_OF_SEPARATION) 
+            out_threats.request.uav_ids.push_back(threat_list_.front().uav_ids.back());
         threat_list_id_++;
     }
     if (threat_list_.size() > 0){
-        for (int i = 0; i < _in_threats.request.threats.size(); i++){
-            static bool save_threat = false;
-            gauss_msgs::Threat threat_to_save;
-            for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
-                save_threat = false;
+        for (auto in_threat : _in_threats.request.threats){
+            bool save_threat = false;
+            // Using lambda, check if threat_type of in_threat is in threat_list
+            std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
+                                                                        [in_threat](gauss_msgs::Threat threat){return (threat.threat_type == in_threat.threat_type);});
+            if (it != threat_list_.end()){
+                // Type found!
                 // If loss of separation, check 2 uav ids else check 1 uav id. If a geofence is involved, check geofence id.
-                if (_in_threats.request.threats.at(i).threat_type == it->second.first.threat_type){
-                    if (_in_threats.request.threats.at(i).threat_type == _in_threats.request.threats.at(i).LOSS_OF_SEPARATION){
-                        if (_in_threats.request.threats.at(i).uav_ids.front() == it->second.first.uav_ids.front() ||
-                            _in_threats.request.threats.at(i).uav_ids.end() == it->second.first.uav_ids.end()){
-                            break;
-                        }
-                    } else if (_in_threats.request.threats.at(i).threat_type == _in_threats.request.threats.at(i).GEOFENCE_CONFLICT){
-                        if (_in_threats.request.threats.at(i).uav_ids.front() == it->second.first.uav_ids.front() ||
-                            _in_threats.request.threats.at(i).geofence_ids.front() == it->second.first.geofence_ids.front()){
-                            break;
-                        }
-                    } else if (_in_threats.request.threats.at(i).threat_type == _in_threats.request.threats.at(i).GEOFENCE_INTRUSION){
-                        if (_in_threats.request.threats.at(i).uav_ids.front() == it->second.first.uav_ids.front() ||
-                            _in_threats.request.threats.at(i).geofence_ids.front() == it->second.first.geofence_ids.front()){
-                            break;
-                        }
-                    } else {
-                        if (_in_threats.request.threats.at(i).uav_ids.front() == it->second.first.uav_ids.front()){
-                            break;
-                        }
+                if (in_threat.threat_type == in_threat.LOSS_OF_SEPARATION){
+                    // TODO: Check all uav ids
+                    if (in_threat.uav_ids.front() != it->uav_ids.front() ||
+                        in_threat.uav_ids.back() != it->uav_ids.back()){
+                            save_threat = true;
+                    }
+                } else if (in_threat.threat_type == in_threat.GEOFENCE_CONFLICT ||
+                           in_threat.threat_type == in_threat.GEOFENCE_INTRUSION){
+                               if (in_threat.uav_ids.front() != it->uav_ids.front() ||
+                                   in_threat.geofence_ids.front() != it->geofence_ids.front()){
+                                       save_threat = true;
+                                }
+                } else {
+                    if (in_threat.uav_ids.front() != it->uav_ids.front()){
+                            save_threat = true;
                     }
                 }
-                threat_to_save = _in_threats.request.threats.at(i);
+            } else {
+                // Type not found!
                 save_threat = true;
             }
-            if(save_threat){
-                threat_list_[threat_list_id_] = make_pair(threat_to_save, ros::Time::now().toSec() - _start_time);
-                threat_list_[threat_list_id_].first.threat_id = threat_list_id_;
-                out_threats.request.threats.push_back(threat_list_[threat_list_id_].first);
-                out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.front());
-                if (threat_list_[threat_list_id_].first.threat_type == threat_list_[threat_list_id_].first.LOSS_OF_SEPARATION){
-                    out_threats.request.uav_ids.push_back(threat_list_[threat_list_id_].first.uav_ids.back());
+            if (save_threat){
+                in_threat.threat_id = threat_list_id_;
+                threat_list_.push_back(in_threat);
+                threat_list_ids_updated.push_back(threat_list_id_);
+                out_threats.request.threats.push_back(in_threat);
+                out_threats.request.uav_ids.push_back(in_threat.uav_ids.front());
+                if (in_threat.threat_type == in_threat.LOSS_OF_SEPARATION){
+                    out_threats.request.uav_ids.push_back(in_threat.uav_ids.back());
                 }
                 threat_list_id_++;
             }
         }
+        // Delete non-updated threats from threat_list_
+        for (auto saved_threat = threat_list_.begin(); saved_threat != threat_list_.end();){
+            std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
+                                                                        [saved_threat](gauss_msgs::Threat threat){return (threat.threat_id == saved_threat->threat_id);});
+            if (it != threat_list_.end()){
+                // ID found!
+                saved_threat++;
+            } else {
+                // ID not found!
+                saved_threat = threat_list_.erase(saved_threat);
+            }
+        }
     } 
-    //Uncomment to check list
-    // for (map<int, pair<gauss_msgs::Threat, double>>::const_iterator it = threat_list_.begin(); it != threat_list_.end(); it++){
-    //     std::cout << "[" << it->first << "] Time: " << it->second.second << 
-    //     " Thread: " << it->second.first <<
-    //      "\n";
-    //     std::cout << " -------------------------------------------------------- \n";
-    // }
 
     std::string cout_threats;
     for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
@@ -220,6 +214,35 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
     ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] New threats detected: (id, type) " + cout_threats);
 
     return out_threats;
+}
+
+gauss_msgs::Threats Monitoring::fillConflictiveFields(gauss_msgs::Threats &_in_threats, const gauss_msgs::ReadOperation &_msg_op, const gauss_msgs::ReadGeofences &_msg_geofence){
+    for (int i = 0; i < _in_threats.request.uav_ids.size(); i++){
+        gauss_msgs::ConflictiveOperation conflictive_operation;
+        conflictive_operation.uav_id = _msg_op.response.operation.at(i).uav_id;
+        conflictive_operation.current_wp = _msg_op.response.operation.at(i).current_wp;
+        conflictive_operation.flight_plan = _msg_op.response.operation.at(i).flight_plan;
+        conflictive_operation.landing_spots = _msg_op.response.operation.at(i).landing_spots;
+        conflictive_operation.operational_volume = _msg_op.response.operation.at(i).operational_volume;
+        conflictive_operation.estimated_trajectory = _msg_op.response.operation.at(i).estimated_trajectory;
+        conflictive_operation.flight_plan_updated = _msg_op.response.operation.at(i).flight_plan_updated;
+        _in_threats.request.operations.push_back(conflictive_operation);
+    }
+    // Check which geofences are conflictive and do not repeat it
+    std::vector<int> aux_geofences_id;
+    for (auto threat : _in_threats.request.threats){
+        for (auto geofence_id : threat.geofence_ids){
+            if (std::find(aux_geofences_id.begin(), aux_geofences_id.end(), geofence_id) == aux_geofences_id.end()){ // Geofence id not found!
+                aux_geofences_id.push_back(geofence_id);
+            }
+        }
+    }
+    // Fill conflictive geofences
+    for (auto id : aux_geofences_id){
+        _in_threats.request.geofences.push_back(_msg_geofence.response.geofences.at(id));
+    }
+
+    return _in_threats;
 }
 
 int Monitoring::checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, gauss_msgs::Waypoint position4D, double safety_distance)
@@ -316,6 +339,64 @@ int Monitoring::checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, ga
 }
 
 // Service Callbacks
+bool Monitoring::updateThreatsCB(gauss_msgs::UpdateThreats::Request &req, gauss_msgs::UpdateThreats::Response &res){
+    gauss_msgs::Threats threats_msg;
+    gauss_msgs::ReadOperation msg_op;
+    gauss_msgs::ReadGeofences msg_geo;
+    std::string msg_not_found_id;
+    
+    for (auto threat_id : req.threat_ids){
+        std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
+                                                            [threat_id](gauss_msgs::Threat threat){return (threat.threat_id == threat_id);});
+        if (it != threat_list_.end()){ // Threat id found!
+            threats_msg.request.threats.push_back(*it);
+            for (auto uav_id : it->uav_ids){
+                if (std::find(msg_op.request.uav_ids.begin(), msg_op.request.uav_ids.end(), uav_id) == msg_op.request.uav_ids.end()){ // UAV id not found!
+                    msg_op.request.uav_ids.push_back(uav_id);
+                }
+            }
+            if (it->threat_type == it->GEOFENCE_CONFLICT || it->threat_type == it->GEOFENCE_INTRUSION){
+                for (auto geofence_id : it->geofence_ids){
+                    if (std::find(msg_geo.request.geofences_ids.begin(), msg_geo.request.geofences_ids.end(), geofence_id) == msg_geo.request.geofences_ids.end()){ // UAV id not found!
+                        msg_geo.request.geofences_ids.push_back(geofence_id);
+                    }
+                }
+            }
+        } else { // Threat id not found!
+            msg_not_found_id = msg_not_found_id + " " + std::to_string(it->threat_id);
+        }
+    }
+
+    if (msg_op.request.uav_ids.size() > 0){
+        if (!read_operation_client_.call(msg_op) || !msg_op.response.success){
+            ROS_ERROR("Failed to read operations on data base");
+        } else {
+            res.uav_ids = msg_op.request.uav_ids;
+            threats_msg.request.uav_ids = msg_op.request.uav_ids;
+        }
+    }
+    if (msg_geo.request.geofences_ids.size() > 0){
+        if (!read_geofence_client_.call(msg_geo) || !msg_geo.response.success){
+            ROS_ERROR("Failed to read geofences on data base");
+        } else {
+            res.geofences = msg_geo.response.geofences;
+        }
+    }
+
+    threats_msg = fillConflictiveFields(threats_msg, msg_op, msg_geo);
+    res.threats = threats_msg.request.threats;
+    res.operations = threats_msg.request.operations;
+
+    if (msg_not_found_id.empty()){
+        res.message = "All threats were updated";
+        res.success = true;
+    } else {
+        res.message = "Not found threat ids: " + msg_not_found_id;
+    }
+
+    return true;
+}
+
 bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gauss_msgs::CheckConflicts::Response &res)
 {
     gauss_msgs::ReadIcao msg_ids;
@@ -422,9 +503,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
 {
     int missions;
     int geofeces;
-
-    // Set a start time
-    static double start_time = ros::Time::now().toSec();
 
     // Ask for number of missions and geofences
 
@@ -609,34 +687,10 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     if (threats_msg.request.threats.size() > 0)
     {
         // Manage threat list
-        gauss_msgs::Threats new_threats_msgs = manageThreatList(threats_msg, start_time);
+        gauss_msgs::Threats new_threats_msgs = manageThreatList(threats_msg);
         // Fill conflictive operations
         if (new_threats_msgs.request.threats.size() > 0){
-            for (int i = 0; i < new_threats_msgs.request.uav_ids.size(); i++){
-                gauss_msgs::ConflictiveOperation conflictive_operation;
-                conflictive_operation.uav_id = msg_op.response.operation.at(i).uav_id;
-                conflictive_operation.current_wp = msg_op.response.operation.at(i).current_wp;
-                conflictive_operation.flight_plan = msg_op.response.operation.at(i).flight_plan;
-                conflictive_operation.landing_spots = msg_op.response.operation.at(i).landing_spots;
-                conflictive_operation.operational_volume = msg_op.response.operation.at(i).operational_volume;
-                conflictive_operation.estimated_trajectory = msg_op.response.operation.at(i).estimated_trajectory;
-                conflictive_operation.flight_plan_updated = msg_op.response.operation.at(i).flight_plan_updated;
-                new_threats_msgs.request.operations.push_back(conflictive_operation);
-            }
-            // Check which geofences are conflictive and do not repeat it
-            std::vector<int> aux_geofences_id;
-            for (auto threat : new_threats_msgs.request.threats){
-                for (auto geofence_id : threat.geofence_ids){
-                    if (std::find(aux_geofences_id.begin(), aux_geofences_id.end(), geofence_id) != aux_geofences_id.end()){
-                    } else {
-                        aux_geofences_id.push_back(geofence_id);
-                    }
-                }
-            }
-            // Fill conflictive geofences
-            for (auto id : aux_geofences_id){
-                new_threats_msgs.request.geofences.push_back(msg_geofence.response.geofences.at(id));
-            }
+            new_threats_msgs = fillConflictiveFields(new_threats_msgs, msg_op, msg_geofence);
             // Call threats service
             if(!(threats_client_.call(new_threats_msgs)) || !(new_threats_msgs.response.success))
             {
@@ -646,10 +700,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         }
 
     }
-    double delete_time = 60.0; // seconds
-    // Delete old threats on the list
-    deleteOldThreats(start_time, delete_time);
-
 }
 
 

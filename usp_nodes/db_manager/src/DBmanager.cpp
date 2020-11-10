@@ -272,7 +272,7 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
         }
         if (!invalid_ids.empty()) {
             res.success = false;
-            res.operation.clear();
+            // res.operation.clear();
             res.message = "Data base does not contain requested operation ids:" + invalid_ids;
         } else {
             res.success = true;
@@ -322,7 +322,7 @@ bool DataBase::readGeofenceCB(gauss_msgs::ReadGeofences::Request &req, gauss_msg
         }
         if (!invalid_ids.empty()) {
             res.success = false;
-            res.geofences.clear();
+            // res.geofences.clear();
             res.message = "Data base does not contain requested geofence ids:" + invalid_ids;
         } else {
             res.success = true;
