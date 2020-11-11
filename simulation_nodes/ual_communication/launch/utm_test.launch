@@ -39,6 +39,7 @@
     <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/>
     <node pkg="tracking" type="tracking" name="tracking" required="true"/>
     <node pkg="ual_communication" type="notificationBridge" name="notification_bridge" output="screen" required="true"/>
+    <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
     <!-- Wait 30 seconds before launching monitoring -->
     <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 30.0; $0 $@' "/>
     <!-- PX4 -->
@@ -126,15 +127,6 @@
                 <param name="light" value="$(arg light)"/>
                 <param name="sitl" value="$(arg sitl)"/>
             </node>
-            <node pkg="upat_follower" type="visualization_node" name="visualization" required="true" output="screen">
-                <param name="uav_id" value="0"/>
-                <param name="ns_prefix" value="$(arg ns_prefix)"/>
-                <param name="robot_model" value="$(arg robot_model)"/>
-                <param name="pub_rate" value="$(arg pub_rate)"/>
-                <param name="save_experiment_data" value="$(arg save_experiment_data)"/>
-                <param name="trajectory" value="$(arg trajectory)"/>
-                <param name="generator_mode" value="$(arg generator_mode)"/>
-            </node>
         </group>
         <group ns="$(arg ns_prefix)1">
             <node pkg="$(arg pkg_name)" type="ualCommunication" name="ual_communication" output="screen" required="true" if="$(arg multi)">
@@ -152,15 +144,6 @@
                 <param name="look_ahead" value="$(arg look_ahead)"/>
                 <param name="light" value="$(arg light)"/>
                 <param name="sitl" value="$(arg sitl)"/>
-            </node>
-            <node pkg="upat_follower" type="visualization_node" name="visualization" required="true" output="screen">
-                <param name="uav_id" value="1"/>
-                <param name="ns_prefix" value="$(arg ns_prefix)"/>
-                <param name="robot_model" value="$(arg robot_model)"/>
-                <param name="pub_rate" value="$(arg pub_rate)"/>
-                <param name="save_experiment_data" value="$(arg save_experiment_data)"/>
-                <param name="trajectory" value="$(arg trajectory)"/>
-                <param name="generator_mode" value="$(arg generator_mode)"/>
             </node>
         </group>
     </group>
