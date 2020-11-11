@@ -171,7 +171,7 @@ class EmergencyManagement():
         return res
     
     #TODO, añadir función que pida la actualización del threat a Monitoring
-    def ask_update_threat(self, threat_id)
+    def ask_update_threat(self, threat_id):
         req = UpdateThreatsRequest()
         req.threat_ids = [threat_id]
         res = self._update_threats_service_handle(req)
