@@ -398,6 +398,7 @@ bool DataBase::writePlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::Wr
             map<int, gauss_msgs::Operation>::iterator it = saved_operations.find(req.uav_ids[i]);
             if (it != saved_operations.end()) {
                 it->second.flight_plan = req.flight_plans[i];
+                it->second.flight_plan_mod_t = ros::Time::now().toSec();
             } else {
                 not_found_ids.push_back(i);
             }

@@ -951,9 +951,64 @@ void Tracking::main()
     int counter = 0;
     while(pnh.ok())
     {
+        // Read all the operations from database, and check the flight_plan_mod_t field
+        gauss_msgs::ReadIcao read_icao;
+        if ( read_icao_client_.call(read_icao) && read_icao.response.success )
+        {
+            int index_icao = 0;
+            std::vector<std::string> &icao_address = read_icao.response.icao_address;
+            for(auto it=read_icao.response.uav_id.begin(); it < read_icao.response.uav_id.end(); it++)
+            {
+                if(uav_id_icao_address_map_.find((*it)) == uav_id_icao_address_map_.end())
+                {
+                    uav_id_icao_address_map_.insert( std::make_pair((*it),icao_address[index_icao]) );
+                    icao_address_uav_id_map_.insert( std::make_pair(icao_address[index_icao], (*it)) );
+                }
+                index_icao++;
+            }
+        }
+        else
+        {
+            ROS_ERROR("Failed reading ICAO addresses list from Database");
+            ROS_ERROR("Shutting down Tracking node");
+            ros::shutdown();
+        }
+
+        // Read all the operations currently registered in the database
         gauss_msgs::ReadOperation read_operation_msg;
-        // Retrieve all operations that are not already downloaded from the database
-        // We must iterate over the candidates list to see if we already have an operation registered for each uav_id
+        for(auto it=uav_id_icao_address_map_.begin(); it!=uav_id_icao_address_map_.end(); it++)
+        {
+            read_operation_msg.request.uav_ids.push_back((*it).first);
+        }
+        if ( read_operation_client_.call(read_operation_msg) && read_operation_msg.response.success )
+        {
+            for(auto it=read_operation_msg.response.operation.begin(); it!=read_operation_msg.response.operation.end(); it++)
+            {
+                if(cooperative_operations_.find((*it).uav_id) == cooperative_operations_.end())
+                {
+                    cooperative_operations_[(*it).uav_id] = (*it);
+                    cooperative_operations_[(*it).uav_id].track.waypoints.clear();
+                    cooperative_operations_[(*it).uav_id].estimated_trajectory.waypoints.clear();
+                    cooperative_operations_[(*it).uav_id].time_tracked = 0;
+                    already_tracked_cooperative_operations_[(*it).uav_id] = false; // A TargetTracker for this operation hasn't been created yet
+                }
+                else
+                {
+                    if(cooperative_operations_[(*it).uav_id].flight_plan_mod_t < (*it).flight_plan_mod_t)
+                    {
+                        cooperative_operations_[(*it).uav_id].flight_plan_mod_t = (*it).flight_plan_mod_t;
+                        cooperative_operations_[(*it).uav_id].flight_plan = (*it).flight_plan;
+                    }
+                }  
+            }
+            ROS_INFO("Operations read from database");
+        }
+        else
+        {
+            ROS_ERROR("Failed reading operations from database");
+            ros::shutdown();
+        }
+
         candidates_list_mutex_.lock();
         bool new_operations_to_download = false;
         for(auto it=candidates_.begin(); it!=candidates_.end(); ++it)
