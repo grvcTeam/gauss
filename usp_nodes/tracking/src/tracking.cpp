@@ -3,6 +3,7 @@
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/WriteOperation.h>
 #include <gauss_msgs/WriteTracking.h>
+#include <gauss_msgs/WritePlans.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadIcaoRequest.h>
 #include <gauss_msgs/ReadIcaoResponse.h>
@@ -46,6 +47,7 @@ private:
     void positionReportCB(const gauss_msgs::PositionReport::ConstPtr& msg);
 
     // Service Callbacks
+    bool updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::WritePlans::Response &res); 
 
     // Auxilary methods
     void predict(ros::Time &now);
@@ -56,7 +58,6 @@ private:
     bool checkTargetAlreadyExist(std::string icao_address);
     bool checkTargetAlreadyExist(uint8_t uav_id);
     bool checkCooperativeOperationAlreadyExist(uint8_t uav_id);
-    bool writeOperationsToDatabase();
     bool writeTrackingInfoToDatabase();
     uint32_t findClosestWaypointIndex(gauss_msgs::WaypointList &waypoint_list, gauss_msgs::Waypoint &current_waypoint, 
                                       double &distance_to_waypoint);
@@ -83,6 +84,7 @@ private:
     // Timer
 
     // Server
+    ros::ServiceServer update_fligh_plan_server_;
 
     // Client
     ros::ServiceClient read_operation_client_;
@@ -106,6 +108,8 @@ private:
     std::map<uint8_t, bool> modified_cooperative_operations_flags_;
     std::map<uint8_t, ros::Time> uav_id_last_time_position_update_map_;
     std::map<std::string, ros::Time> icao_last_time_position_update_map_;
+    std::map<uint8_t,gauss_msgs::WaypointList> uav_id_update_flight_plan_map_;
+    std::map<uint8_t,bool> updated_flight_plan_flag_map_;
 
     // Params
     bool use_position_report_;
@@ -113,7 +117,7 @@ private:
 
     // Mutex
     boost::mutex candidates_list_mutex_;
-
+    boost::mutex updated_flight_plans_mutex_;
 
 };
 
@@ -133,6 +137,7 @@ Tracking::Tracking()
     pos_report_sub_= nh_.subscribe<gauss_msgs::PositionReport>("/gauss/position_report",1,&Tracking::positionReportCB,this);
 
     // Server
+    update_fligh_plan_server_ = nh_.advertiseService("/gauss/update_flight_plans", &Tracking::updateFlightPlansCB, this);
 
     // Client
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
@@ -188,6 +193,8 @@ Tracking::Tracking()
                 cooperative_operations_[(*it).uav_id].estimated_trajectory.waypoints.clear();
                 cooperative_operations_[(*it).uav_id].time_tracked = 0;
                 already_tracked_cooperative_operations_[(*it).uav_id] = false; // A TargetTracker for this operation hasn't been created yet
+                modified_cooperative_operations_flags_[(*it).uav_id] = false;
+                updated_flight_plan_flag_map_[(*it).uav_id] = false;
             }
             ROS_INFO("Operations read from database");
         }
@@ -274,6 +281,19 @@ bool Tracking::getTargetInfo(int target_id, double &x, double &y, double &z)
 void Tracking::printTargetsInfo()
 {
 
+}
+
+bool Tracking::updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::WritePlans::Response &res)
+{
+    bool result = true;
+    updated_flight_plans_mutex_.lock();
+    for(int i=0; i<req.uav_ids.size(); i++)
+    {
+        uav_id_update_flight_plan_map_[i] = req.flight_plans[i];
+    }
+    updated_flight_plans_mutex_.unlock();
+
+    return result;
 }
 
 // PositionReport callback
@@ -458,49 +478,6 @@ bool Tracking::checkCooperativeOperationAlreadyExist(uint8_t uav_id)
     return found;
 }
 
-bool Tracking::writeOperationsToDatabase()
-{
-    bool result = true;
-
-    // Write cooperative uavs operations
-    for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
-	{
-        if(modified_cooperative_operations_flags_[it->first] == true)
-        {
-            write_operation_msg_.request.uav_ids.push_back(it->first);
-            write_operation_msg_.request.operation.push_back(it->second);
-            #ifdef DEBUG
-            std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
-            std::cout << "Estimated trajectory waypoint count: " << it->second.estimated_trajectory.waypoints.size() << std::endl;
-            #endif
-            modified_cooperative_operations_flags_[it->first] = false;
-            new_operation_pub_.publish(it->second);
-        }
-	}
-    write_operation_msg_.response.message.clear();
-    if(!write_operation_msg_.request.uav_ids.empty())
-    {
-        if ( !write_operation_client_.call(write_operation_msg_) || !write_operation_msg_.response.success )
-        {
-            // TODO: A more complex error handling mechanism must be implemented.
-            // This mechanism should retry the call to the service in case it has failed
-            ROS_ERROR("Failed writing operation to database");
-            ROS_ERROR_STREAM("Message: " << write_operation_msg_.response.message);
-            result = false;
-        }
-        else
-        {
-            ROS_INFO("Succesful writing operation to database");
-            result = true;
-        }
-    }
-
-    write_operation_msg_.request.uav_ids.clear();
-    write_operation_msg_.request.operation.clear();
-
-    return result;
-}
-
 bool Tracking::writeTrackingInfoToDatabase()
 {
     bool result = true;
@@ -508,7 +485,12 @@ bool Tracking::writeTrackingInfoToDatabase()
     // Write cooperative uavs operations
     for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
 	{
-        if(modified_cooperative_operations_flags_[it->first] == true)
+        if(updated_flight_plan_flag_map_[it->first])
+        {
+            write_operation_msg_.request.uav_ids.push_back(it->first);
+            write_operation_msg_.request.operation.push_back(it->second);
+        }
+        else if(modified_cooperative_operations_flags_[it->first] == true)
         {
             #ifdef DEBUG
             std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
@@ -521,10 +503,11 @@ bool Tracking::writeTrackingInfoToDatabase()
             write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
             write_tracking_msg_.request.tracks.push_back(it->second.track);
             write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-
-            modified_cooperative_operations_flags_[it->first] = false;
+            
             new_operation_pub_.publish(it->second);
         }
+        updated_flight_plan_flag_map_[it->first] = false;
+        modified_cooperative_operations_flags_[it->first] = false;
 	}
     write_tracking_msg_.response.message.clear();
     if(!write_tracking_msg_.request.uav_ids.empty())
@@ -533,7 +516,7 @@ bool Tracking::writeTrackingInfoToDatabase()
         {
             // TODO: A more complex error handling mechanism must be implemented.
             // This mechanism should retry the call to the service in case it has failed
-            ROS_ERROR("Failed writing operation to database");
+            ROS_ERROR("Failed writing tracking info to database");
             ROS_ERROR_STREAM("Message: " << write_tracking_msg_.response.message);
             result = false;
         }
@@ -543,6 +526,22 @@ bool Tracking::writeTrackingInfoToDatabase()
             result = true;
         }
     }
+    if(!write_operation_msg_.request.uav_ids.empty())
+    {
+        if ( !write_operation_client_.call(write_operation_msg_) || !write_operation_msg_.response.success )
+        {
+            // TODO: A more complex error handling mechanism must be implemented.
+            // This mechanism should retry the call to the service in case it has failed
+            ROS_ERROR("Failed writing tracking info and updated flight plans to database");
+            ROS_ERROR_STREAM("Message: " << write_operation_msg_.response.message);
+            result = false;
+        }
+        else
+        {
+            ROS_INFO("Succesful writing operation to database");
+            result = true;
+        }
+    }    
 
     write_tracking_msg_.request.uav_ids.clear();
     write_tracking_msg_.request.current_wps.clear();
@@ -550,6 +549,9 @@ bool Tracking::writeTrackingInfoToDatabase()
     write_tracking_msg_.request.times_tracked.clear();
     write_tracking_msg_.request.tracks.clear();
     write_tracking_msg_.request.flight_plans_updated.clear();
+
+    write_operation_msg_.request.uav_ids.clear();
+    write_operation_msg_.request.operation.clear();
 
     return result;
 }
@@ -951,64 +953,6 @@ void Tracking::main()
     int counter = 0;
     while(pnh.ok())
     {
-        // Read all the operations from database, and check the flight_plan_mod_t field
-        gauss_msgs::ReadIcao read_icao;
-        if ( read_icao_client_.call(read_icao) && read_icao.response.success )
-        {
-            int index_icao = 0;
-            std::vector<std::string> &icao_address = read_icao.response.icao_address;
-            for(auto it=read_icao.response.uav_id.begin(); it < read_icao.response.uav_id.end(); it++)
-            {
-                if(uav_id_icao_address_map_.find((*it)) == uav_id_icao_address_map_.end())
-                {
-                    uav_id_icao_address_map_.insert( std::make_pair((*it),icao_address[index_icao]) );
-                    icao_address_uav_id_map_.insert( std::make_pair(icao_address[index_icao], (*it)) );
-                }
-                index_icao++;
-            }
-        }
-        else
-        {
-            ROS_ERROR("Failed reading ICAO addresses list from Database");
-            ROS_ERROR("Shutting down Tracking node");
-            ros::shutdown();
-        }
-
-        // Read all the operations currently registered in the database
-        gauss_msgs::ReadOperation read_operation_msg;
-        for(auto it=uav_id_icao_address_map_.begin(); it!=uav_id_icao_address_map_.end(); it++)
-        {
-            read_operation_msg.request.uav_ids.push_back((*it).first);
-        }
-        if ( read_operation_client_.call(read_operation_msg) && read_operation_msg.response.success )
-        {
-            for(auto it=read_operation_msg.response.operation.begin(); it!=read_operation_msg.response.operation.end(); it++)
-            {
-                if(cooperative_operations_.find((*it).uav_id) == cooperative_operations_.end())
-                {
-                    cooperative_operations_[(*it).uav_id] = (*it);
-                    cooperative_operations_[(*it).uav_id].track.waypoints.clear();
-                    cooperative_operations_[(*it).uav_id].estimated_trajectory.waypoints.clear();
-                    cooperative_operations_[(*it).uav_id].time_tracked = 0;
-                    already_tracked_cooperative_operations_[(*it).uav_id] = false; // A TargetTracker for this operation hasn't been created yet
-                }
-                else
-                {
-                    if(cooperative_operations_[(*it).uav_id].flight_plan_mod_t < (*it).flight_plan_mod_t)
-                    {
-                        cooperative_operations_[(*it).uav_id].flight_plan_mod_t = (*it).flight_plan_mod_t;
-                        cooperative_operations_[(*it).uav_id].flight_plan = (*it).flight_plan;
-                    }
-                }  
-            }
-            ROS_INFO("Operations read from database");
-        }
-        else
-        {
-            ROS_ERROR("Failed reading operations from database");
-            ros::shutdown();
-        }
-
         candidates_list_mutex_.lock();
         bool new_operations_to_download = false;
         for(auto it=candidates_.begin(); it!=candidates_.end(); ++it)
@@ -1020,10 +964,7 @@ void Tracking::main()
                 // Check if we have the associated operation in memory for each uav_id from which position reports have been received
                 if ( !this->checkCooperativeOperationAlreadyExist((*it)->uav_id))
                 {
-                    //std::cout << "uav_id : " << (int)(*it)->uav_id << " not tracked yet" << std::endl;
-                    // Read Operation from Database with a matching UAV id
-                    read_operation_msg.request.uav_ids.push_back((*it)->uav_id);
-                    new_operations_to_download = true;
+                    // TODO: Delete candidate from candidates list
                 }
                 else
                 {
@@ -1037,60 +978,9 @@ void Tracking::main()
                 {
                     // The position info is from a non cooperative uav
                 }
-                else
-                {
-                    // The position info is from a cooperative uav
-                    if ( !this->checkCooperativeOperationAlreadyExist((*it)->uav_id))
-                    {
-                        // If there isn't already an operation for this uav,
-                        // the associated operation must be pulled from the database
-                        #ifdef DEBUG
-                        std::cout << "uav_id : " << (int)(*it)->uav_id << " not tracked yet" << std::endl;
-                        #endif
-                        // Read Operation from Database with a matching UAV id
-                        read_operation_msg.request.uav_ids.push_back((*it)->uav_id);
-                        new_operations_to_download = true;
-                    }
-                    else
-                    {
-                        #ifdef DEBUG
-                        std::cout << "uav_id : " << (int)(*it)->uav_id << " already tracked" << std::endl;
-                        #endif
-                    }
-                }
             }
         }
         candidates_list_mutex_.unlock();
-        if (new_operations_to_download)
-        {
-            if (!read_operation_client_.call(read_operation_msg))
-            {
-                // TODO: A more complex error handling mechanism must be implemented.
-                // This mechanism should retry the call to the service in case it has failed
-                ROS_ERROR("Failed reading operations from database");
-            }
-            else if (!read_operation_msg.response.success)
-            {
-                #ifdef DEBUG
-                std::cout << read_operation_msg.response.message << std::endl;
-                #endif
-            }
-            else
-            {
-                std::vector<gauss_msgs::Operation> &r_operation_vector = read_operation_msg.response.operation;
-                for(auto it=r_operation_vector.begin(); it!=r_operation_vector.end(); ++it)
-                {
-                    ROS_INFO_STREAM("Succesful reading operation of uav " << it->uav_id << "from database");
-                    cooperative_operations_[it->uav_id] = (*it);
-                    #ifdef DEBUG
-                    std::cout << "Time horizon after reading: " << cooperative_operations_[it->uav_id].time_horizon << std::endl;
-                    #endif
-                    cooperative_operations_[it->uav_id].track.waypoints.clear(); // TODO: Clear track although it should be empty at initialization
-                    cooperative_operations_[it->uav_id].estimated_trajectory.waypoints.clear(); // TODO: Clear estimated trajectory although it should be empty at initialization
-                    modified_cooperative_operations_flags_[it->uav_id] = false;
-                }
-            }
-        }
 
         //std::cout << "Operations size start of the loop: " << operations_.size() << std::endl;
 
@@ -1101,6 +991,18 @@ void Tracking::main()
         //std::cout << "Operations size after update: " << operations_.size() << std::endl;
 
         this->fillTrackingWaypointList();
+
+        updated_flight_plans_mutex_.lock();
+        for(auto it=cooperative_operations_.begin(); it!=cooperative_operations_.end(); it++)
+        {
+            if(uav_id_update_flight_plan_map_.find((*it).first) != uav_id_update_flight_plan_map_.end())
+            {
+                cooperative_operations_[(*it).first].flight_plan = uav_id_update_flight_plan_map_[(*it).first];
+                uav_id_update_flight_plan_map_.erase((*it).first);
+                updated_flight_plan_flag_map_[(*it).first] = true;
+            }
+        }
+        updated_flight_plans_mutex_.unlock();
 
         //std::cout << "Operations size after fillTracking: " << operations_.size() << std::endl;
         this->estimateTrajectory();
