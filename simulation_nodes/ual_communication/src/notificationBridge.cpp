@@ -36,6 +36,7 @@ bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifi
                 if (j.uav_id == i.uav_id){
                     notification_.flight_plan = j.flight_plan_updated;
                     notification_.current_wp = j.current_wp;
+                    notification_.actual_wp = j.actual_wp;
                 }
             }
             res.message = "Notification received";
