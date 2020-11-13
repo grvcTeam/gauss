@@ -95,8 +95,8 @@
 					}
 				]
 			},
-			"flight_geometry": 2.0,
-			"operational_volume": 1.0,
+			"flight_geometry": 10.0,
+			"operational_volume": 8.0,
 			"conop": "Power line inspection"
 		},
 		{
@@ -195,8 +195,8 @@
 					}
 				]
 			},
-			"flight_geometry": 2.0,
-			"operational_volume": 1.0,
+			"flight_geometry": 10.0,
+			"operational_volume": 8.0,
 			"conop": "Power line inspection"
 		}
 	]

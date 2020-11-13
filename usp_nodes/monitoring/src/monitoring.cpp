@@ -223,6 +223,7 @@ gauss_msgs::Threats Monitoring::fillConflictiveFields(gauss_msgs::Threats &_in_t
         conflictive_operation.current_wp = _msg_op.response.operation.at(i).current_wp;
         conflictive_operation.flight_plan = _msg_op.response.operation.at(i).flight_plan;
         conflictive_operation.landing_spots = _msg_op.response.operation.at(i).landing_spots;
+        conflictive_operation.actual_wp = _msg_op.response.operation.at(i).track.waypoints.back();
         conflictive_operation.operational_volume = _msg_op.response.operation.at(i).operational_volume;
         conflictive_operation.estimated_trajectory = _msg_op.response.operation.at(i).estimated_trajectory;
         conflictive_operation.flight_plan_updated = _msg_op.response.operation.at(i).flight_plan_updated;

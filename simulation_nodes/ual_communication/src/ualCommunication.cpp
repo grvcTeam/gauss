@@ -51,7 +51,7 @@ void notificationCb(const gauss_msgs::Notification msg) {
     }
 }
 
-nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, const gauss_msgs::Threat &_threat, const int &_maneuver_type, const int &_current_wp){
+nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, const gauss_msgs::Threat &_threat, const int &_maneuver_type, const int &_current_wp, const gauss_msgs::Waypoint &_actual_wp){
     nav_msgs::Path out_path;
 
     bool merge_to_the_end = false;
@@ -133,6 +133,12 @@ nav_msgs::Path mergeFlightPlan(const gauss_msgs::WaypointList &_flight_plan, con
     } 
 
     bool change_path_reference = false;
+    geometry_msgs::PoseStamped temp_pose;
+    temp_pose.header.stamp = _actual_wp.stamp;
+    temp_pose.pose.position.x = _actual_wp.x;
+    temp_pose.pose.position.y = _actual_wp.y;
+    temp_pose.pose.position.z = _actual_wp.z;
+    out_path.poses.push_back(temp_pose);
     for (int i = 0; i < _flight_plan.waypoints.size(); i++){
         geometry_msgs::PoseStamped temp_pose;
         switch (flight_plan_section){
@@ -247,7 +253,7 @@ int main(int _argc, char **_argv) {
     ros::Publisher pub_position_report_ = nh.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
 
     read_operation_client_ = nh.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-    ros::ServiceClient write_plan_client = nh.serviceClient<gauss_msgs::WritePlans>("/gauss/write_plans");
+    ros::ServiceClient write_plan_client = nh.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
 
 
     // Let UAL and MAVROS get ready
@@ -302,7 +308,7 @@ int main(int _argc, char **_argv) {
             alternative_path.poses.clear();
             alternative_times.clear();
             // uav_operation = getOperation(uav_id_); // To get current_wp updated
-            alternative_path = mergeFlightPlan(notification_.flight_plan, notification_.threat, notification_.maneuver_type, notification_.current_wp);
+            alternative_path = mergeFlightPlan(notification_.flight_plan, notification_.threat, notification_.maneuver_type, notification_.current_wp, notification_.actual_wp);
             for (auto i : alternative_path.poses){
                 alternative_times.push_back(i.header.stamp.toSec());
             }

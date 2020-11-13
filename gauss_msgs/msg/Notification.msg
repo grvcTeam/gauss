@@ -7,4 +7,5 @@ uint8 maneuver_type
 Waypoint[] waypoints
 int8 current_wp
 WaypointList flight_plan
+Waypoint actual_wp
 
