@@ -54,6 +54,7 @@ class UspManager():
         req = NotificationsRequest()
         req = copy.deepcopy(request)
         num = len(req.notifications)
+        print(req.notifications)
         #rospy.loginfo("USP manager has received %d notifications from EM!", num) 
         self._notification_received = True
         res = NotificationsResponse()
@@ -63,26 +64,26 @@ class UspManager():
     def send_answers_1(self):
         rospy.loginfo("USP has sent answers") 
         request = PilotAnswerRequest()
-        request.threat_ids = [0,2]
-        request.pilot_answers = ['ACCEPTED','ACCEPTED']
+        request.threat_ids = [0]
+        request.pilot_answers = ['REJECTED']
         response = self._pilot_answers_service(request)
         return response
 
-    def send_answers_2(self):
-        rospy.loginfo("USP has sent answers") 
-        request = PilotAnswerRequest()
-        request.threat_ids = [1,3,4]
-        request.pilot_answers = ['ACCEPTED','ACCEPTED','ACCEPTED']
-        response = self._pilot_answers_service(request)
-        return response
+    # def send_answers_2(self):
+    #     rospy.loginfo("USP has sent answers") 
+    #     request = PilotAnswerRequest()
+    #     request.threat_ids = [1,3,4]
+    #     request.pilot_answers = ['ACCEPTED','ACCEPTED','ACCEPTED']
+    #     response = self._pilot_answers_service(request)
+    #     return response
 
-    def send_answers_3(self):
-        rospy.loginfo("USP has sent answers") 
-        request = PilotAnswerRequest()
-        request.threat_ids = [7,8,9]
-        request.pilot_answers = ['ACCEPTED','ACCEPTED','ACCEPTED']
-        response = self._pilot_answers_service(request)
-        return response
+    # def send_answers_3(self):
+    #     rospy.loginfo("USP has sent answers") 
+    #     request = PilotAnswerRequest()
+    #     request.threat_ids = [7,8,9]
+    #     request.pilot_answers = ['ACCEPTED','ACCEPTED','ACCEPTED']
+    #     response = self._pilot_answers_service(request)
+    #     return response
 
     # This method defines the alert configuration.
     
@@ -176,10 +177,10 @@ if __name__=='__main__':
         if m._notification_received:
             rospy.sleep(20) # se duerme cuatro segundos.
             m.send_answers_1() # envio la respuesta.
-            rospy.sleep(20) # se duerme cuatro segundos.
-            m.send_answers_2() # envio la respuesta.
-            rospy.sleep(30) # se duerme cuatro segundos.
-            m.send_answers_3() # envio la respuesta.
+            # rospy.sleep(20) # se duerme cuatro segundos.
+            # m.send_answers_2() # envio la respuesta.
+            # rospy.sleep(30) # se duerme cuatro segundos.
+            # m.send_answers_3() # envio la respuesta.
         rate.sleep()
 
      #   m.main_menu()      

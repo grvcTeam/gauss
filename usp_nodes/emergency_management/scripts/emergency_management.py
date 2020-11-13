@@ -18,7 +18,7 @@ from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 from gauss_msgs.srv import UpdateThreats, UpdateThreatsRequest
 
 class EmergencyManagement():
-    
+
     class Threat2Solve:
         def __init__(self, threat_time, threat_status, threat):
             self.timestamp = threat_time 
@@ -43,7 +43,7 @@ class EmergencyManagement():
         # Wait until services are available and create connection
         
         rospy.wait_for_service('/gauss/tactical_deconfliction')                    
-        self._reqDeconfliction_service_handle = rospy.ServiceProxy('/gauss/tactical_deconfliction', Deconfliction) 
+        self._requestDeconfliction_service_handle = rospy.ServiceProxy('/gauss/tactical_deconfliction', Deconfliction) 
 
         rospy.wait_for_service('/gauss/write_geofences')                    
         self._writeGeofences_service_handle = rospy.ServiceProxy('/gauss/write_geofences', WriteGeofences) 
@@ -56,20 +56,23 @@ class EmergencyManagement():
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(20), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
         
         print("Started Emergency Management(EM) module!. This module proposes threats solutions to the USP module.")
     
-    def create_new_flight_plan(self, conflictive_operation, threat, maneuver, tactical_wps):
-        conflictive_operation = ConflictiveOperation(conflictive_operation)
-        flightplan = conflictive_operation.flight_plan
-        tactical_wps = WaypointList(tactical_wps)
-        current_wp = conflictive_operation.current_wp
-        new_flight_plan = WaypointList() 
+    def create_new_flight_plan(self, conflictive_operations, threat, maneuver, tactical_wps):
+        conflictive_operation = ConflictiveOperation()
+        new_flight_plan = WaypointList()
         merge2end = False
         flighplansection = 0
-        threat = Threat(threat) 
+        threat = Threat() 
+        threat = threat
         maneuver = maneuver
+        tactical_wps = WaypointList(tactical_wps)
+        for conflictive_operation in conflictive_operations:
+            if conflictive_operation.uav_id == self.uav_id_afected:
+                flightplan = conflictive_operation.flight_plan
+                current_wp = conflictive_operation.current_wp
         
         if threat.threat_type == threat.GEOFENCE_CONFLICT:
             if maneuver == 1: # Route to my destination avoiding a geofence.
@@ -165,30 +168,24 @@ class EmergencyManagement():
         return new_flight_plan
 
     def send_notifications(self, notifications):
-        req = NotificationsRequest()
-        req.notifications = self._notifications_list
-        res = self._notifications_service_handle(req)
-        return res
-    
-    #TODO, añadir función que pida la actualización del threat a Monitoring
-    def ask_update_threat(self, threat_id):
-        req = UpdateThreatsRequest()
-        req.threat_ids = [threat_id]
-        res = self._update_threats_service_handle(req)
+        request = NotificationsRequest()
+        request.notifications = self._notifications_list
+        #request.operations = self._conflictive_operations
+        result = self._notifications_service_handle(request)
         return 
     
     def send_threat2deconfliction(self, threat2deconflicted): 
-        req = DeconflictionRequest()
-        req.tactical = True
-        req.threat = threat2deconflicted 
-        req.operations = self._conflictive_operations 
-        req.geofences = self._conflictive_geofences 
-        self._deconfliction_res = self._requestDeconfliction_service_handle(req) 
-        return self._deconfliction_res
+        request = DeconflictionRequest()
+        request.tactical = True
+        request.threat = threat2deconflicted 
+        request.operations = self._conflictive_operations 
+        request.geofences = self._conflictive_geofences 
+        self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
+        #return self._deconfliction_response
    
     def select_optimal_route(self):
         'Select the optimal deconfliction route'
-        deconfliction_plans_list = self._deconfliction_res.deconfliction_plans
+        deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
         values = []
         for deconfliction_plan in deconfliction_plans_list:
             alfa = 0.25 # Weight of cost
@@ -198,18 +195,28 @@ class EmergencyManagement():
         value_min = min(values)
         pos_min = values.index(value_min)
         best_solution = deconfliction_plans_list[pos_min]
+        self.uav_id_afected = best_solution.uav_id
+        print("THE BEST SOLUTION IS:", best_solution)
         return best_solution
 
-    def action_decision_maker(self, threat2solve, conflictive_operation):
-        threat = Threat(threat2solve)
+    def ask_update_threat(self, threat_id):
+        request = UpdateThreatsRequest()
+        request.threat_ids = threat_id
+        result = self._update_threats_service_handle(request)
+        return result
+    
+    def action_decision_maker(self, threat2solve, conflictive_operations):
+        threat = Threat()
+        threat = threat2solve
         threat_type = threat.threat_type
         uavs_threatened = threat.uav_ids
-        conflictive_operation = conflictive_operation
+        conflictive_operations = conflictive_operations
         actions_dictionary = {1:'Route to my destiny avoiding a geofence', 2:'Route to my destiny for the shortest way',
         3:'Route back home', 4:'Hovering waiting for geofence deactivation', 5:'Route landing in a landing spot',
         6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
         9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
+        notification.threat = threat
         
         if len(uavs_threatened) > 0: 
 
@@ -229,7 +236,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
-                notification.new_flight_plan = create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
 
             '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
@@ -242,7 +249,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
-                notification.new_flight_plan = create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
@@ -281,7 +288,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
-                notification.new_flight_plan = create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                     
             '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
@@ -293,7 +300,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
-                notification.new_flight_plan = create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                 
             '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
@@ -342,7 +349,7 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
-                notification.new_flight_plan = create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                     
             '''Threat JAMMING ATTACK: We send a message for landing within the geofence created
@@ -411,9 +418,9 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
-                notification.new_flight_plan = create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
-
+        #print(self._notifications_list)
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
@@ -422,12 +429,12 @@ class EmergencyManagement():
         zero_time = rospy.Time()
         for i in range(num):
             threat = EmergencyManagement.Threat2Solve(rospy.Time.now(), 'TODO', req.threats[i])
-            conflictive_operation = req.operations[i]
-            conflictive_geofences = req.geofences[i]
-            self._threats_list.append(threat) 
-            self._conflictive_operations.append(conflictive_operation)
-            self._conflictive_geofences.append(conflictive_geofences)
-        #print(self._threats_list)
+            self._threats_list.append(threat)
+        for i in range(len(req.operations)):
+            self._conflictive_operations.append(req.operations[i])
+        for i in range(len(req.geofences)):
+            self._conflictive_geofences.append(req.geofences[i])
+        #print(self._threats_list[0].threat_msg)
         #print(self._conflictive_geofences)
         #print(self._conflictive_operations)       
         res = ThreatsResponse()
@@ -438,8 +445,10 @@ class EmergencyManagement():
         req = PilotAnswerRequest()
         req = copy.deepcopy(request)
         rospy.loginfo("There are new pilot answers")
-        threat_ids = req.threat_ids 
+        threat_ids = list(req.threat_ids)
+        print("THE PILOT CORRESPONDING TO THREAT_ID:", threat_ids)
         answers = req.pilot_answers 
+        print("THE PILOT DECIDES WHAT TO DO WITH REGARD THE UTM PROPOSAL:", req.pilot_answers)
         num = len(threat_ids)
         if num > 0:
             for i in range(num):
@@ -453,18 +462,15 @@ class EmergencyManagement():
         rospy.loginfo("Right now, there are %d active threats in the U-space", num)
         if num > 0:
             for threat in self._threats_list:           
-                if threat.status == 'TODO':
-                    index = self._threats_list.index(threat) 
-                    conflictive_operation = self._conflictive_operations(index)
-                    self.action_decision_maker(threat.threat_msg, conflictive_operation)
+                if threat.status == 'TODO': 
+                    conflictive_operations = self._conflictive_operations
+                    self.action_decision_maker(threat.threat_msg, conflictive_operations)
                     threat.status = 'DONE'
                 if threat.status == 'REJECTED':
-                    threat_id = [threat.threat_id]
-                    updated_threat = ask_update_threat(threat_id)
-                    index = updated_threat.threats.index(threat) 
-                    conflictive_operation = updated_threat.operations(index)
-                    threat = updated_threat.threats(index)
-                    self.action_decision_maker(threat, conflictive_operation)
+                    threat_id = [threat.threat_msg.threat_id]
+                    threat_updated = self.ask_update_threat(threat_id).threats
+                    conflictive_operations_updated = self.ask_update_threat(threat_id).operations
+                    self.action_decision_maker(threat.threat_msg, conflictive_operations_updated)
                     threat.status = 'DONE'
             self.send_notifications(self._notifications_list)
             
