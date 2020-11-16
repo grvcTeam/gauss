@@ -410,7 +410,6 @@ double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &
 
 double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan)
 {
-    static upat_follower::Generator generator(1.0, 1.0, 1.0);
     nav_msgs::Path temp_path;
     for (auto wp : _newplan.waypoint_list){
         geometry_msgs::PoseStamped temp_wp_stamped;
@@ -420,8 +419,9 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
         temp_wp_stamped.header.stamp = wp.stamp;
         temp_path.poses.push_back(temp_wp_stamped);
     }
-
-    nav_msgs::Path interp_path = generator.generatePath(temp_path, 0.0, 1.0);
+    
+    PathFinder path_finder;
+    nav_msgs::Path interp_path = path_finder.generatePath(temp_path, 0.0, 1.0);
     gauss_msgs::CheckConflicts check_conflict;
     check_conflict.request.uav_id = _newplan.uav_id;
     for (auto wp : interp_path.poses){
@@ -679,11 +679,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             max_grid_point.y = grid_borders[3];
             PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
-            static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
             interp_times.push_back(res_times.at(init_astar_pos));
             interp_times.push_back(res_times.at(goal_astar_pos));
-            a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
+            a_star_times_res = path_finder.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
             a_star_times_res.push_back(res_times.at(goal_astar_pos));
             // Solutions of conflict solver are a_star_path_res and a_star_times_res
             gauss_msgs::Waypoint temp_wp;
@@ -804,11 +803,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             max_grid_point.y = grid_borders[3];
             PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
-            static upat_follower::Generator generator(1.0, 1.0, 1.0);
             std::vector<double> interp_times, a_star_times_res;
             interp_times.push_back(conflictive_operations.front().estimated_trajectory.waypoints.front().stamp.toSec()); // init astar pos time
             interp_times.push_back(res_times.at(goal_astar_pos));
-            a_star_times_res = generator.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
+            a_star_times_res = path_finder.interpWaypointList(interp_times, a_star_path_res.poses.size()-1);
             a_star_times_res.push_back(res_times.at(goal_astar_pos));
             // Solutions of conflict solver are a_star_path_res and a_star_times_res
             gauss_msgs::Waypoint temp_wp;
