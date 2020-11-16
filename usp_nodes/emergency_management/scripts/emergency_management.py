@@ -59,21 +59,59 @@ class EmergencyManagement():
         self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
         
         print("Started Emergency Management(EM) module!. This module proposes threats solutions to the USP module.")
+
+    def send_notifications(self, notifications):
+        request = NotificationsRequest()
+        request.notifications = self._notifications_list
+        #request.operations = self._conflictive_operations
+        result = self._notifications_service_handle(request)
+        return 
     
-    def create_new_flight_plan(self, conflictive_operations, threat, maneuver, tactical_wps):
+    def send_threat2deconfliction(self, threat2deconflicted): 
+        request = DeconflictionRequest()
+        request.tactical = True
+        request.threat = threat2deconflicted 
+        request.operations = self._conflictive_operations 
+        request.geofences = self._conflictive_geofences 
+        self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
+        return self._deconfliction_response
+   
+    def select_optimal_route(self):
+        'Select the optimal deconfliction route'
+        deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
+        values = []
+        for deconfliction_plan in deconfliction_plans_list:
+            alfa = 0.25 # Weight of cost
+            beta = 0.75 # Weight of riskiness
+            value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
+            values.append(value)
+        value_min = min(values)
+        pos_min = values.index(value_min)
+        best_solution = deconfliction_plans_list[pos_min]
+        self._uav_id_afected = best_solution.uav_id
+        return best_solution
+
+    def create_new_flight_plan(self, conflictive_operations, threat2solve, maneuver, tactical_wps):
         conflictive_operation = ConflictiveOperation()
+        conflict_operation_list = conflictive_operations
+        #print("La lista de operaciones conflictivas es:", conflict_operation_list)
         new_flight_plan = WaypointList()
         merge2end = False
         flighplansection = 0
         threat = Threat() 
-        threat = threat
+        threat = threat2solve
         maneuver = maneuver
         tactical_wps = WaypointList(tactical_wps)
-        for conflictive_operation in conflictive_operations:
-            if conflictive_operation.uav_id == self.uav_id_afected:
+        
+        for conflictive_operation in conflict_operation_list:
+            if conflictive_operation.uav_id == self._uav_id_afected:
                 flightplan = conflictive_operation.flight_plan
                 current_wp = conflictive_operation.current_wp
         
+        print("Los tacticals wps son:", tactical_wps)
+        print("The flight plan es:", flightplan)
+        # print(threat.threat_type)
+
         if threat.threat_type == threat.GEOFENCE_CONFLICT:
             if maneuver == 1: # Route to my destination avoiding a geofence.
                 merge2end = True
@@ -90,7 +128,7 @@ class EmergencyManagement():
                 merge2end = False
                 flighplansection = 2
             elif maneuver == 6: # Route to my destination leaving the geofence asap.
-                merge2end = False
+                merge2end = True
                 flighplansection = 2   
 
         elif threat.threat_type == threat.GNSS_DEGRADATION:
@@ -117,87 +155,55 @@ class EmergencyManagement():
         
         change_path_ref = False
         for i in range(len(flightplan.waypoints)):
-            temp_pose = Waypoint()
-            
             if flighplansection == 0: # Fist section. Do anything until current waypoint.
                 if (flightplan.waypoints[i].x == flightplan.waypoints[current_wp].x and
                 flightplan.waypoints[i].y == flightplan.waypoints[current_wp].y and
                 flightplan.waypoints[i].z == flightplan.waypoints[current_wp].z):
                     flighplansection = 1
-                else:
-                    break
-            elif flighplansection == 1: # Introduce waypoints between the current waypoint and the first one of the solution
+
+            if flighplansection == 1: # Introduce waypoints between the current waypoint and the first one of the solution
                 if (flightplan.waypoints[i].x == tactical_wps.waypoints[0].x and
                 flightplan.waypoints[i].y == tactical_wps.waypoints[0].y and
                 flightplan.waypoints[i].z == tactical_wps.waypoints[0].z):
                     flighplansection = 2 
                 else:
+                    temp_pose = Waypoint()
                     temp_pose.x = tactical_wps.waypoints[i].x
                     temp_pose.y = tactical_wps.waypoints[i].y
                     temp_pose.z = tactical_wps.waypoints[i].z
                     temp_pose.stamp = tactical_wps.waypoints[i].stamp
-                    new_flight_plan.append(temp_pose)    
-                break
+                    new_flight_plan.waypoints.append(temp_pose)    
 
             elif flighplansection == 2: #Introduce the solution
-                for i in range(len(tactical_wps.waypoints)):
-                    temp_pose.x = tactical_wps.waypoints[i].x
-                    temp_pose.y = tactical_wps.waypoints[i].y
-                    temp_pose.z = tactical_wps.waypoints[i].z
-                    temp_pose.stamp = tactical_wps.waypoints[i].stamp
-                    new_flight_plan.append(temp_pose)
+                for j in range(len(tactical_wps.waypoints)):
+                    temp_pose = Waypoint()
+                    temp_pose.x = tactical_wps.waypoints[j].x
+                    temp_pose.y = tactical_wps.waypoints[j].y
+                    temp_pose.z = tactical_wps.waypoints[j].z
+                    temp_pose.stamp = tactical_wps.waypoints[j].stamp
+                    new_flight_plan.waypoints.append(temp_pose)
                 if merge2end:
                     flighplansection = 3
                 else:
                     i = len(flightplan.waypoints)
+                    break
 
-            elif flighplansection == 3: #Do nothing until matching the solution with the flight plan
+            if flighplansection == 3: #Do nothing until matching the solution with the flight plan
                 if (flightplan.waypoints[i].x == tactical_wps.waypoints[-1].x and
                 flightplan.waypoints[i].y == tactical_wps.waypoints[-1].y and
                 flightplan.waypoints[i].z == tactical_wps.waypoints[-1].z):
                     flighplansection = 4
-                break
 
-            elif flighplansection == 4: #Introduce the rest of the flight plan
+            if flighplansection == 4: #Introduce the rest of the flight plan
+                temp_pose = Waypoint()
                 temp_pose.x = flightplan.waypoints[i].x
                 temp_pose.y = flightplan.waypoints[i].y
                 temp_pose.z = flightplan.waypoints[i].z
                 temp_pose.stamp = flightplan.waypoints[i].stamp
-                new_flight_plan.append(temp_pose)    
-                break
+                new_flight_plan.waypoints.append(temp_pose)    
+                
         return new_flight_plan
-
-    def send_notifications(self, notifications):
-        request = NotificationsRequest()
-        request.notifications = self._notifications_list
-        #request.operations = self._conflictive_operations
-        result = self._notifications_service_handle(request)
-        return 
-    
-    def send_threat2deconfliction(self, threat2deconflicted): 
-        request = DeconflictionRequest()
-        request.tactical = True
-        request.threat = threat2deconflicted 
-        request.operations = self._conflictive_operations 
-        request.geofences = self._conflictive_geofences 
-        self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
-        #return self._deconfliction_response
-   
-    def select_optimal_route(self):
-        'Select the optimal deconfliction route'
-        deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
-        values = []
-        for deconfliction_plan in deconfliction_plans_list:
-            alfa = 0.25 # Weight of cost
-            beta = 0.75 # Weight of riskiness
-            value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
-            values.append(value)
-        value_min = min(values)
-        pos_min = values.index(value_min)
-        best_solution = deconfliction_plans_list[pos_min]
-        self.uav_id_afected = best_solution.uav_id
-        print("THE BEST SOLUTION IS:", best_solution)
-        return best_solution
+        
 
     def ask_update_threat(self, threat_id):
         request = UpdateThreatsRequest()
@@ -209,7 +215,7 @@ class EmergencyManagement():
         threat = Threat()
         threat = threat2solve
         threat_type = threat.threat_type
-        uavs_threatened = threat.uav_ids
+        uavs_threatened = list(threat.uav_ids)
         conflictive_operations = conflictive_operations
         actions_dictionary = {1:'Route to my destiny avoiding a geofence', 2:'Route to my destiny for the shortest way',
         3:'Route back home', 4:'Hovering waiting for geofence deactivation', 5:'Route landing in a landing spot',
@@ -297,6 +303,10 @@ class EmergencyManagement():
                 #Publish the action which the UAV has to make.    
                 self.send_threat2deconfliction(threat)
                 best_solution = self.select_optimal_route()
+                # print("The best solution is", best_solution)
+                # print(threat_type)
+                # print(threat.threat_id)
+                # print(threat)
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
@@ -433,10 +443,10 @@ class EmergencyManagement():
         for i in range(len(req.operations)):
             self._conflictive_operations.append(req.operations[i])
         for i in range(len(req.geofences)):
-            self._conflictive_geofences.append(req.geofences[i])
-        #print(self._threats_list[0].threat_msg)
+            self._conflictive_geofences.append(req.geofences[i])    
+        #print(self._threats_list)
+        #print(self._conflictive_operations)
         #print(self._conflictive_geofences)
-        #print(self._conflictive_operations)       
         res = ThreatsResponse()
         res.success = True
         return res 

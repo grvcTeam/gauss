@@ -1,7 +1,11 @@
 <launch>
     <!-- Arguments -->
-    <arg name="operations_json" default="loss_operations"/>
-    <arg name="geofences_json"  default="loss_geofences"/>
+    <!--arg name="operations_json" default="loss_operations"/-->
+    <!--arg name="geofences_json"  default="loss_geofences"/-->
+    <!--arg name="operations_json" default="operations_test_geofence"/-->
+    <!--arg name="geofences_json"  default="geofences_test"/-->
+    <arg name="operations_json" default="geo_conflict_operations"/>
+    <arg name="geofences_json"  default="geo_conflict_geofences"/>
 
     <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
             <param name="operations_json" value="$(arg operations_json)"/>

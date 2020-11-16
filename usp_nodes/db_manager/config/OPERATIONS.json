@@ -6,7 +6,7 @@
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
-			"current_wp": 0,
+			"current_wp": 1,
 			"flight_plan": {
 				"waypoints": [
 					{
@@ -134,7 +134,7 @@
 			"frame": "",
 			"autonomy": 20,
 			"priority": 0,
-			"current_wp": 0,
+			"current_wp": 1,
 			"flight_plan": {
 				"waypoints": [
 					{

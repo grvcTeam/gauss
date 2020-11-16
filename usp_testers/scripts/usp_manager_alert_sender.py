@@ -65,7 +65,7 @@ class UspManager():
         rospy.loginfo("USP has sent answers") 
         request = PilotAnswerRequest()
         request.threat_ids = [0]
-        request.pilot_answers = ['REJECTED']
+        request.pilot_answers = ['ACCEPTED']
         response = self._pilot_answers_service(request)
         return response
 
