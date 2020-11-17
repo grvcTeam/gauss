@@ -105,8 +105,10 @@ class EmergencyManagement():
         flightplan = conflictive_operation.flight_plan
         current_wp = conflictive_operation.current_wp
         
-        print("Los tacticals wps son:", tactical_wps)
-        print("The flight plan es:", flightplan)
+        # print("_____________________________________________________________")
+        # print("tactical_wps:", tactical_wps)
+        # print("flightplan:", flightplan)
+        # print("current_wp:", current_wp)
         # print(threat.threat_type)
 
         if threat.threat_type == threat.GEOFENCE_CONFLICT:
@@ -150,39 +152,47 @@ class EmergencyManagement():
                 merge2end = True
                 flighplansection = 2
         
-        change_path_ref = False
+        # change_path_ref = False
+        # rospy.loginfo('to_end = {}, section = {}'.format(merge2end, flighplansection))
         for i in range(len(flightplan.waypoints)):
+            # print("i = {} ________________________________________________".format(i))
             if flighplansection == 0: # Fist section. Do anything until current waypoint.
                 if (flightplan.waypoints[i].x == flightplan.waypoints[current_wp].x and
                 flightplan.waypoints[i].y == flightplan.waypoints[current_wp].y and
                 flightplan.waypoints[i].z == flightplan.waypoints[current_wp].z):
                     flighplansection = 1
+                    # rospy.loginfo('section = {}'.format(flighplansection))
 
             if flighplansection == 1: # Introduce waypoints between the current waypoint and the first one of the solution
                 if (flightplan.waypoints[i].x == tactical_wps.waypoints[0].x and
                 flightplan.waypoints[i].y == tactical_wps.waypoints[0].y and
                 flightplan.waypoints[i].z == tactical_wps.waypoints[0].z):
                     flighplansection = 2 
+                    # rospy.loginfo('section = {}'.format(flighplansection))
                 else:
                     temp_pose = Waypoint()
-                    temp_pose.x = tactical_wps.waypoints[i].x
-                    temp_pose.y = tactical_wps.waypoints[i].y
-                    temp_pose.z = tactical_wps.waypoints[i].z
-                    temp_pose.stamp = tactical_wps.waypoints[i].stamp
-                    new_flight_plan.waypoints.append(temp_pose)    
+                    temp_pose.x = flightplan.waypoints[i].x
+                    temp_pose.y = flightplan.waypoints[i].y
+                    temp_pose.z = flightplan.waypoints[i].z
+                    temp_pose.stamp = flightplan.waypoints[i].stamp
+                    new_flight_plan.waypoints.append(temp_pose)
+                    # print("new_flight_plan at {}: {}".format(i, new_flight_plan))
 
             elif flighplansection == 2: #Introduce the solution
                 for j in range(len(tactical_wps.waypoints)):
+                    # print("j = {} _____________".format(j))
                     temp_pose = Waypoint()
                     temp_pose.x = tactical_wps.waypoints[j].x
                     temp_pose.y = tactical_wps.waypoints[j].y
                     temp_pose.z = tactical_wps.waypoints[j].z
                     temp_pose.stamp = tactical_wps.waypoints[j].stamp
                     new_flight_plan.waypoints.append(temp_pose)
+                    # print("new_flight_plan at {}, {}: {}".format(i, j, new_flight_plan))
                 if merge2end:
                     flighplansection = 3
+                    # rospy.loginfo('section = {}'.format(flighplansection))
                 else:
-                    i = len(flightplan.waypoints)
+                    # i = len(flightplan.waypoints)
                     break
 
             if flighplansection == 3: #Do nothing until matching the solution with the flight plan
@@ -190,15 +200,19 @@ class EmergencyManagement():
                 flightplan.waypoints[i].y == tactical_wps.waypoints[-1].y and
                 flightplan.waypoints[i].z == tactical_wps.waypoints[-1].z):
                     flighplansection = 4
+                    # rospy.loginfo('section = {}'.format(flighplansection))
 
-            if flighplansection == 4: #Introduce the rest of the flight plan
+            elif flighplansection == 4: #Introduce the rest of the flight plan
                 temp_pose = Waypoint()
                 temp_pose.x = flightplan.waypoints[i].x
                 temp_pose.y = flightplan.waypoints[i].y
                 temp_pose.z = flightplan.waypoints[i].z
                 temp_pose.stamp = flightplan.waypoints[i].stamp
-                new_flight_plan.waypoints.append(temp_pose)    
-                
+                new_flight_plan.waypoints.append(temp_pose)
+                # print("new_flight_plan at {}: {}".format(i, new_flight_plan))
+
+        # print("new_flight_plan:", new_flight_plan)
+        # print("_________________________________")
         return new_flight_plan
         
 
