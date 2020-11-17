@@ -91,115 +91,115 @@ class EmergencyManagement():
         self._uav_id_afected = best_solution.uav_id
         return best_solution
 
-    def create_new_flight_plan(self, conflictive_op, threat2solve, maneuver, tactical_wps):
-        conflictive_operation = ConflictiveOperation()
-        conflictive_operation = conflictive_op
-        #print("La lista de operaciones conflictivas es:", conflict_operation_list)
-        new_flight_plan = WaypointList()
-        merge2end = False
-        flighplansection = 0
-        threat = Threat() 
-        threat = threat2solve
-        maneuver = maneuver
-        tactical_wps = WaypointList(tactical_wps)
-        flightplan = conflictive_operation.flight_plan
-        current_wp = conflictive_operation.current_wp
+    # def create_new_flight_plan(self, conflictive_op, threat2solve, maneuver, tactical_wps):
+    #     conflictive_operation = ConflictiveOperation()
+    #     conflictive_operation = conflictive_op
+    #     #print("La lista de operaciones conflictivas es:", conflict_operation_list)
+    #     new_flight_plan = WaypointList()
+    #     merge2end = False
+    #     flighplansection = 0
+    #     threat = Threat() 
+    #     threat = threat2solve
+    #     maneuver = maneuver
+    #     tactical_wps = WaypointList(tactical_wps)
+    #     flightplan = conflictive_operation.flight_plan
+    #     current_wp = conflictive_operation.current_wp
         
-        print("Los tacticals wps son:", tactical_wps)
-        print("The flight plan es:", flightplan)
-        # print(threat.threat_type)
+    #     print("Los tacticals wps son:", tactical_wps)
+    #     print("The flight plan es:", flightplan)
+    #     # print(threat.threat_type)
 
-        if threat.threat_type == threat.GEOFENCE_CONFLICT:
-            if maneuver == 1: # Route to my destination avoiding a geofence.
-                merge2end = True
-                flighplansection = 0
-            elif maneuver == 3: # Route for going back home.
-                merge2end = False
-                flighplansection = 2
+    #     if threat.threat_type == threat.GEOFENCE_CONFLICT:
+    #         if maneuver == 1: # Route to my destination avoiding a geofence.
+    #             merge2end = True
+    #             flighplansection = 0
+    #         elif maneuver == 3: # Route for going back home.
+    #             merge2end = False
+    #             flighplansection = 2
 
-        elif threat.threat_type == threat.GEOFENCE_INTRUSION:
-            if maneuver == 2: # Route to my destination by the shortest way.
-                merge2end = False
-                flighplansection = 2
-            elif maneuver == 3: # Route for going back home.
-                merge2end = False
-                flighplansection = 2
-            elif maneuver == 6: # Route to my destination leaving the geofence asap.
-                merge2end = True
-                flighplansection = 2   
+    #     elif threat.threat_type == threat.GEOFENCE_INTRUSION:
+    #         if maneuver == 2: # Route to my destination by the shortest way.
+    #             merge2end = False
+    #             flighplansection = 2
+    #         elif maneuver == 3: # Route for going back home.
+    #             merge2end = False
+    #             flighplansection = 2
+    #         elif maneuver == 6: # Route to my destination leaving the geofence asap.
+    #             merge2end = True
+    #             flighplansection = 2   
 
-        elif threat.threat_type == threat.GNSS_DEGRADATION:
-            if maneuver == 5: # Route for landing in a landing spot.
-                merge2end = False
-                flighplansection = 2
+    #     elif threat.threat_type == threat.GNSS_DEGRADATION:
+    #         if maneuver == 5: # Route for landing in a landing spot.
+    #             merge2end = False
+    #             flighplansection = 2
 
-        elif threat.threat_type == threat.LACK_OF_BATTERY:
-            if maneuver == 5: # Route for landing in a landing spot.
-                merge2end = False
-                flighplansection = 2
+    #     elif threat.threat_type == threat.LACK_OF_BATTERY:
+    #         if maneuver == 5: # Route for landing in a landing spot.
+    #             merge2end = False
+    #             flighplansection = 2
     
-        elif threat.threat_type == threat.LOSS_OF_SEPARATION:
-            merge2end = True
-            flighplansection = 0
+    #     elif threat.threat_type == threat.LOSS_OF_SEPARATION:
+    #         merge2end = True
+    #         flighplansection = 0
     
-        elif threat.threat_type == threat.UAS_OUT_OV:
-            if maneuver == 9: # Route for going back to the flight geometry and its flight plan.
-                merge2end = True
-                flighplansection = 2
-            elif maneuver == 10: # Route to keep the flight plan. No matter how much the uav is out of the OV.
-                merge2end = True
-                flighplansection = 2
+    #     elif threat.threat_type == threat.UAS_OUT_OV:
+    #         if maneuver == 9: # Route for going back to the flight geometry and its flight plan.
+    #             merge2end = True
+    #             flighplansection = 2
+    #         elif maneuver == 10: # Route to keep the flight plan. No matter how much the uav is out of the OV.
+    #             merge2end = True
+    #             flighplansection = 2
         
-        change_path_ref = False
-        for i in range(len(flightplan.waypoints)):
-            if flighplansection == 0: # Fist section. Do anything until current waypoint.
-                if (flightplan.waypoints[i].x == flightplan.waypoints[current_wp].x and
-                flightplan.waypoints[i].y == flightplan.waypoints[current_wp].y and
-                flightplan.waypoints[i].z == flightplan.waypoints[current_wp].z):
-                    flighplansection = 1
+    #     change_path_ref = False
+    #     for i in range(len(flightplan.waypoints)):
+    #         if flighplansection == 0: # Fist section. Do anything until current waypoint.
+    #             if (flightplan.waypoints[i].x == flightplan.waypoints[current_wp].x and
+    #             flightplan.waypoints[i].y == flightplan.waypoints[current_wp].y and
+    #             flightplan.waypoints[i].z == flightplan.waypoints[current_wp].z):
+    #                 flighplansection = 1
 
-            if flighplansection == 1: # Introduce waypoints between the current waypoint and the first one of the solution
-                if (flightplan.waypoints[i].x == tactical_wps.waypoints[0].x and
-                flightplan.waypoints[i].y == tactical_wps.waypoints[0].y and
-                flightplan.waypoints[i].z == tactical_wps.waypoints[0].z):
-                    flighplansection = 2 
-                else:
-                    temp_pose = Waypoint()
-                    temp_pose.x = tactical_wps.waypoints[i].x
-                    temp_pose.y = tactical_wps.waypoints[i].y
-                    temp_pose.z = tactical_wps.waypoints[i].z
-                    temp_pose.stamp = tactical_wps.waypoints[i].stamp
-                    new_flight_plan.waypoints.append(temp_pose)    
+    #         if flighplansection == 1: # Introduce waypoints between the current waypoint and the first one of the solution
+    #             if (flightplan.waypoints[i].x == tactical_wps.waypoints[0].x and
+    #             flightplan.waypoints[i].y == tactical_wps.waypoints[0].y and
+    #             flightplan.waypoints[i].z == tactical_wps.waypoints[0].z):
+    #                 flighplansection = 2 
+    #             else:
+    #                 temp_pose = Waypoint()
+    #                 temp_pose.x = tactical_wps.waypoints[i].x
+    #                 temp_pose.y = tactical_wps.waypoints[i].y
+    #                 temp_pose.z = tactical_wps.waypoints[i].z
+    #                 temp_pose.stamp = tactical_wps.waypoints[i].stamp
+    #                 new_flight_plan.waypoints.append(temp_pose)    
 
-            elif flighplansection == 2: #Introduce the solution
-                for j in range(len(tactical_wps.waypoints)):
-                    temp_pose = Waypoint()
-                    temp_pose.x = tactical_wps.waypoints[j].x
-                    temp_pose.y = tactical_wps.waypoints[j].y
-                    temp_pose.z = tactical_wps.waypoints[j].z
-                    temp_pose.stamp = tactical_wps.waypoints[j].stamp
-                    new_flight_plan.waypoints.append(temp_pose)
-                if merge2end:
-                    flighplansection = 3
-                else:
-                    i = len(flightplan.waypoints)
-                    break
+    #         elif flighplansection == 2: #Introduce the solution
+    #             for j in range(len(tactical_wps.waypoints)):
+    #                 temp_pose = Waypoint()
+    #                 temp_pose.x = tactical_wps.waypoints[j].x
+    #                 temp_pose.y = tactical_wps.waypoints[j].y
+    #                 temp_pose.z = tactical_wps.waypoints[j].z
+    #                 temp_pose.stamp = tactical_wps.waypoints[j].stamp
+    #                 new_flight_plan.waypoints.append(temp_pose)
+    #             if merge2end:
+    #                 flighplansection = 3
+    #             else:
+    #                 i = len(flightplan.waypoints)
+    #                 break
 
-            if flighplansection == 3: #Do nothing until matching the solution with the flight plan
-                if (flightplan.waypoints[i].x == tactical_wps.waypoints[-1].x and
-                flightplan.waypoints[i].y == tactical_wps.waypoints[-1].y and
-                flightplan.waypoints[i].z == tactical_wps.waypoints[-1].z):
-                    flighplansection = 4
+    #         if flighplansection == 3: #Do nothing until matching the solution with the flight plan
+    #             if (flightplan.waypoints[i].x == tactical_wps.waypoints[-1].x and
+    #             flightplan.waypoints[i].y == tactical_wps.waypoints[-1].y and
+    #             flightplan.waypoints[i].z == tactical_wps.waypoints[-1].z):
+    #                 flighplansection = 4
 
-            if flighplansection == 4: #Introduce the rest of the flight plan
-                temp_pose = Waypoint()
-                temp_pose.x = flightplan.waypoints[i].x
-                temp_pose.y = flightplan.waypoints[i].y
-                temp_pose.z = flightplan.waypoints[i].z
-                temp_pose.stamp = flightplan.waypoints[i].stamp
-                new_flight_plan.waypoints.append(temp_pose)    
+    #         if flighplansection == 4: #Introduce the rest of the flight plan
+    #             temp_pose = Waypoint()
+    #             temp_pose.x = flightplan.waypoints[i].x
+    #             temp_pose.y = flightplan.waypoints[i].y
+    #             temp_pose.z = flightplan.waypoints[i].z
+    #             temp_pose.stamp = flightplan.waypoints[i].stamp
+    #             new_flight_plan.waypoints.append(temp_pose)    
                 
-        return new_flight_plan
+    #     return new_flight_plan
         
 
     def ask_update_threat(self, threat_id):
@@ -241,7 +241,7 @@ class EmergencyManagement():
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
-                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                #notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
 
             '''Threat LOSS OF SEPARATION: we ask to tactical possible solution trajectories'''
@@ -255,7 +255,7 @@ class EmergencyManagement():
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
-                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                #notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
@@ -295,7 +295,7 @@ class EmergencyManagement():
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
-                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                #notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                     
             '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
@@ -312,7 +312,7 @@ class EmergencyManagement():
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
-                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                #notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                 
             '''Threat TECHNICAL FAILURE: we send a message to the UAV in conflict for landing now.'''
@@ -362,7 +362,7 @@ class EmergencyManagement():
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
-                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                #notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                     
             '''Threat JAMMING ATTACK: We send a message for landing within the geofence created
@@ -432,7 +432,7 @@ class EmergencyManagement():
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
                 notification.waypoints = best_solution.waypoint_list
-                notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
+                #notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
         #print(self._notifications_list)
     def service_threats_cb(self, request):
