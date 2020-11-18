@@ -234,8 +234,7 @@ class EmergencyManagement():
         6:'Route to my destiny leaving the geofence asap', 7:'Hovering', 8:'Route avoiding the conflict object',
         9:'Route for going back asap to the Flight Geometry and keeping with the Flight Plan'}
         notification = Notification()
-        notification.threat = threat
-        
+                
         if len(uavs_threatened) > 0: 
 
             '''Threat UAS IN CV: we send a message to the UAV in conflict for going back to the FG.'''
@@ -254,7 +253,11 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
+                notification.threat = threat
+                notification.maneuver_type = best_solution.maneuver_type
+                notification.current_wp = conflictive_operation.current_wp
                 notification.waypoints = best_solution.waypoint_list
+                notification.flight_plan = conflictive_operation.flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
 
@@ -268,7 +271,11 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
+                notification.threat = threat
+                notification.maneuver_type = best_solution.maneuver_type
+                notification.current_wp = conflictive_operation.current_wp
                 notification.waypoints = best_solution.waypoint_list
+                notification.flight_plan = conflictive_operation.flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
 
@@ -308,7 +315,11 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
+                notification.threat = threat
+                notification.maneuver_type = best_solution.maneuver_type
+                notification.current_wp = conflictive_operation.current_wp
                 notification.waypoints = best_solution.waypoint_list
+                notification.flight_plan = conflictive_operation.flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                     
@@ -318,14 +329,14 @@ class EmergencyManagement():
                 #Publish the action which the UAV has to make.    
                 self.send_threat2deconfliction(threat)
                 best_solution = self.select_optimal_route()
-                # print("The best solution is", best_solution)
-                # print(threat_type)
-                # print(threat.threat_id)
-                # print(threat)
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
+                notification.threat = threat
+                notification.maneuver_type = best_solution.maneuver_type
+                notification.current_wp = conflictive_operation.current_wp
                 notification.waypoints = best_solution.waypoint_list
+                notification.flight_plan = conflictive_operation.flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                 
@@ -375,7 +386,11 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
+                notification.threat = threat
+                notification.maneuver_type = best_solution.maneuver_type
+                notification.current_wp = conflictive_operation.current_wp
                 notification.waypoints = best_solution.waypoint_list
+                notification.flight_plan = conflictive_operation.flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
                     
@@ -445,10 +460,14 @@ class EmergencyManagement():
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
+                notification.threat = threat
+                notification.maneuver_type = best_solution.maneuver_type
+                notification.current_wp = conflictive_operation.current_wp
                 notification.waypoints = best_solution.waypoint_list
+                notification.flight_plan = conflictive_operation.flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operation, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
-        #print(self._notifications_list)
+        print(self._notifications_list)
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
