@@ -9,6 +9,7 @@
     <arg name="save_experiment_data" default="false"/>
     <arg name="trajectory" default="true"/>
     <arg name="reach_tolerance" default="0.4"/>
+    <arg name="sitl_take_off_height" default="0.5"/>
     <arg name="path" default="optitrack2"/>
     <arg name="generator_mode" default="0"/>
     <arg name="pkg_name" default="ual_communication"/>
@@ -120,6 +121,7 @@
                 <param name="pub_rate" value="$(arg pub_rate)"/>
                 <param name="path" value="$(arg path)"/>
                 <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
+                <param name="sitl_take_off_height" value="$(arg sitl_take_off_height)"/>
                 <param name="use_class" value="true"/>
                 <param name="generator_mode" value="$(arg generator_mode)"/>
                 <param name="debug" value="$(arg debug)"/>
@@ -138,6 +140,7 @@
                 <param name="pub_rate" value="$(arg pub_rate)"/>
                 <param name="path" value="$(arg path)"/>
                 <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
+                <param name="sitl_take_off_height" value="$(arg sitl_take_off_height)"/>
                 <param name="use_class" value="true"/>
                 <param name="generator_mode" value="$(arg generator_mode)"/>
                 <param name="debug" value="$(arg debug)"/>
