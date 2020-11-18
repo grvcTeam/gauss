@@ -136,17 +136,17 @@ bool DataBase::operationsFromJson(std::string _file_name) {
             operation.estimated_trajectory.waypoints.push_back(operation.flight_plan.waypoints.at(index_1));
         }
 
-        wp_list.waypoints.clear();
-        for (const auto &it : item.value()["track"].front().items()) {
-            gauss_msgs::Waypoint wp;
-            wp.x = it.value()["x"].get<double>();
-            wp.y = it.value()["y"].get<double>();
-            wp.z = it.value()["z"].get<double>();
-            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
-            wp.mandatory = it.value()["mandatory"].get<double>();
-            wp_list.waypoints.push_back(wp);
-        }
-        operation.track = wp_list;
+        // wp_list.waypoints.clear();
+        // for (const auto &it : item.value()["track"].front().items()) {
+        //     gauss_msgs::Waypoint wp;
+        //     wp.x = it.value()["x"].get<double>();
+        //     wp.y = it.value()["y"].get<double>();
+        //     wp.z = it.value()["z"].get<double>();
+        //     wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+        //     wp.mandatory = it.value()["mandatory"].get<double>();
+        //     wp_list.waypoints.push_back(wp);
+        // }
+        operation.track.waypoints.push_back(operation.flight_plan.waypoints.front());
         wp_list.waypoints.clear();
         /*
         for(const auto& it : item.value()["estimated_trajectory"].front().items()){
