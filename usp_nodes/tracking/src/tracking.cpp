@@ -510,8 +510,19 @@ bool Tracking::writeTrackingInfoToDatabase()
             //std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
             //std::cout << "First waypoint of estimated trajectory\n";
             //std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
+            
+            /*
+            if(it->first == 0)
+            {
+                std::cout << "Current waypoint: " << it->second.current_wp << "\n";
+                std::cout << it->second.flight_plan.waypoints[it->second.current_wp] << "\n";
+                std::cout << "Track size: " << it->second.track.waypoints.size() << "\n";
+                std::cout << "Current position:\n"; 
+                std::cout << it->second.track.waypoints.back();
+            } */
+            
         }
-        /* TODO: Debugging
+        /*
         if(it->first == 0)
         {
             if(updated_flight_plan_flag_map_[it->first])
@@ -532,6 +543,7 @@ bool Tracking::writeTrackingInfoToDatabase()
             }
         }
         */
+
         updated_flight_plan_flag_map_[it->first] = false;
         modified_cooperative_operations_flags_[it->first] = false;
 	}
@@ -877,7 +889,6 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
     bool flag_distance_to_waypoint_a = false;
     bool flag_distance_to_waypoint_b = false;
 
-    Eigen::Vector3d current_position_eigen;
     /*
     std::cout << "###################\n";
     std::cout << "Finding current wp\n";
@@ -888,7 +899,14 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
     {
         gauss_msgs::Waypoint &waypoint_a = flight_plan.waypoints[i];
         gauss_msgs::Waypoint &waypoint_b = flight_plan.waypoints[i+1];
-
+        /*
+        std::cout << "--------\n";
+        std::cout << "Segment " << i << "\n";
+        std::cout << "waypoint " << i << "\n";
+        std::cout << waypoint_a << "\n";
+        std::cout << "waypoint " << i+1 << "\n";
+        std::cout << waypoint_b << "\n";
+        */
         Eigen::Vector3d vector_u;
         flag_distance_to_waypoint_a = false;
         flag_distance_to_waypoint_b = false;
@@ -921,6 +939,9 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
         A(0,3) = vector_u.x();
         A(1,3) = vector_u.y();
         A(2,3) = vector_u.z();
+        A(3,0) = vector_u.x();
+        A(3,1) = vector_u.y();
+        A(3,2) = vector_u.z();
 
         x.x() = current_position.x - waypoint_a.x;
         x.y() = current_position.y - waypoint_a.y;
@@ -932,6 +953,7 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
         if (b[3] >= 0 && b[3] <= 1)
         {
             distance = sqrt(b[0]*b[0] + b[1]*b[1] + b[2]*b[2]);
+            //std::cout << "Distance to segment " << distance << "\n";
         }
         else
         {
@@ -942,11 +964,13 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
             {
                 distance = distance_to_waypoint_a;
                 flag_distance_to_waypoint_a = true;
+                //std::cout << "Distance to waypoint_a " << distance << "\n";
             }
             else
             {
                 distance = distance_to_waypoint_b;
                 flag_distance_to_waypoint_b = true;
+                //std::cout << "Distance to waypoint_b " << distance << "\n";
             }
         }
         
