@@ -39,6 +39,7 @@ class DataBase {
     int size_plans;
     int size_geofences;
     // Auxilary methods
+    bool jsonExists(std::string _file_name);
     bool operationsFromJson(std::string _file_name);
     bool geofencesFromJson(std::string _file_name);
     bool checkNewFlightPlan(const gauss_msgs::WaypointList &_pre_flight_plan, const gauss_msgs::WaypointList &_flight_plan);
@@ -61,39 +62,45 @@ class DataBase {
 // DataBase Constructor
 DataBase::DataBase() : nh_(), pnh_("~") {
     // Read parameters
-    std::string operations_name = "OPERATIONS";
-    std::string geofences_name = "UTM_GEOFENCE_CREATION";
+    std::string operations_name = "loss_operations";
+    std::string geofences_name = "loss_geofences";
     pnh_.getParam("operations_json", operations_name);
     pnh_.getParam("geofences_json", geofences_name);
-    std::cout << geofences_name << "\n";
-    // Initialization
-    size_plans = size_geofences = 0;
-
-    // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
-    operationsFromJson(operations_name + ".json");
-    geofencesFromJson(geofences_name + ".json");
-
-    // Publish
-
-    // Subscribe
-
-    // Server
-    read_operation_server_ = nh_.advertiseService("/gauss/read_operation", &DataBase::readOperationCB, this);
-    write_operation_server_ = nh_.advertiseService("/gauss/write_operation", &DataBase::writeOperationCB, this);
-    read_icao_server_ = nh_.advertiseService("/gauss/read_icao", &DataBase::readIcaoCB, this);
-    read_geofences_server_ = nh_.advertiseService("/gauss/read_geofences", &DataBase::readGeofenceCB, this);
-    write_geofences_server_ = nh_.advertiseService("/gauss/write_geofences", &DataBase::writeGeofenceCB, this);
-    dbsize_server_ = nh_.advertiseService("/gauss/db_size", &DataBase::returnDBsizeCB, this);
-    write_tracking_server_ = nh_.advertiseService("/gauss/write_tracking", &DataBase::writeTrackingCB, this);
-    write_plan_server_ = nh_.advertiseService("/gauss/write_plans", &DataBase::writePlansCB, this);
-
+    std::string pkg_path = ros::package::getPath("db_manager");
+    std::string file_path = pkg_path + "/config/";
+    bool ok_json_operations = jsonExists(file_path + operations_name + ".json");
+    bool ok_json_geofences = jsonExists(file_path + geofences_name + ".json");
+    if (ok_json_geofences && ok_json_operations){
+        // Initialization
+        size_plans = size_geofences = 0;
+        // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
+        ROS_WARN_STREAM(file_path + operations_name + ".json");
+        ROS_WARN_STREAM(file_path + geofences_name + ".json");
+        operationsFromJson(file_path + operations_name + ".json");
+        geofencesFromJson(file_path + geofences_name + ".json");
+        // Server
+        read_operation_server_ = nh_.advertiseService("/gauss/read_operation", &DataBase::readOperationCB, this);
+        write_operation_server_ = nh_.advertiseService("/gauss/write_operation", &DataBase::writeOperationCB, this);
+        read_icao_server_ = nh_.advertiseService("/gauss/read_icao", &DataBase::readIcaoCB, this);
+        read_geofences_server_ = nh_.advertiseService("/gauss/read_geofences", &DataBase::readGeofenceCB, this);
+        write_geofences_server_ = nh_.advertiseService("/gauss/write_geofences", &DataBase::writeGeofenceCB, this);
+        dbsize_server_ = nh_.advertiseService("/gauss/db_size", &DataBase::returnDBsizeCB, this);
+        write_tracking_server_ = nh_.advertiseService("/gauss/write_tracking", &DataBase::writeTrackingCB, this);
+        write_plan_server_ = nh_.advertiseService("/gauss/write_plans", &DataBase::writePlansCB, this);
+    } else {
+        if (!ok_json_geofences) ROS_ERROR("Geofences JSON does not exist!");
+        if (!ok_json_operations) ROS_ERROR("Operations JSON does not exist!");
+    }
     ROS_INFO("Started DBManager node!");
 }
 
+bool DataBase::jsonExists(std::string _file_name) {
+    std::ifstream i(_file_name);
+    return i.good();
+}
+
 bool DataBase::operationsFromJson(std::string _file_name) {
-    std::string pkg_path = ros::package::getPath("db_manager");
-    std::string file_path = pkg_path + "/config/" + _file_name;
-    std::ifstream i(file_path);
+    std::ifstream i(_file_name);
     nlohmann::json jsonDB;
     i >> jsonDB;
     gauss_msgs::WriteOperation json_operation;
@@ -180,9 +187,7 @@ bool DataBase::operationsFromJson(std::string _file_name) {
 }
 
 bool DataBase::geofencesFromJson(std::string _file_name) {
-    std::string pkg_path = ros::package::getPath("db_manager");
-    std::string file_path = pkg_path + "/config/" + _file_name;
-    std::ifstream i(file_path);
+    std::ifstream i(_file_name);
     nlohmann::json jsonDB;
     i >> jsonDB;
     gauss_msgs::WriteGeofences json_geofence;
