@@ -554,131 +554,135 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     for (int i=0; i<missions; i++)
     {
         gauss_msgs::Operation operation = msg_op.response.operation[i];
-        gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
-        gauss_msgs::WaypointList plan = operation.flight_plan;
+        if (operation.current_wp != 0){
+            gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
+            gauss_msgs::WaypointList plan = operation.flight_plan;
 
-        geometry_msgs::Point vd;
-        geometry_msgs::Point pq;
-        geometry_msgs::Point pv;
-        /*
-        if (operation.current_wp >= plan.waypoints.size())
-        {
+            geometry_msgs::Point vd;
+            geometry_msgs::Point pq;
+            geometry_msgs::Point pv;
+            /*
+            if (operation.current_wp >= plan.waypoints.size())
+            {
+                vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
+                vd.y=plan.waypoints.at(operation.current_wp).y-plan.waypoints.at(operation.current_wp-1).y;
+                vd.z=plan.waypoints.at(operation.current_wp).z-plan.waypoints.at(operation.current_wp-1).z;
+            }
+            else
+            {
+                vd.x=plan.waypoints.at(operation.current_wp+1).x-plan.waypoints.at(operation.current_wp).x;
+                vd.y=plan.waypoints.at(operation.current_wp+1).y-plan.waypoints.at(operation.current_wp).y;
+                vd.z=plan.waypoints.at(operation.current_wp+1).z-plan.waypoints.at(operation.current_wp).z;
+            }
+            */
+
+            // TODO: Next sentences fail when current_wp is 0 (that could happen if database is initialized with current_wp=0 and tracking hasn't updated it before monitoring reads)
             vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
             vd.y=plan.waypoints.at(operation.current_wp).y-plan.waypoints.at(operation.current_wp-1).y;
             vd.z=plan.waypoints.at(operation.current_wp).z-plan.waypoints.at(operation.current_wp-1).z;
-        }
-        else
-        {
-            vd.x=plan.waypoints.at(operation.current_wp+1).x-plan.waypoints.at(operation.current_wp).x;
-            vd.y=plan.waypoints.at(operation.current_wp+1).y-plan.waypoints.at(operation.current_wp).y;
-            vd.z=plan.waypoints.at(operation.current_wp+1).z-plan.waypoints.at(operation.current_wp).z;
-        }
-        */
 
-        // TODO: Next sentences fail when current_wp is 0 (that could happen if database is initialized with current_wp=0 and tracking hasn't updated it before monitoring reads)
-        vd.x=plan.waypoints.at(operation.current_wp).x-plan.waypoints.at(operation.current_wp-1).x;
-        vd.y=plan.waypoints.at(operation.current_wp).y-plan.waypoints.at(operation.current_wp-1).y;
-        vd.z=plan.waypoints.at(operation.current_wp).z-plan.waypoints.at(operation.current_wp-1).z;
+            pq.x=trajectory.waypoints.at(0).x-plan.waypoints.at(operation.current_wp).x;
+            pq.y=trajectory.waypoints.at(0).y-plan.waypoints.at(operation.current_wp).y;
+            pq.z=trajectory.waypoints.at(0).z-plan.waypoints.at(operation.current_wp).z;
 
-        pq.x=trajectory.waypoints.at(0).x-plan.waypoints.at(operation.current_wp).x;
-        pq.y=trajectory.waypoints.at(0).y-plan.waypoints.at(operation.current_wp).y;
-        pq.z=trajectory.waypoints.at(0).z-plan.waypoints.at(operation.current_wp).z;
+            pv.x=vd.y*pq.z-vd.z*pq.y;
+            pv.y=vd.x*pq.z-vd.z*pq.x;
+            pv.z=vd.x*pq.y-vd.y*pq.x;
 
-        pv.x=vd.y*pq.z-vd.z*pq.y;
-        pv.y=vd.x*pq.z-vd.z*pq.x;
-        pv.z=vd.x*pq.y-vd.y*pq.x;
+            // distancia = |pq x vd| / |vd|: distancia de punto q a recta cuyo vevtor director es vd y que contiene al punto p
 
-        // distancia = |pq x vd| / |vd|: distancia de punto q a recta cuyo vevtor director es vd y que contiene al punto p
+            double distance=sqrt(pv.x*pv.x+pv.y*pv.y+pv.z*pv.z)/sqrt(vd.x*vd.x+vd.y*vd.y+vd.z*vd.z);
 
-        double distance=sqrt(pv.x*pv.x+pv.y*pv.y+pv.z*pv.z)/sqrt(vd.x*vd.x+vd.y*vd.y+vd.z*vd.z);
-
-        if (distance>operation.flight_geometry)
-        {
-            gauss_msgs::Threat threat;
-            threat.header.stamp=ros::Time::now();
-            threat.uav_ids.push_back(i);
-            threat.times.push_back(trajectory.waypoints.at(0).stamp);
-            if (distance<operation.operational_volume)
-                threat.threat_type=threat.UAS_IN_CV;
-            else
-                threat.threat_type=threat.UAS_OUT_OV;
-            threats_msg.request.uav_ids.push_back(i);
-            threats_msg.request.threats.push_back(threat);
-        }
-
-        for (int j=0; j<trajectory.waypoints.size(); j++)
-        {
-            // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
-            if (msg_ids.response.geofence_id.size()>0){
-                int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, trajectory.waypoints.at(j),max(minDist,operation.operational_volume));
-                if (geofence_intrusion>=0)
-                {
-                    gauss_msgs::Threat threat;
-                    threat.header.stamp=ros::Time::now();
-                    threat.uav_ids.push_back(i);
-                    threat.geofence_ids.push_back(geofence_intrusion);
-                    threat.times.push_back(trajectory.waypoints.at(j).stamp);
-                    if (j==0)
-                        threat.threat_type=threat.GEOFENCE_INTRUSION;
-                    else
-                        threat.threat_type=threat.GEOFENCE_CONFLICT;
-                    threats_msg.request.uav_ids.push_back(i);
-                    threats_msg.request.threats.push_back(threat);
-                }
+            if (distance>operation.flight_geometry)
+            {
+                gauss_msgs::Threat threat;
+                threat.header.stamp=ros::Time::now();
+                threat.uav_ids.push_back(i);
+                threat.times.push_back(trajectory.waypoints.at(0).stamp);
+                if (distance<operation.operational_volume)
+                    threat.threat_type=threat.UAS_IN_CV;
+                else
+                    threat.threat_type=threat.UAS_OUT_OV;
+                threats_msg.request.uav_ids.push_back(i);
+                threats_msg.request.threats.push_back(threat);
             }
-            int posx = floor((trajectory.waypoints.at(j).x-minX)/dX);
-            int posy = floor((trajectory.waypoints.at(j).y-minY)/dY);
-            int posz = floor((trajectory.waypoints.at(j).z-minZ)/dZ);
-            int post = floor(trajectory.waypoints.at(j).stamp.toSec()/dT-trajectory.waypoints.at(0).stamp.toSec()/dT);
 
-            current_stamp=trajectory.waypoints.at(0).stamp;
+            for (int j=0; j<trajectory.waypoints.size(); j++)
+            {
+                // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
+                if (msg_ids.response.geofence_id.size()>0){
+                    int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, trajectory.waypoints.at(j),max(minDist,operation.operational_volume));
+                    if (geofence_intrusion>=0)
+                    {
+                        gauss_msgs::Threat threat;
+                        threat.header.stamp=ros::Time::now();
+                        threat.uav_ids.push_back(i);
+                        threat.geofence_ids.push_back(geofence_intrusion);
+                        threat.times.push_back(trajectory.waypoints.at(j).stamp);
+                        if (j==0)
+                            threat.threat_type=threat.GEOFENCE_INTRUSION;
+                        else
+                            threat.threat_type=threat.GEOFENCE_CONFLICT;
+                        threats_msg.request.uav_ids.push_back(i);
+                        threats_msg.request.threats.push_back(threat);
+                    }
+                }
+                int posx = floor((trajectory.waypoints.at(j).x-minX)/dX);
+                int posy = floor((trajectory.waypoints.at(j).y-minY)/dY);
+                int posz = floor((trajectory.waypoints.at(j).z-minZ)/dZ);
+                int post = floor(trajectory.waypoints.at(j).stamp.toSec()/dT-trajectory.waypoints.at(0).stamp.toSec()/dT);
 
-            grid[posx][posy][posz][post].traj.push_back(i);
-            grid[posx][posy][posz][post].wp.push_back(j);
+                current_stamp=trajectory.waypoints.at(0).stamp;
 
-            for (int m=max(0,posx-1); m<min(X,posx+2); m++)
-                for (int n=max(0,posy-1); n<min(Y,posy+2); n++)
-                    for (int p=max(0,posz-1); p<min(Z,posz+2); p++)
-                        for (int t=max(0,post-1); t<min(T,post+2); t++)
-                        {
+                grid[posx][posy][posz][post].traj.push_back(i);
+                grid[posx][posy][posz][post].wp.push_back(j);
 
-                            if (grid[m][n][p][t].traj.size()>0)
+                for (int m=max(0,posx-1); m<min(X,posx+2); m++)
+                    for (int n=max(0,posy-1); n<min(Y,posy+2); n++)
+                        for (int p=max(0,posz-1); p<min(Z,posz+2); p++)
+                            for (int t=max(0,post-1); t<min(T,post+2); t++)
                             {
-                                list<int>::iterator it = grid[m][n][p][t].traj.begin();
-                                list<int>::iterator it_wp = grid[m][n][p][t].wp.begin();
-                                while (it != grid[m][n][p][t].traj.end())
+
+                                if (grid[m][n][p][t].traj.size()>0)
                                 {
-                                    if (*it != i)
+                                    list<int>::iterator it = grid[m][n][p][t].traj.begin();
+                                    list<int>::iterator it_wp = grid[m][n][p][t].wp.begin();
+                                    while (it != grid[m][n][p][t].traj.end())
                                     {
-                                        gauss_msgs::WaypointList trajectory2 = msg_op.response.operation.at(*it).estimated_trajectory;
-
-                                        double minDistAux=max(minDist,operation.operational_volume+msg_op.response.operation.at(*it).operational_volume);
-
-
-                                        if (sqrt(pow(trajectory.waypoints.at(j).x-trajectory2.waypoints.at(*it_wp).x,2)+
-                                                 pow(trajectory.waypoints.at(j).y-trajectory2.waypoints.at(*it_wp).y,2)+
-                                                 pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDistAux &&
-                                                abs(trajectory.waypoints.at(j).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
+                                        if (*it != i)
                                         {
-                                            gauss_msgs::Threat threat;
-                                            threat.header.stamp=ros::Time::now();
-                                            threat.uav_ids.push_back(i);
-                                            threat.uav_ids.push_back(*it);
-                                            threat.times.push_back(trajectory.waypoints.at(j).stamp);
-                                            threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                            threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
-                                            threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
-                                            threat.threat_type=threat.LOSS_OF_SEPARATION;
+                                            gauss_msgs::WaypointList trajectory2 = msg_op.response.operation.at(*it).estimated_trajectory;
 
-                                            threats_msg.request.uav_ids.push_back(i);
-                                            threats_msg.request.threats.push_back(threat);
+                                            double minDistAux=max(minDist,operation.operational_volume+msg_op.response.operation.at(*it).operational_volume);
+
+
+                                            if (sqrt(pow(trajectory.waypoints.at(j).x-trajectory2.waypoints.at(*it_wp).x,2)+
+                                                    pow(trajectory.waypoints.at(j).y-trajectory2.waypoints.at(*it_wp).y,2)+
+                                                    pow(trajectory.waypoints.at(j).z-trajectory2.waypoints.at(*it_wp).z,2))<minDistAux &&
+                                                    abs(trajectory.waypoints.at(j).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
+                                            {
+                                                gauss_msgs::Threat threat;
+                                                threat.header.stamp=ros::Time::now();
+                                                threat.uav_ids.push_back(i);
+                                                threat.uav_ids.push_back(*it);
+                                                threat.times.push_back(trajectory.waypoints.at(j).stamp);
+                                                threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
+                                                threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
+                                                threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
+                                                threat.threat_type=threat.LOSS_OF_SEPARATION;
+
+                                                threats_msg.request.uav_ids.push_back(i);
+                                                threats_msg.request.threats.push_back(threat);
+                                            }
                                         }
+                                        it++;
+                                        it_wp++;
                                     }
-                                    it++;
-                                    it_wp++;
                                 }
                             }
-                        }
+            }
+        } else {
+            ROS_WARN("Current wp of operation %d is 0", operation.uav_id);
         }
     }
     //locker=false;
