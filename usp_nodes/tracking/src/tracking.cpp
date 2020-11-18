@@ -73,7 +73,7 @@ private:
     //gauss_msgs::ReadOperation read_operation_msg_;
     gauss_msgs::WriteOperation write_operation_msg_;
     gauss_msgs::WriteTracking write_tracking_msg_;
-    double distance_wp_threshold_; // Threshold from which we'll consider an UAV is not following its flight plan
+    double distance_wp_threshold_margin_; // Threshold from which we'll consider an UAV is not following its flight plan
 
     // Subscribers
     ros::Subscriber pos_report_sub_;
@@ -114,6 +114,7 @@ private:
     // Params
     bool use_position_report_;
     bool use_adsb_;
+    bool use_speed_info_;
 
     // Mutex
     boost::mutex candidates_list_mutex_;
@@ -130,6 +131,7 @@ Tracking::Tracking()
     // Initialization
     use_position_report_ = true;
     use_adsb_ = false;
+    use_speed_info_ = false;
 
     // Publish
 
@@ -152,7 +154,8 @@ Tracking::Tracking()
     // Params
     nh_.param<bool>("use_position_report", use_position_report_, true);
     nh_.param<bool>("use_adsb_", use_adsb_, true);
-    nh_.param<double>("wp_distance_threshold", distance_wp_threshold_, 10.0);
+    nh_.param<double>("wp_distance_threshold_margin", distance_wp_threshold_margin_, 5.0);
+    nh_.param<bool>("use_speed_info", use_speed_info_, false);
 
     read_icao_client_.waitForExistence();
     gauss_msgs::ReadIcao read_icao;
@@ -356,7 +359,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
                 candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
 	            candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
                 candidate_aux_ptr->source = Candidate::POSITIONREPORT;
-                candidate_aux_ptr->speed_available = true; // TODO:
+                candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
                 // TODO: Fill those speed values with real info from uav
                 candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
                 candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
@@ -424,7 +427,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
                 candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
 	            candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
                 candidate_aux_ptr->source = Candidate::POSITIONREPORT;
-                candidate_aux_ptr->speed_available = true; // TODO:
+                candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
                 // TODO: Fill those speed values with real info from uav
                 candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
                 candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
@@ -489,6 +492,7 @@ bool Tracking::writeTrackingInfoToDatabase()
         {
             write_operation_msg_.request.uav_ids.push_back(it->first);
             write_operation_msg_.request.operation.push_back(it->second);
+            new_operation_pub_.publish(it->second);
         }
         else if(modified_cooperative_operations_flags_[it->first] == true)
         {
@@ -503,9 +507,31 @@ bool Tracking::writeTrackingInfoToDatabase()
             write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
             write_tracking_msg_.request.tracks.push_back(it->second.track);
             write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-            
-            new_operation_pub_.publish(it->second);
+            //std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
+            //std::cout << "First waypoint of estimated trajectory\n";
+            //std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
         }
+        /* TODO: Debugging
+        if(it->first == 0)
+        {
+            if(updated_flight_plan_flag_map_[it->first])
+            {
+                std::cout << "RECEIVED FLIGHT PLAN UPDATE\n";
+                if(it->second.track.waypoints.size() != 0)
+                {
+                    std::cout << "Current position\n";
+                    std::cout << it->second.track.waypoints.back() << "\n";
+                }
+                std::cout << "First waypoint of flight plan after tracking update of uav 0" << std::endl;
+                std::cout << it->second.flight_plan.waypoints[0] << "\n";
+                std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
+                std::cout << "Estimated trajectory (first 3 waypoints): \n";
+                std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
+                std::cout << it->second.estimated_trajectory.waypoints[1] << "\n";
+                std::cout << it->second.estimated_trajectory.waypoints[2] << "\n";
+            }
+        }
+        */
         updated_flight_plan_flag_map_[it->first] = false;
         modified_cooperative_operations_flags_[it->first] = false;
 	}
@@ -691,7 +717,7 @@ void Tracking::estimateTrajectory()
             std::cout << "distance to point b: " << distance_to_point_b << std::endl;
             #endif
 
-            if (distance_to_segment <= distance_wp_threshold_)
+            if (distance_to_segment <= (operation_aux.operational_volume + distance_wp_threshold_margin_))
             {
                 bool closer_than_dt_flag = false;
                 // If distance from current estimated position is close enough to flight plan, the estimated trajectory
@@ -704,10 +730,30 @@ void Tracking::estimateTrajectory()
                 
                 ros::Time last_stamp = current_position.stamp;
                 double time_to_next_waypoint = 0;
-                double distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[a_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index]);
+                double distance_between_waypoints = 0;
+                double time_between_waypoints = 0;
                 double distance_from_current_pos_to_next_wp = distanceBetweenWaypoints(current_position, flight_plan_ref.waypoints[b_waypoint_index]);
-                double time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index].stamp - flight_plan_ref.waypoints[a_waypoint_index].stamp).toSec();
+                if(a_waypoint_index != b_waypoint_index)
+                {
+                    distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[a_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index]);
+                    time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index].stamp - flight_plan_ref.waypoints[a_waypoint_index].stamp).toSec();
+                }
+                else
+                {
+                    if(b_waypoint_index != 0)
+                    {
+                        distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[b_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index-1]);
+                        time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index].stamp - flight_plan_ref.waypoints[b_waypoint_index-1].stamp).toSec();
+                    }
+                    else
+                    {
+                        distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[b_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index+1]);
+                        time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index+1].stamp - flight_plan_ref.waypoints[b_waypoint_index].stamp).toSec();
+                    }
+                }
                 time_to_next_waypoint = distance_from_current_pos_to_next_wp/distance_between_waypoints * time_between_waypoints;
+
+                //std::cout << "Time to next waypoint " << time_to_next_waypoint << "\n";
 
                 if(time_to_next_waypoint > dt)
                 {
@@ -828,20 +874,31 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
     int second_index = 0;
     distance_to_segment = std::numeric_limits<double>::max();
     double distance_to_waypoint_a = std::numeric_limits<double>::max();
+    bool flag_distance_to_waypoint_a = false;
+    bool flag_distance_to_waypoint_b = false;
 
     Eigen::Vector3d current_position_eigen;
-
+    /*
+    std::cout << "###################\n";
+    std::cout << "Finding current wp\n";
+    std::cout << "Current position\n";
+    std::cout << current_position << "\n";
+    */
     for (int i=0; i < flight_plan.waypoints.size()-1; i++)
     {
         gauss_msgs::Waypoint &waypoint_a = flight_plan.waypoints[i];
         gauss_msgs::Waypoint &waypoint_b = flight_plan.waypoints[i+1];
 
         Eigen::Vector3d vector_u;
-
+        flag_distance_to_waypoint_a = false;
+        flag_distance_to_waypoint_b = false;
         vector_u.x() = waypoint_b.x - waypoint_a.x;
         vector_u.y() = waypoint_b.y - waypoint_a.y;
         vector_u.z() = waypoint_b.z - waypoint_a.z;
-
+        /*
+        std::cout << "Waypoint " << i <<"\n";
+        std::cout << waypoint_a << "\n";
+        */
         /*
 
             Solve this equation
@@ -884,25 +941,43 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
             if (distance_to_waypoint_a < distance_to_waypoint_b)
             {
                 distance = distance_to_waypoint_a;
+                flag_distance_to_waypoint_a = true;
             }
             else
             {
                 distance = distance_to_waypoint_b;
+                flag_distance_to_waypoint_b = true;
             }
         }
         
         // Then check the distance to the line that contains the segment
-        //double distance = distanceFromPointToLine(current_position_eigen, point_a, vector_2);
+        // double distance = distanceFromPointToLine(current_position_eigen, point_a, vector_2);
         if (distance <= distance_to_segment)
         {
             distance_to_segment = distance;
-            first_index = i;
-            second_index = i+1;
+            if(flag_distance_to_waypoint_a)
+            {
+                first_index = i;
+                second_index = i;
+            }
+            else if(flag_distance_to_waypoint_b)
+            {
+                first_index = i+1;
+                second_index = i+1;                
+            }
+            else
+            {
+                first_index = i;
+                second_index = i+1;
+            }
         }
     }
 
     a_index = first_index;
     b_index = second_index;
+    /*
+    std::cout << "Current waypoint index: " << b_index << "\n";
+    */
 
     gauss_msgs::Waypoint &waypoint_a = flight_plan.waypoints[first_index];
     gauss_msgs::Waypoint &waypoint_b = flight_plan.waypoints[second_index];
