@@ -5,6 +5,7 @@ import rospy
 from gauss_msgs.msg import Operation
 from gauss_msgs.srv import ReadIcao, ReadIcaoRequest, ReadIcaoResponse
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
+from gauss_msgs.srv import ReadGeofences, ReadGeofencesRequest, ReadGeofencesResponse
 from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import Point, Vector3
 from std_msgs.msg import ColorRGBA
@@ -182,6 +183,156 @@ class WaypointListViz(object):
 
 # class OperationViz(object):
 
+class GeofenceViz(object):
+    def __init__(self, frame_id, lifetime):
+        self.frame_id = frame_id
+        self.lifetime = lifetime
+        # Default values for markers:
+        self.surface_type = Marker.CYLINDER
+        self.line_type = Marker.LINE_STRIP
+        self.line_scale = Vector3(0.1, 0, 0)
+        self.stamp_font_size = 0.2
+        self.stamp_offset = Vector3(0, 0, 0.2)
+
+    def get_markerarray(self, geofence, ns, color):
+        marker_common = Marker()
+        marker_common.header.stamp = rospy.Time.now()
+        marker_common.header.frame_id = self.frame_id
+        marker_common.ns = ns
+        marker_common.lifetime = self.lifetime
+
+        markerarray = MarkerArray()
+        text_point = Point()
+
+        if geofence.cylinder_shape:
+            surface_marker = copy.deepcopy(marker_common)
+            surface_marker.id = 0
+            surface_marker.type = self.surface_type
+            surface_marker.action = Marker.ADD
+            surface_marker.pose.position.x = geofence.circle.x_center
+            surface_marker.pose.position.y = geofence.circle.y_center
+            surface_marker.pose.position.z = 0.5 * (geofence.min_altitude + geofence.max_altitude)
+            diameter = 2 * geofence.circle.radius
+            surface_marker.scale = Vector3(diameter, diameter, geofence.max_altitude - geofence.min_altitude)
+            surface_marker.color = copy.deepcopy(color)
+            surface_marker.color.a = 0.4  # TODO: force alpha?
+            markerarray.markers.append(surface_marker)
+            text_point.x = geofence.circle.x_center
+            text_point.y = geofence.circle.y_center
+            text_point.z = geofence.max_altitude
+        else:
+            top_line_marker = copy.deepcopy(marker_common)
+            top_line_marker.id = 1
+            top_line_marker.type = self.line_type
+            top_line_marker.action = Marker.ADD
+            top_line_marker.scale = self.line_scale
+            top_line_marker.color = copy.deepcopy(color)
+            top_line_marker.color.a = 0.4  # TODO: force alpha?
+
+            bottom_line_marker = copy.deepcopy(top_line_marker)
+            bottom_line_marker.id = 2
+
+            lateral_line_marker = copy.deepcopy(marker_common)
+            lateral_line_marker.id = 3
+            lateral_line_marker.type = Marker.LINE_LIST
+            lateral_line_marker.action = Marker.ADD
+            lateral_line_marker.scale = self.line_scale
+            lateral_line_marker.color = copy.deepcopy(color)
+            lateral_line_marker.color.a = 0.4  # TODO: force alpha?
+
+            lateral_surface_marker = copy.deepcopy(marker_common)
+            lateral_surface_marker.id = 4
+            lateral_surface_marker.type = Marker.TRIANGLE_LIST
+            lateral_surface_marker.action = Marker.ADD
+            lateral_surface_marker.scale = Vector3(1, 1, 1)
+            lateral_surface_marker.color = copy.deepcopy(color)
+            lateral_surface_marker.color.a = 0.4  # TODO: force alpha?
+
+            top_surface_marker = copy.deepcopy(lateral_surface_marker)
+            top_surface_marker.id = 5
+
+            bottom_surface_marker = copy.deepcopy(lateral_surface_marker)
+            bottom_surface_marker.id = 6
+
+            if len(geofence.polygon.x) != len(geofence.polygon.y):
+                rospy.logerr('Length mismatch at geofence polygon description: x[{}] != y[{}]'.format(len(geofence.polygon.x), len(geofence.polygon.y)))
+                return
+            point_count = len(geofence.polygon.x)
+            if point_count <= 0:
+                rospy.logerr('Unexpected length at geofence polygon description: point_count = {}'.format(point_count))
+                return
+
+            x_sum = 0.0
+            y_sum = 0.0
+            for i in range(point_count):
+                point = Point()
+                point.x = geofence.polygon.x[i]
+                point.y = geofence.polygon.y[i]
+                point.z = geofence.max_altitude
+                x_sum += geofence.polygon.x[i]
+                y_sum += geofence.polygon.y[i]
+                top_line_marker.points.append(copy.deepcopy(point))
+                lateral_line_marker.points.append(copy.deepcopy(point))
+                point.z = geofence.min_altitude
+                bottom_line_marker.points.append(copy.deepcopy(point))
+                lateral_line_marker.points.append(copy.deepcopy(point))
+
+            # Close the polygon (so length will be point_count+1)
+            point = Point()
+            point.x = geofence.polygon.x[0]
+            point.y = geofence.polygon.y[0]
+            point.z = geofence.max_altitude
+            top_line_marker.points.append(copy.deepcopy(point))
+            point.z = geofence.min_altitude
+            bottom_line_marker.points.append(copy.deepcopy(point))
+
+            for i in range(point_count):
+                lateral_surface_marker.points.append(bottom_line_marker.points[i])
+                lateral_surface_marker.points.append(bottom_line_marker.points[i + 1])
+                lateral_surface_marker.points.append(top_line_marker.points[i])
+
+                lateral_surface_marker.points.append(bottom_line_marker.points[i + 1])
+                lateral_surface_marker.points.append(top_line_marker.points[i + 1])
+                lateral_surface_marker.points.append(top_line_marker.points[i])
+
+                if i != 0 and i != (point_count - 1):
+                    top_surface_marker.points.append(top_line_marker.points[0])
+                    top_surface_marker.points.append(top_line_marker.points[i])
+                    top_surface_marker.points.append(top_line_marker.points[i + 1])
+
+                    bottom_surface_marker.points.append(bottom_line_marker.points[0])
+                    bottom_surface_marker.points.append(bottom_line_marker.points[point_count - i])
+                    bottom_surface_marker.points.append(bottom_line_marker.points[point_count - i - 1])
+
+            markerarray.markers.append(top_line_marker)
+            markerarray.markers.append(bottom_line_marker)
+            markerarray.markers.append(lateral_line_marker)
+            markerarray.markers.append(lateral_surface_marker)
+            markerarray.markers.append(top_surface_marker)
+            markerarray.markers.append(bottom_surface_marker)
+
+            text_point.x = x_sum / point_count
+            text_point.y = y_sum / point_count
+            text_point.z = geofence.max_altitude
+
+        stamp_marker = copy.deepcopy(marker_common)
+        stamp_marker.id = 10
+        stamp_marker.type = Marker.TEXT_VIEW_FACING
+        stamp_marker.action = Marker.ADD
+        stamp_marker.scale.z = self.stamp_font_size
+        stamp_marker.color = color
+        text_point.x += self.stamp_offset.x
+        text_point.y += self.stamp_offset.y
+        text_point.z += self.stamp_offset.z
+        stamp_marker.pose.position = text_point
+        if geofence.static_geofence:
+            stamp_marker.text = 'id: {}; static'.format(geofence.id)
+        else:
+            stamp_marker.text = 'id: {}; t: [{}, {}]s'.format(geofence.id, geofence.start_time.to_sec(), geofence.end_time.to_sec())
+        markerarray.markers.append(stamp_marker)
+
+        return markerarray
+
 def main():
     rospy.init_node('visualizer')
  
@@ -190,6 +341,7 @@ def main():
     global_frame_id = 'map'
     read_icao_srv_url = '/gauss/read_icao'
     read_operation_srv_url = '/gauss/read_operation'
+    read_geofences_srv_url = '/gauss/read_geofences'
     visualization_topic = 'visualization_marker_array'
     id_to_color = {}
     id_to_color[0] = 'orange'
@@ -213,6 +365,11 @@ def main():
     read_operation_service = rospy.ServiceProxy(read_operation_srv_url, ReadOperation)
     rospy.loginfo('Successfully connected to service {}'.format(read_operation_srv_url))
 
+    rospy.loginfo('Waiting for service {}'.format(read_geofences_srv_url))
+    rospy.wait_for_service(read_geofences_srv_url)
+    read_geofences_service = rospy.ServiceProxy(read_geofences_srv_url, ReadGeofences)
+    rospy.loginfo('Successfully connected to service {}'.format(read_geofences_srv_url))
+
     visualization_pub = rospy.Publisher(visualization_topic, MarkerArray, queue_size=1)
 
     rospy.loginfo('Started visualization node!')
@@ -231,6 +388,14 @@ def main():
         if not read_operation_response.success:
             rospy.logwarn('Read operation did not succeed')
             rospy.logwarn(read_operation_response.message)
+
+        read_geofences_request = ReadGeofencesRequest()
+        read_geofences_request.geofences_ids = read_icao_response.geofence_id
+        read_geofences_response = read_geofences_service.call(read_geofences_request)
+
+        if not read_geofences_response.success:
+            rospy.logwarn('Read geofences did not succeed')
+            rospy.logwarn(read_geofences_response.message)
 
         flight_plan_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         track_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
@@ -304,25 +469,26 @@ def main():
 
                 marker_array.markers.append(frame_marker)
 
-                current_wp = operation.flight_plan.waypoints[operation.current_wp]
+                if operation.current_wp >= 0 and operation.current_wp < len(operation.flight_plan.waypoints):
+                    current_wp = operation.flight_plan.waypoints[operation.current_wp]
 
-                current_wp_marker = Marker()
-                current_wp_marker.header.stamp = info_marker.header.stamp
-                current_wp_marker.header.frame_id = info_marker.header.frame_id
-                current_wp_marker.ns = info_marker.ns
-                current_wp_marker.lifetime = info_marker.lifetime
-                current_wp_marker.id = 2
-                current_wp_marker.type = Marker.SPHERE
-                current_wp_marker.action = Marker.ADD
-                current_wp_marker.pose.position.x = current_wp.x
-                current_wp_marker.pose.position.y = current_wp.y
-                current_wp_marker.pose.position.z = current_wp.z
-                current_wp_marker.scale.x = 0.4  # TODO: Param!
-                current_wp_marker.scale.y = 0.4
-                current_wp_marker.scale.z = 0.4
-                current_wp_marker.color = palette.get_color('white', 0.4)
+                    current_wp_marker = Marker()
+                    current_wp_marker.header.stamp = info_marker.header.stamp
+                    current_wp_marker.header.frame_id = info_marker.header.frame_id
+                    current_wp_marker.ns = info_marker.ns
+                    current_wp_marker.lifetime = info_marker.lifetime
+                    current_wp_marker.id = 2
+                    current_wp_marker.type = Marker.SPHERE
+                    current_wp_marker.action = Marker.ADD
+                    current_wp_marker.pose.position.x = current_wp.x
+                    current_wp_marker.pose.position.y = current_wp.y
+                    current_wp_marker.pose.position.z = current_wp.z
+                    current_wp_marker.scale.x = 0.4  # TODO: Param!
+                    current_wp_marker.scale.y = 0.4
+                    current_wp_marker.scale.z = 0.4
+                    current_wp_marker.color = palette.get_color('white', 0.4)
 
-                marker_array.markers.append(current_wp_marker)
+                    marker_array.markers.append(current_wp_marker)
 
             else:
                 rospy.logwarn('Tracking information from {} is empty!'.format(operation.icao_address))
@@ -361,6 +527,12 @@ def main():
             color_scheme = WaypointListColorScheme(None, None, color, None)
             landing_spots = landing_spots_viz.get_markerarray(operation.landing_spots.waypoints, ns, color_scheme)
             marker_array.markers.extend(landing_spots.markers)
+
+        geofence_viz = GeofenceViz(global_frame_id, rospy.Duration(1.0/update_rate))
+        for geofence in read_geofences_response.geofences:
+            ns = 'geofence_' + str(geofence.id)
+            color = palette.get_color('red')  # TODO: Force red?
+            marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
 
         visualization_pub.publish(marker_array)
 
