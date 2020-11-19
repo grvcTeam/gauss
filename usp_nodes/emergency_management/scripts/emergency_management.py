@@ -105,7 +105,7 @@ class EmergencyManagement():
         
         for conflictive_operation in conflict_operation_list:
             if conflictive_operation.uav_id == self._uav_id_afected:
-                flightplan = conflictive_operation.flight_plan
+                flightplan = conflictive_operation.flight_plan_updated
                 current_wp = conflictive_operation.current_wp
                 actual_wp  = conflictive_operation.actual_wp
 
