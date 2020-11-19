@@ -1,5 +1,0 @@
-uint8[] uav_ids
-WaypointList[] tracks
----
-bool success
-string message

@@ -3,3 +3,4 @@ bool success
 string message
 int8[] uav_id
 string[] icao_address
+uint8[] geofence_id

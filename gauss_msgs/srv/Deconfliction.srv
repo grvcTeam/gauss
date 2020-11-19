@@ -1,5 +1,7 @@
 bool tactical
 Threat threat
+Geofence[] geofences
+ConflictiveOperation[] operations
 ---
 bool success
 string message
