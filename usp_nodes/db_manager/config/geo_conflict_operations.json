@@ -80,23 +80,23 @@
 			"landing_spots": {
 				"waypoints": [
 					{
-						"x": 10,
-						"y": 1,
-						"z": 5,
+						"x": 20,
+						"y": 20,
+						"z": 0,
 						"stamp": 1,
 						"mandatory": 0
 					},
 					{
-						"x": 3,
-						"y": 2,
-						"z": 5,
+						"x": 90,
+						"y": -30,
+						"z": 0,
 						"stamp": 1,
 						"mandatory": 0
 					}
 				]
 			},
-			"flight_geometry": 2.0,
-			"operational_volume": 1.0,
+			"flight_geometry": 10.0,
+			"operational_volume": 8.0,
 			"conop": "Power line inspection"
 		}
 	]

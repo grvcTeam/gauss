@@ -107,6 +107,7 @@ class EmergencyManagement():
             if conflictive_operation.uav_id == self._uav_id_afected:
                 flightplan = conflictive_operation.flight_plan
                 current_wp = conflictive_operation.current_wp
+                actual_wp  = conflictive_operation.actual_wp
 
         # print("_____________________________________________________________")
         # print("tactical_wps:", tactical_wps)
@@ -157,6 +158,7 @@ class EmergencyManagement():
         
         # change_path_ref = False
         # rospy.loginfo('to_end = {}, section = {}'.format(merge2end, flighplansection))
+        new_flight_plan.waypoints.append(actual_wp)
         for i in range(len(flightplan.waypoints)):
             # print("i = {} ________________________________________________".format(i))
             if flighplansection == 0: # Fist section. Do anything until current waypoint.
