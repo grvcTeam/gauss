@@ -296,6 +296,8 @@ bool Tracking::updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_m
     }
     updated_flight_plans_mutex_.unlock();
 
+    res.success = result;
+
     return result;
 }
 
