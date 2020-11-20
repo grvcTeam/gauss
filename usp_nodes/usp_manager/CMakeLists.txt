@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   gauss_msgs
   gauss_msgs_mqtt
   geodesy
+  upat_follower
 )
 find_package(Eigen3 REQUIRED)
 find_package(GeographicLib REQUIRED)
@@ -113,7 +114,7 @@ find_package(Boost REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES usp_nodes
- CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs
+ CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs upat_follower
  DEPENDS EIGEN3 Boost
 )
 
