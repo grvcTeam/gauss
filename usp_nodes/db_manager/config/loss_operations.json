@@ -1,0 +1,203 @@
+{
+	"operations": [
+		{
+			"uav_id": 0,
+			"icao_address": "UAV0gauss2020",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 0,
+			"current_wp": 1,
+			"flight_plan": {
+				"waypoints": [
+					{
+						"x": 0,
+						"y": 0,
+						"z": 0,
+						"stamp": 0.0,
+						"mandatory": 0
+					},					{
+						"x": 0,
+						"y": 0,
+						"z": 5,
+						"stamp": 2.0,
+						"mandatory": 0
+					},
+					{
+						"x": 20,
+						"y": 0,
+						"z": 5,
+						"stamp": 7.5,
+						"mandatory": 0
+					},
+					{
+						"x": 40,
+						"y": 0,
+						"z": 5,
+						"stamp": 15.0,
+						"mandatory": 0
+					},
+					{
+						"x": 60,
+						"y": 0,
+						"z": 5,
+						"stamp": 22.5,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": 0,
+						"z": 5,
+						"stamp": 30.0,
+						"mandatory": 0
+					},
+					{
+						"x": 100,
+						"y": 0,
+						"z": 5,
+						"stamp": 37.5,
+						"mandatory": 0
+					},
+					{
+						"x": 100,
+						"y": 0,
+						"z": 1,
+						"stamp": 38.5,
+						"mandatory": 0
+					}
+				]
+			},
+			"dT": 5.0,
+			"time_tracked": 10,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 90,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+					{
+						"x": 20,
+						"y": 20,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					},
+					{
+						"x": 90,
+						"y": -30,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					}
+				]
+			},
+			"flight_geometry": 4.0,
+			"operational_volume": 2.0,
+			"conop": "Power line inspection"
+		},
+		{
+			"uav_id": 1,
+			"icao_address": "UAV2gauss2020",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 1,
+			"current_wp": 1,
+			"flight_plan": {
+				"waypoints": [
+					{
+						"x": 80,
+						"y": -80,
+						"z": 0,
+						"stamp": 0.0,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": -80,
+						"z": 5,
+						"stamp": 2.0,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": -60,
+						"z": 5,
+						"stamp": 7.5,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": -40,
+						"z": 5,
+						"stamp": 15.0,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": -20,
+						"z": 5,
+						"stamp": 22.5,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": 0,
+						"z": 5,
+						"stamp": 30.0,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": 20,
+						"z": 5,
+						"stamp": 37.5,
+						"mandatory": 0
+					},
+					{
+						"x": 80,
+						"y": 20,
+						"z": 1,
+						"stamp": 38.5,
+						"mandatory": 0
+					}
+				]
+			},
+			"dT": 5,
+			"time_tracked": 0,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 90,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},		
+			"landing_spots": {
+				"waypoints": [
+					{
+						"x": 90,
+						"y": -10,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					},
+					{
+						"x": 30,
+						"y": -30,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					}
+				]
+			},
+			"flight_geometry": 4.0,
+			"operational_volume": 2.0,
+			"conop": "Power line inspection"
+		}
+	]
+}

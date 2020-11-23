@@ -1,0 +1,5 @@
+int8[] uav_ids
+WaypointList[] flight_plans
+---
+bool success
+string message

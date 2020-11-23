@@ -1,0 +1,28 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="operations_json" default="loss_operations"/>
+    <arg name="geofences_json"  default="loss_geofences"/>
+    <!--arg name="operations_json" default="operations_test_geofence"/-->
+    <!--arg name="geofences_json"  default="geofences_test"/-->
+    <!--arg name="operations_json" default="geo_conflict_operations"/-->
+    <!--arg name="geofences_json"  default="geo_conflict_geofences"/-->
+
+    <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
+            <param name="operations_json" value="$(arg operations_json)"/>
+            <param name="geofences_json" value= "$(arg geofences_json)"/>
+    </node>
+
+    <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true">
+    </node>
+
+    <node pkg="usp_testers" type="usp_manager_alert_sender.py" name="usp_manager_tester" output="screen" required="true">
+    </node>
+
+    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true">
+    </node> 
+
+    <node  pkg="monitoring" type="monitoring" name="monitoring" output="screen" required="true">
+    </node>
+	
+</launch>
+

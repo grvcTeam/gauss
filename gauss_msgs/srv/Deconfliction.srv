@@ -1,7 +1,8 @@
 bool tactical
 Threat threat
+Geofence[] geofences
+ConflictiveOperation[] operations
 ---
 bool success
 string message
-uint8[] uav_ids
-WaypointList[] deconflicted_plans
+DeconflictionPlan[] deconfliction_plans
