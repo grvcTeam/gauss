@@ -46,6 +46,7 @@ class USPUALBridge {
     // Auxilary variables
     double rate_;
     int uav_id_;
+    std::string icao_address_;    
     ros::NodeHandle nh_;
 
     // Subscribers
@@ -94,18 +95,17 @@ USPUALBridge::USPUALBridge() : available_velocity_msg_(false),
 
     // Publish
     //rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
-    rpa_state_info_pub_ = nh_.advertise<gauss_msgs_mqtt::RPAStateInfo>("gauss/rpa_state", 1);
-    adsb_surveillance_pub_ = nh_.advertise<gauss_msgs_mqtt::ADSBSurveillance>("gauss/adsb", 1);
+    rpa_state_info_pub_ = nh_.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state", 1);
+    adsb_surveillance_pub_ = nh_.advertise<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 1);
 
     // Subscribe
     //notification_sub_ = nh_.subscribe<gauss_msgs::Notification>("/gauss/notification",1,&USPManager::notificationCB,this);
     state_sub_ = nh_.subscribe("/" + ns_prefix + std::to_string(uav_id_) + "/ual/state", 1, &USPUALBridge::callbackState, this);
     pose_sub_ = nh_.subscribe<geometry_msgs::PoseStamped>("/" + ns_prefix + std::to_string(uav_id_) + "/ual/pose", 1, &USPUALBridge::callbackPose, this);
     velocity_sub_ = nh_.subscribe<geometry_msgs::TwistStamped>("/" + ns_prefix + std::to_string(uav_id_) + "/ual/velocity", 1, &USPUALBridge::callbackVelocity, this);
-    
+
     // Service client
     ros::ServiceClient read_operation_client = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-
 
     // Wait to MAVROS, UAL and UPAT be ready
     ROS_WARN("[UPAT] UAL %d and MAVROS not ready!", uav_id_);
@@ -123,6 +123,7 @@ USPUALBridge::USPUALBridge() : available_velocity_msg_(false),
     if (!read_operation_client.call(operation_msg) || !operation_msg.response.success) {
         ROS_ERROR("Failed to read a flight plan");
     } else {
+        icao_address_ = operation_msg.response.operation.front().icao_address;
         nav_msgs::Path res_path;
         res_path.header.frame_id = "map";  // world
         std::vector<double> res_times, alternative_times;
@@ -155,31 +156,31 @@ void USPUALBridge::callbackSyncPoseVelocity(const geometry_msgs::PoseStampedCons
 }*/
 
 void USPUALBridge::callbackPose(const geometry_msgs::PoseStampedConstPtr& pose_ptr) {
-    if (available_velocity_msg_) {
-        gauss_msgs_mqtt::RPAStateInfo rpa_state_info_msg;
-        gauss_msgs_mqtt::ADSBSurveillance adsb_surveillance_msg;
+    // if (available_velocity_msg_) {
+    gauss_msgs_mqtt::RPAStateInfo rpa_state_info_msg;
 
-        double lat, lon, h;
-        proj_.Reverse(pose_ptr->pose.position.x, pose_ptr->pose.position.y, pose_ptr->pose.position.z, lat, lon, h);
+    double lat, lon, h;
+    proj_.Reverse(pose_ptr->pose.position.x, pose_ptr->pose.position.y, pose_ptr->pose.position.z, lat, lon, h);
 
-        rpa_state_info_msg.altitude = h;
-        rpa_state_info_msg.latitude = lat;
-        rpa_state_info_msg.longitude = lon;
-        rpa_state_info_msg.timestamp = pose_ptr->header.stamp.toNSec() / 1000000;
+    rpa_state_info_msg.altitude = h;
+    rpa_state_info_msg.latitude = lat;
+    rpa_state_info_msg.longitude = lon;
+    rpa_state_info_msg.timestamp = pose_ptr->header.stamp.toNSec() / 1000000;
 
-        adsb_surveillance_msg.altitude = h;
-        adsb_surveillance_msg.latitude = lat;
-        adsb_surveillance_msg.longitude = lon;
+    // TODO: Fill remaining fields of messages
+    rpa_state_info_msg.icao = atoi(icao_address_.c_str());    
 
-        // TODO: Fill remaining fields of messages
-
-        rpa_state_info_pub_.publish(rpa_state_info_msg);
-        adsb_surveillance_pub_.publish(adsb_surveillance_msg);
-    }
+    rpa_state_info_pub_.publish(rpa_state_info_msg);
+    // gauss_msgs_mqtt::ADSBSurveillance adsb_surveillance_msg;
+    // adsb_surveillance_msg.altitude = h;
+    // adsb_surveillance_msg.latitude = lat;
+    // adsb_surveillance_msg.longitude = lon;
+    // adsb_surveillance_pub_.publish(adsb_surveillance_msg);
+    // }
 }
 
 void USPUALBridge::callbackState(const uav_abstraction_layer::State& state_ptr) {
-    latest_state_msgs_ = state_ptr;   
+    latest_state_msgs_ = state_ptr;
 }
 
 void USPUALBridge::callbackVelocity(const geometry_msgs::TwistStampedConstPtr& velocity_ptr) {

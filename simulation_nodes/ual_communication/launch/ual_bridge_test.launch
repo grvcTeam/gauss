@@ -38,9 +38,10 @@
     </node>
     <!-- <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/> -->
     <!-- <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/> -->
-    <!-- <node pkg="tracking" type="tracking" name="tracking" required="true"/> -->
+    <node pkg="tracking" type="tracking" name="tracking" output="screen" required="true"/>
     <!-- <node pkg="ual_communication" type="notificationBridge" name="notification_bridge" output="screen" required="true"/> -->
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
+    <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
     <!-- Wait 30 seconds before launching monitoring -->
     <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 35.0; $0 $@'; xterm -e gdb -ex run - -args"/> -->
     <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 35.0; $0 $@';"/> -->

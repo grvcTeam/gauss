@@ -111,8 +111,8 @@ USPManager::USPManager()
 
     // Subscribe
     notification_sub_ = nh_.subscribe<gauss_msgs::Notification>("/gauss/notification",1,&USPManager::notificationCB,this);
-    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",1,&USPManager::RPAStateCB,this);
-    adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 1, &USPManager::ADSBSurveillanceCB, this);
+    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",10,&USPManager::RPAStateCB,this);
+    adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
 
     // Client
     // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
@@ -167,50 +167,51 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     gauss_msgs::PositionReport position_report_msg;
 
     position_report_msg.header.stamp = ros::Time().fromSec(msg->timestamp/1000.0);
-    position_report_msg.icao_address = msg->icao;
+    position_report_msg.icao_address = std::to_string(msg->icao);
     // TODO: Get uav_id from db_manager knowing its icao address
     // Consider the posibility that an RPAStateInfo message could be received from an UAV which hasn't a registered flight plan yet 
     // position_report_msg.uav_id;
-    auto it = icao_id_map_.find(std::to_string(msg->icao));
+    auto it = icao_id_map_.find(position_report_msg.icao_address);
     if (it != icao_id_map_.end())
     {
         position_report_msg.uav_id = (*it).second;
+        position_report_msg.confidence = msg->covariance_h + msg->covariance_v; // TODO: Find a proper method for calculating confidence
+        position_report_msg.source = position_report_msg.SOURCE_RPA;
+        position_report_msg.position.mandatory = true;
+        position_report_msg.position.stamp = position_report_msg.header.stamp;
+        position_report_msg.header.frame_id = "map";
+
+        // TODO: Convert latitude, longitude, altitude to x,y,z
+        // The origin latitude and longitude must be known
+
+        geographic_msgs::GeoPoint uav_geo_point;
+        uav_geo_point.altitude = msg->altitude;
+        uav_geo_point.latitude = msg->latitude;
+        uav_geo_point.longitude = msg->longitude;
+
+        geometry_msgs::Point32 cartesian_translation;
+
+        cartesian_translation = geographic_to_cartesian(uav_geo_point, origin_geo_);
+
+        //float uav_heading = msg->yaw;
+        //tf2::Quaternion aux_quaternion_tf2;
+        //aux_quaternion_tf2.setRPY(0,0,(90-uav_heading)/180*M_PI);
+
+
+        position_report_msg.position.x = cartesian_translation.x;
+        position_report_msg.position.y = cartesian_translation.y;
+        position_report_msg.position.z = cartesian_translation.z;
+
+        position_report_msg.heading = msg->yaw;
+        position_report_msg.speed = msg->groundspeed;
+
+        position_report_pub_.publish(position_report_msg);
     }
     else
     {
-        
+        ROS_WARN("USP Manager can not find the uav id associated with icao address %s", position_report_msg.icao_address.c_str());
     }
     
-    position_report_msg.confidence = msg->covariance_h + msg->covariance_v; // TODO: Find a proper method for calculating confidence
-    position_report_msg.source = position_report_msg.SOURCE_RPA;
-    position_report_msg.position.mandatory = true;
-    position_report_msg.position.stamp = position_report_msg.header.stamp;
-
-    // TODO: Convert latitude, longitude, altitude to x,y,z
-    // The origin latitude and longitude must be known
-
-    geographic_msgs::GeoPoint uav_geo_point;
-    uav_geo_point.altitude = msg->altitude;
-    uav_geo_point.latitude = msg->latitude;
-    uav_geo_point.longitude = msg->longitude;
-
-    geometry_msgs::Point32 cartesian_translation;
-
-    cartesian_translation = geographic_to_cartesian(uav_geo_point, origin_geo_);
-
-    //float uav_heading = msg->yaw;
-    //tf2::Quaternion aux_quaternion_tf2;
-    //aux_quaternion_tf2.setRPY(0,0,(90-uav_heading)/180*M_PI);
-
-
-    position_report_msg.position.x = cartesian_translation.x;
-    position_report_msg.position.y = cartesian_translation.y;
-    position_report_msg.position.z = cartesian_translation.z;
-
-    position_report_msg.heading = msg->yaw;
-    position_report_msg.speed = msg->groundspeed;
-
-    position_report_pub_.publish(position_report_msg);
 }
 
 void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::ConstPtr& msg)
