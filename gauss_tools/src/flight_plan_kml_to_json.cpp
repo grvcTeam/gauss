@@ -133,7 +133,7 @@ int main(int argc, char** argv)
                 previous_z = z;
                 first_waypoint = false;
                 //flight_plan_ss << "(" << x << "," << y << "," << z << "," << current_timestamp << ")";
-                flight_plan_ss << "(" << std::setw(10) << lon << std::setw(1) <<"," << std::setw(10) << lat << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< ")";
+                flight_plan_ss << "[" << std::setw(10) << lon << std::setw(1) <<"," << std::setw(10) << lat << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< "]";
             }
             else
             {

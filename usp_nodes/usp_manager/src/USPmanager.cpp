@@ -174,11 +174,11 @@ void USPManager::notificationCB(const gauss_msgs::Notification::ConstPtr& msg)
 
     for(auto it=msg->new_flight_plan.waypoints.begin(); it!=msg->new_flight_plan.waypoints.end(); it++)
     {
-        new_flight_plan_ss << "(";
+        new_flight_plan_ss << "[";
         double lat,lon,h;
         proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
-        new_flight_plan_ss << lat <<", " << lon << ", " << h << ", " << it->stamp.toSec();
-        new_flight_plan_ss << ")";
+        new_flight_plan_ss << lon <<", " << lat << ", " << h << ", " << it->stamp.toSec();
+        new_flight_plan_ss << "]";
         if(it != (msg->new_flight_plan.waypoints.end()-1))
         {
             new_flight_plan_ss << ",";
