@@ -8,4 +8,5 @@ Waypoint[] waypoints
 int8 current_wp
 WaypointList flight_plan
 WaypointList new_flight_plan
+Waypoint actual_wp
 

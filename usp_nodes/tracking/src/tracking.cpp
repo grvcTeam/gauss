@@ -3,6 +3,7 @@
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/WriteOperation.h>
 #include <gauss_msgs/WriteTracking.h>
+#include <gauss_msgs/WritePlans.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadIcaoRequest.h>
 #include <gauss_msgs/ReadIcaoResponse.h>
@@ -46,6 +47,7 @@ private:
     void positionReportCB(const gauss_msgs::PositionReport::ConstPtr& msg);
 
     // Service Callbacks
+    bool updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::WritePlans::Response &res); 
 
     // Auxilary methods
     void predict(ros::Time &now);
@@ -56,7 +58,6 @@ private:
     bool checkTargetAlreadyExist(std::string icao_address);
     bool checkTargetAlreadyExist(uint8_t uav_id);
     bool checkCooperativeOperationAlreadyExist(uint8_t uav_id);
-    bool writeOperationsToDatabase();
     bool writeTrackingInfoToDatabase();
     uint32_t findClosestWaypointIndex(gauss_msgs::WaypointList &waypoint_list, gauss_msgs::Waypoint &current_waypoint, 
                                       double &distance_to_waypoint);
@@ -72,7 +73,7 @@ private:
     //gauss_msgs::ReadOperation read_operation_msg_;
     gauss_msgs::WriteOperation write_operation_msg_;
     gauss_msgs::WriteTracking write_tracking_msg_;
-    double distance_wp_threshold_; // Threshold from which we'll consider an UAV is not following its flight plan
+    double distance_wp_threshold_margin_; // Threshold from which we'll consider an UAV is not following its flight plan
 
     // Subscribers
     ros::Subscriber pos_report_sub_;
@@ -83,6 +84,7 @@ private:
     // Timer
 
     // Server
+    ros::ServiceServer update_fligh_plan_server_;
 
     // Client
     ros::ServiceClient read_operation_client_;
@@ -106,14 +108,17 @@ private:
     std::map<uint8_t, bool> modified_cooperative_operations_flags_;
     std::map<uint8_t, ros::Time> uav_id_last_time_position_update_map_;
     std::map<std::string, ros::Time> icao_last_time_position_update_map_;
+    std::map<uint8_t,gauss_msgs::WaypointList> uav_id_update_flight_plan_map_;
+    std::map<uint8_t,bool> updated_flight_plan_flag_map_;
 
     // Params
     bool use_position_report_;
     bool use_adsb_;
+    bool use_speed_info_;
 
     // Mutex
     boost::mutex candidates_list_mutex_;
-
+    boost::mutex updated_flight_plans_mutex_;
 
 };
 
@@ -126,6 +131,7 @@ Tracking::Tracking()
     // Initialization
     use_position_report_ = true;
     use_adsb_ = false;
+    use_speed_info_ = false;
 
     // Publish
 
@@ -133,6 +139,7 @@ Tracking::Tracking()
     pos_report_sub_= nh_.subscribe<gauss_msgs::PositionReport>("/gauss/position_report",1,&Tracking::positionReportCB,this);
 
     // Server
+    update_fligh_plan_server_ = nh_.advertiseService("/gauss/update_flight_plans", &Tracking::updateFlightPlansCB, this);
 
     // Client
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
@@ -147,7 +154,8 @@ Tracking::Tracking()
     // Params
     nh_.param<bool>("use_position_report", use_position_report_, true);
     nh_.param<bool>("use_adsb_", use_adsb_, true);
-    nh_.param<double>("wp_distance_threshold", distance_wp_threshold_, 10.0);
+    nh_.param<double>("wp_distance_threshold_margin", distance_wp_threshold_margin_, 5.0);
+    nh_.param<bool>("use_speed_info", use_speed_info_, false);
 
     read_icao_client_.waitForExistence();
     gauss_msgs::ReadIcao read_icao;
@@ -188,6 +196,8 @@ Tracking::Tracking()
                 cooperative_operations_[(*it).uav_id].estimated_trajectory.waypoints.clear();
                 cooperative_operations_[(*it).uav_id].time_tracked = 0;
                 already_tracked_cooperative_operations_[(*it).uav_id] = false; // A TargetTracker for this operation hasn't been created yet
+                modified_cooperative_operations_flags_[(*it).uav_id] = false;
+                updated_flight_plan_flag_map_[(*it).uav_id] = false;
             }
             ROS_INFO("Operations read from database");
         }
@@ -276,6 +286,21 @@ void Tracking::printTargetsInfo()
 
 }
 
+bool Tracking::updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::WritePlans::Response &res)
+{
+    bool result = true;
+    updated_flight_plans_mutex_.lock();
+    for(int i=0; i<req.uav_ids.size(); i++)
+    {
+        uav_id_update_flight_plan_map_[i] = req.flight_plans[i];
+    }
+    updated_flight_plans_mutex_.unlock();
+
+    res.success = result;
+
+    return result;
+}
+
 // PositionReport callback
 void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
 {
@@ -336,7 +361,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
                 candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
 	            candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
                 candidate_aux_ptr->source = Candidate::POSITIONREPORT;
-                candidate_aux_ptr->speed_available = true; // TODO:
+                candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
                 // TODO: Fill those speed values with real info from uav
                 candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
                 candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
@@ -404,7 +429,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
                 candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
 	            candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
                 candidate_aux_ptr->source = Candidate::POSITIONREPORT;
-                candidate_aux_ptr->speed_available = true; // TODO:
+                candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
                 // TODO: Fill those speed values with real info from uav
                 candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
                 candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
@@ -458,49 +483,6 @@ bool Tracking::checkCooperativeOperationAlreadyExist(uint8_t uav_id)
     return found;
 }
 
-bool Tracking::writeOperationsToDatabase()
-{
-    bool result = true;
-
-    // Write cooperative uavs operations
-    for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
-	{
-        if(modified_cooperative_operations_flags_[it->first] == true)
-        {
-            write_operation_msg_.request.uav_ids.push_back(it->first);
-            write_operation_msg_.request.operation.push_back(it->second);
-            #ifdef DEBUG
-            std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
-            std::cout << "Estimated trajectory waypoint count: " << it->second.estimated_trajectory.waypoints.size() << std::endl;
-            #endif
-            modified_cooperative_operations_flags_[it->first] = false;
-            new_operation_pub_.publish(it->second);
-        }
-	}
-    write_operation_msg_.response.message.clear();
-    if(!write_operation_msg_.request.uav_ids.empty())
-    {
-        if ( !write_operation_client_.call(write_operation_msg_) || !write_operation_msg_.response.success )
-        {
-            // TODO: A more complex error handling mechanism must be implemented.
-            // This mechanism should retry the call to the service in case it has failed
-            ROS_ERROR("Failed writing operation to database");
-            ROS_ERROR_STREAM("Message: " << write_operation_msg_.response.message);
-            result = false;
-        }
-        else
-        {
-            ROS_INFO("Succesful writing operation to database");
-            result = true;
-        }
-    }
-
-    write_operation_msg_.request.uav_ids.clear();
-    write_operation_msg_.request.operation.clear();
-
-    return result;
-}
-
 bool Tracking::writeTrackingInfoToDatabase()
 {
     bool result = true;
@@ -508,7 +490,13 @@ bool Tracking::writeTrackingInfoToDatabase()
     // Write cooperative uavs operations
     for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
 	{
-        if(modified_cooperative_operations_flags_[it->first] == true)
+        if(updated_flight_plan_flag_map_[it->first])
+        {
+            write_operation_msg_.request.uav_ids.push_back(it->first);
+            write_operation_msg_.request.operation.push_back(it->second);
+            new_operation_pub_.publish(it->second);
+        }
+        else if(modified_cooperative_operations_flags_[it->first] == true)
         {
             #ifdef DEBUG
             std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
@@ -521,10 +509,45 @@ bool Tracking::writeTrackingInfoToDatabase()
             write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
             write_tracking_msg_.request.tracks.push_back(it->second.track);
             write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-
-            modified_cooperative_operations_flags_[it->first] = false;
-            new_operation_pub_.publish(it->second);
+            //std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
+            //std::cout << "First waypoint of estimated trajectory\n";
+            //std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
+            
+            /*
+            if(it->first == 0)
+            {
+                std::cout << "Current waypoint: " << it->second.current_wp << "\n";
+                std::cout << it->second.flight_plan.waypoints[it->second.current_wp] << "\n";
+                std::cout << "Track size: " << it->second.track.waypoints.size() << "\n";
+                std::cout << "Current position:\n"; 
+                std::cout << it->second.track.waypoints.back();
+            } */
+            
         }
+        /*
+        if(it->first == 0)
+        {
+            if(updated_flight_plan_flag_map_[it->first])
+            {
+                std::cout << "RECEIVED FLIGHT PLAN UPDATE\n";
+                if(it->second.track.waypoints.size() != 0)
+                {
+                    std::cout << "Current position\n";
+                    std::cout << it->second.track.waypoints.back() << "\n";
+                }
+                std::cout << "First waypoint of flight plan after tracking update of uav 0" << std::endl;
+                std::cout << it->second.flight_plan.waypoints[0] << "\n";
+                std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
+                std::cout << "Estimated trajectory (first 3 waypoints): \n";
+                std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
+                std::cout << it->second.estimated_trajectory.waypoints[1] << "\n";
+                std::cout << it->second.estimated_trajectory.waypoints[2] << "\n";
+            }
+        }
+        */
+
+        updated_flight_plan_flag_map_[it->first] = false;
+        modified_cooperative_operations_flags_[it->first] = false;
 	}
     write_tracking_msg_.response.message.clear();
     if(!write_tracking_msg_.request.uav_ids.empty())
@@ -533,7 +556,7 @@ bool Tracking::writeTrackingInfoToDatabase()
         {
             // TODO: A more complex error handling mechanism must be implemented.
             // This mechanism should retry the call to the service in case it has failed
-            ROS_ERROR("Failed writing operation to database");
+            ROS_ERROR("Failed writing tracking info to database");
             ROS_ERROR_STREAM("Message: " << write_tracking_msg_.response.message);
             result = false;
         }
@@ -543,6 +566,22 @@ bool Tracking::writeTrackingInfoToDatabase()
             result = true;
         }
     }
+    if(!write_operation_msg_.request.uav_ids.empty())
+    {
+        if ( !write_operation_client_.call(write_operation_msg_) || !write_operation_msg_.response.success )
+        {
+            // TODO: A more complex error handling mechanism must be implemented.
+            // This mechanism should retry the call to the service in case it has failed
+            ROS_ERROR("Failed writing tracking info and updated flight plans to database");
+            ROS_ERROR_STREAM("Message: " << write_operation_msg_.response.message);
+            result = false;
+        }
+        else
+        {
+            ROS_INFO("Succesful writing operation to database");
+            result = true;
+        }
+    }    
 
     write_tracking_msg_.request.uav_ids.clear();
     write_tracking_msg_.request.current_wps.clear();
@@ -550,6 +589,9 @@ bool Tracking::writeTrackingInfoToDatabase()
     write_tracking_msg_.request.times_tracked.clear();
     write_tracking_msg_.request.tracks.clear();
     write_tracking_msg_.request.flight_plans_updated.clear();
+
+    write_operation_msg_.request.uav_ids.clear();
+    write_operation_msg_.request.operation.clear();
 
     return result;
 }
@@ -689,7 +731,7 @@ void Tracking::estimateTrajectory()
             std::cout << "distance to point b: " << distance_to_point_b << std::endl;
             #endif
 
-            if (distance_to_segment <= distance_wp_threshold_)
+            if (distance_to_segment <= (operation_aux.operational_volume + distance_wp_threshold_margin_))
             {
                 bool closer_than_dt_flag = false;
                 // If distance from current estimated position is close enough to flight plan, the estimated trajectory
@@ -702,10 +744,30 @@ void Tracking::estimateTrajectory()
                 
                 ros::Time last_stamp = current_position.stamp;
                 double time_to_next_waypoint = 0;
-                double distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[a_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index]);
+                double distance_between_waypoints = 0;
+                double time_between_waypoints = 0;
                 double distance_from_current_pos_to_next_wp = distanceBetweenWaypoints(current_position, flight_plan_ref.waypoints[b_waypoint_index]);
-                double time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index].stamp - flight_plan_ref.waypoints[a_waypoint_index].stamp).toSec();
+                if(a_waypoint_index != b_waypoint_index)
+                {
+                    distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[a_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index]);
+                    time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index].stamp - flight_plan_ref.waypoints[a_waypoint_index].stamp).toSec();
+                }
+                else
+                {
+                    if(b_waypoint_index != 0)
+                    {
+                        distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[b_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index-1]);
+                        time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index].stamp - flight_plan_ref.waypoints[b_waypoint_index-1].stamp).toSec();
+                    }
+                    else
+                    {
+                        distance_between_waypoints = distanceBetweenWaypoints(flight_plan_ref.waypoints[b_waypoint_index], flight_plan_ref.waypoints[b_waypoint_index+1]);
+                        time_between_waypoints = (flight_plan_ref.waypoints[b_waypoint_index+1].stamp - flight_plan_ref.waypoints[b_waypoint_index].stamp).toSec();
+                    }
+                }
                 time_to_next_waypoint = distance_from_current_pos_to_next_wp/distance_between_waypoints * time_between_waypoints;
+
+                //std::cout << "Time to next waypoint " << time_to_next_waypoint << "\n";
 
                 if(time_to_next_waypoint > dt)
                 {
@@ -826,20 +888,37 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
     int second_index = 0;
     distance_to_segment = std::numeric_limits<double>::max();
     double distance_to_waypoint_a = std::numeric_limits<double>::max();
+    bool flag_distance_to_waypoint_a = false;
+    bool flag_distance_to_waypoint_b = false;
 
-    Eigen::Vector3d current_position_eigen;
-
+    /*
+    std::cout << "###################\n";
+    std::cout << "Finding current wp\n";
+    std::cout << "Current position\n";
+    std::cout << current_position << "\n";
+    */
     for (int i=0; i < flight_plan.waypoints.size()-1; i++)
     {
         gauss_msgs::Waypoint &waypoint_a = flight_plan.waypoints[i];
         gauss_msgs::Waypoint &waypoint_b = flight_plan.waypoints[i+1];
-
+        /*
+        std::cout << "--------\n";
+        std::cout << "Segment " << i << "\n";
+        std::cout << "waypoint " << i << "\n";
+        std::cout << waypoint_a << "\n";
+        std::cout << "waypoint " << i+1 << "\n";
+        std::cout << waypoint_b << "\n";
+        */
         Eigen::Vector3d vector_u;
-
+        flag_distance_to_waypoint_a = false;
+        flag_distance_to_waypoint_b = false;
         vector_u.x() = waypoint_b.x - waypoint_a.x;
         vector_u.y() = waypoint_b.y - waypoint_a.y;
         vector_u.z() = waypoint_b.z - waypoint_a.z;
-
+        /*
+        std::cout << "Waypoint " << i <<"\n";
+        std::cout << waypoint_a << "\n";
+        */
         /*
 
             Solve this equation
@@ -862,6 +941,9 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
         A(0,3) = vector_u.x();
         A(1,3) = vector_u.y();
         A(2,3) = vector_u.z();
+        A(3,0) = vector_u.x();
+        A(3,1) = vector_u.y();
+        A(3,2) = vector_u.z();
 
         x.x() = current_position.x - waypoint_a.x;
         x.y() = current_position.y - waypoint_a.y;
@@ -873,6 +955,7 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
         if (b[3] >= 0 && b[3] <= 1)
         {
             distance = sqrt(b[0]*b[0] + b[1]*b[1] + b[2]*b[2]);
+            //std::cout << "Distance to segment " << distance << "\n";
         }
         else
         {
@@ -882,25 +965,45 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
             if (distance_to_waypoint_a < distance_to_waypoint_b)
             {
                 distance = distance_to_waypoint_a;
+                flag_distance_to_waypoint_a = true;
+                //std::cout << "Distance to waypoint_a " << distance << "\n";
             }
             else
             {
                 distance = distance_to_waypoint_b;
+                flag_distance_to_waypoint_b = true;
+                //std::cout << "Distance to waypoint_b " << distance << "\n";
             }
         }
         
         // Then check the distance to the line that contains the segment
-        //double distance = distanceFromPointToLine(current_position_eigen, point_a, vector_2);
+        // double distance = distanceFromPointToLine(current_position_eigen, point_a, vector_2);
         if (distance <= distance_to_segment)
         {
             distance_to_segment = distance;
-            first_index = i;
-            second_index = i+1;
+            if(flag_distance_to_waypoint_a)
+            {
+                first_index = i;
+                second_index = i;
+            }
+            else if(flag_distance_to_waypoint_b)
+            {
+                first_index = i+1;
+                second_index = i+1;                
+            }
+            else
+            {
+                first_index = i;
+                second_index = i+1;
+            }
         }
     }
 
     a_index = first_index;
     b_index = second_index;
+    /*
+    std::cout << "Current waypoint index: " << b_index << "\n";
+    */
 
     gauss_msgs::Waypoint &waypoint_a = flight_plan.waypoints[first_index];
     gauss_msgs::Waypoint &waypoint_b = flight_plan.waypoints[second_index];
@@ -951,64 +1054,6 @@ void Tracking::main()
     int counter = 0;
     while(pnh.ok())
     {
-        // Read all the operations from database, and check the flight_plan_mod_t field
-        gauss_msgs::ReadIcao read_icao;
-        if ( read_icao_client_.call(read_icao) && read_icao.response.success )
-        {
-            int index_icao = 0;
-            std::vector<std::string> &icao_address = read_icao.response.icao_address;
-            for(auto it=read_icao.response.uav_id.begin(); it < read_icao.response.uav_id.end(); it++)
-            {
-                if(uav_id_icao_address_map_.find((*it)) == uav_id_icao_address_map_.end())
-                {
-                    uav_id_icao_address_map_.insert( std::make_pair((*it),icao_address[index_icao]) );
-                    icao_address_uav_id_map_.insert( std::make_pair(icao_address[index_icao], (*it)) );
-                }
-                index_icao++;
-            }
-        }
-        else
-        {
-            ROS_ERROR("Failed reading ICAO addresses list from Database");
-            ROS_ERROR("Shutting down Tracking node");
-            ros::shutdown();
-        }
-
-        // Read all the operations currently registered in the database
-        gauss_msgs::ReadOperation read_operation_msg;
-        for(auto it=uav_id_icao_address_map_.begin(); it!=uav_id_icao_address_map_.end(); it++)
-        {
-            read_operation_msg.request.uav_ids.push_back((*it).first);
-        }
-        if ( read_operation_client_.call(read_operation_msg) && read_operation_msg.response.success )
-        {
-            for(auto it=read_operation_msg.response.operation.begin(); it!=read_operation_msg.response.operation.end(); it++)
-            {
-                if(cooperative_operations_.find((*it).uav_id) == cooperative_operations_.end())
-                {
-                    cooperative_operations_[(*it).uav_id] = (*it);
-                    cooperative_operations_[(*it).uav_id].track.waypoints.clear();
-                    cooperative_operations_[(*it).uav_id].estimated_trajectory.waypoints.clear();
-                    cooperative_operations_[(*it).uav_id].time_tracked = 0;
-                    already_tracked_cooperative_operations_[(*it).uav_id] = false; // A TargetTracker for this operation hasn't been created yet
-                }
-                else
-                {
-                    if(cooperative_operations_[(*it).uav_id].flight_plan_mod_t < (*it).flight_plan_mod_t)
-                    {
-                        cooperative_operations_[(*it).uav_id].flight_plan_mod_t = (*it).flight_plan_mod_t;
-                        cooperative_operations_[(*it).uav_id].flight_plan = (*it).flight_plan;
-                    }
-                }  
-            }
-            ROS_INFO("Operations read from database");
-        }
-        else
-        {
-            ROS_ERROR("Failed reading operations from database");
-            ros::shutdown();
-        }
-
         candidates_list_mutex_.lock();
         bool new_operations_to_download = false;
         for(auto it=candidates_.begin(); it!=candidates_.end(); ++it)
@@ -1020,10 +1065,7 @@ void Tracking::main()
                 // Check if we have the associated operation in memory for each uav_id from which position reports have been received
                 if ( !this->checkCooperativeOperationAlreadyExist((*it)->uav_id))
                 {
-                    //std::cout << "uav_id : " << (int)(*it)->uav_id << " not tracked yet" << std::endl;
-                    // Read Operation from Database with a matching UAV id
-                    read_operation_msg.request.uav_ids.push_back((*it)->uav_id);
-                    new_operations_to_download = true;
+                    // TODO: Delete candidate from candidates list
                 }
                 else
                 {
@@ -1037,60 +1079,9 @@ void Tracking::main()
                 {
                     // The position info is from a non cooperative uav
                 }
-                else
-                {
-                    // The position info is from a cooperative uav
-                    if ( !this->checkCooperativeOperationAlreadyExist((*it)->uav_id))
-                    {
-                        // If there isn't already an operation for this uav,
-                        // the associated operation must be pulled from the database
-                        #ifdef DEBUG
-                        std::cout << "uav_id : " << (int)(*it)->uav_id << " not tracked yet" << std::endl;
-                        #endif
-                        // Read Operation from Database with a matching UAV id
-                        read_operation_msg.request.uav_ids.push_back((*it)->uav_id);
-                        new_operations_to_download = true;
-                    }
-                    else
-                    {
-                        #ifdef DEBUG
-                        std::cout << "uav_id : " << (int)(*it)->uav_id << " already tracked" << std::endl;
-                        #endif
-                    }
-                }
             }
         }
         candidates_list_mutex_.unlock();
-        if (new_operations_to_download)
-        {
-            if (!read_operation_client_.call(read_operation_msg))
-            {
-                // TODO: A more complex error handling mechanism must be implemented.
-                // This mechanism should retry the call to the service in case it has failed
-                ROS_ERROR("Failed reading operations from database");
-            }
-            else if (!read_operation_msg.response.success)
-            {
-                #ifdef DEBUG
-                std::cout << read_operation_msg.response.message << std::endl;
-                #endif
-            }
-            else
-            {
-                std::vector<gauss_msgs::Operation> &r_operation_vector = read_operation_msg.response.operation;
-                for(auto it=r_operation_vector.begin(); it!=r_operation_vector.end(); ++it)
-                {
-                    ROS_INFO_STREAM("Succesful reading operation of uav " << it->uav_id << "from database");
-                    cooperative_operations_[it->uav_id] = (*it);
-                    #ifdef DEBUG
-                    std::cout << "Time horizon after reading: " << cooperative_operations_[it->uav_id].time_horizon << std::endl;
-                    #endif
-                    cooperative_operations_[it->uav_id].track.waypoints.clear(); // TODO: Clear track although it should be empty at initialization
-                    cooperative_operations_[it->uav_id].estimated_trajectory.waypoints.clear(); // TODO: Clear estimated trajectory although it should be empty at initialization
-                    modified_cooperative_operations_flags_[it->uav_id] = false;
-                }
-            }
-        }
 
         //std::cout << "Operations size start of the loop: " << operations_.size() << std::endl;
 
@@ -1101,6 +1092,18 @@ void Tracking::main()
         //std::cout << "Operations size after update: " << operations_.size() << std::endl;
 
         this->fillTrackingWaypointList();
+
+        updated_flight_plans_mutex_.lock();
+        for(auto it=cooperative_operations_.begin(); it!=cooperative_operations_.end(); it++)
+        {
+            if(uav_id_update_flight_plan_map_.find((*it).first) != uav_id_update_flight_plan_map_.end())
+            {
+                cooperative_operations_[(*it).first].flight_plan = uav_id_update_flight_plan_map_[(*it).first];
+                uav_id_update_flight_plan_map_.erase((*it).first);
+                updated_flight_plan_flag_map_[(*it).first] = true;
+            }
+        }
+        updated_flight_plans_mutex_.unlock();
 
         //std::cout << "Operations size after fillTracking: " << operations_.size() << std::endl;
         this->estimateTrajectory();

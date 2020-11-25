@@ -14,7 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   std_msgs
-  upat_follower
 )
 find_package(Eigen3 REQUIRED)
 
@@ -111,7 +110,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES tactical_deconfliction
- CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs upat_follower
+ CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs
  DEPENDS EIGEN3
 )
 

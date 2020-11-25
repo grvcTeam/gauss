@@ -9,6 +9,7 @@
     <arg name="save_experiment_data" default="false"/>
     <arg name="trajectory" default="true"/>
     <arg name="reach_tolerance" default="0.4"/>
+    <arg name="sitl_take_off_height" default="0.5"/>
     <arg name="path" default="optitrack2"/>
     <arg name="generator_mode" default="0"/>
     <arg name="pkg_name" default="ual_communication"/>
@@ -41,7 +42,8 @@
     <node pkg="ual_communication" type="notificationBridge" name="notification_bridge" output="screen" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
     <!-- Wait 30 seconds before launching monitoring -->
-    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 30.0; $0 $@' "/>
+    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 35.0; $0 $@'; xterm -e gdb -ex run - -args"/> -->
+    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 35.0; $0 $@';"/>
     <!-- PX4 -->
     <group if="$(eval mode=='sitl')">
         <!-- Launch Gazebo simulation -->
@@ -119,6 +121,7 @@
                 <param name="pub_rate" value="$(arg pub_rate)"/>
                 <param name="path" value="$(arg path)"/>
                 <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
+                <param name="sitl_take_off_height" value="$(arg sitl_take_off_height)"/>
                 <param name="use_class" value="true"/>
                 <param name="generator_mode" value="$(arg generator_mode)"/>
                 <param name="debug" value="$(arg debug)"/>
@@ -137,6 +140,7 @@
                 <param name="pub_rate" value="$(arg pub_rate)"/>
                 <param name="path" value="$(arg path)"/>
                 <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
+                <param name="sitl_take_off_height" value="$(arg sitl_take_off_height)"/>
                 <param name="use_class" value="true"/>
                 <param name="generator_mode" value="$(arg generator_mode)"/>
                 <param name="debug" value="$(arg debug)"/>

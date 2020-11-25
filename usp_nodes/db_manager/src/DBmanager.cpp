@@ -39,6 +39,7 @@ class DataBase {
     int size_plans;
     int size_geofences;
     // Auxilary methods
+    bool jsonExists(std::string _file_name);
     bool operationsFromJson(std::string _file_name);
     bool geofencesFromJson(std::string _file_name);
     bool checkNewFlightPlan(const gauss_msgs::WaypointList &_pre_flight_plan, const gauss_msgs::WaypointList &_flight_plan);
@@ -61,111 +62,112 @@ class DataBase {
 // DataBase Constructor
 DataBase::DataBase() : nh_(), pnh_("~") {
     // Read parameters
-    std::string operations_name = "OPERATIONS";
-    std::string geofences_name = "UTM_GEOFENCE_CREATION";
+    std::string operations_name = "loss_operations";
+    std::string geofences_name = "loss_geofences";
     pnh_.getParam("operations_json", operations_name);
     pnh_.getParam("geofences_json", geofences_name);
-    std::cout << geofences_name << "\n";
-    // Initialization
-    size_plans = size_geofences = 0;
-
-    // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
-    operationsFromJson(operations_name + ".json");
-    geofencesFromJson(geofences_name + ".json");
-
-    // Publish
-
-    // Subscribe
-
-    // Server
-    read_operation_server_ = nh_.advertiseService("/gauss/read_operation", &DataBase::readOperationCB, this);
-    write_operation_server_ = nh_.advertiseService("/gauss/write_operation", &DataBase::writeOperationCB, this);
-    read_icao_server_ = nh_.advertiseService("/gauss/read_icao", &DataBase::readIcaoCB, this);
-    read_geofences_server_ = nh_.advertiseService("/gauss/read_geofences", &DataBase::readGeofenceCB, this);
-    write_geofences_server_ = nh_.advertiseService("/gauss/write_geofences", &DataBase::writeGeofenceCB, this);
-    dbsize_server_ = nh_.advertiseService("/gauss/db_size", &DataBase::returnDBsizeCB, this);
-    write_tracking_server_ = nh_.advertiseService("/gauss/write_tracking", &DataBase::writeTrackingCB, this);
-    write_plan_server_ = nh_.advertiseService("/gauss/write_plans", &DataBase::writePlansCB, this);
-
+    std::string pkg_path = ros::package::getPath("db_manager");
+    std::string file_path = pkg_path + "/config/";
+    bool ok_json_operations = jsonExists(file_path + operations_name + ".json");
+    bool ok_json_geofences = jsonExists(file_path + geofences_name + ".json");
+    if (ok_json_geofences && ok_json_operations) {
+        // Initialization
+        size_plans = size_geofences = 0;
+        // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
+        ROS_WARN_STREAM(file_path + operations_name + ".json");
+        ROS_WARN_STREAM(file_path + geofences_name + ".json");
+        operationsFromJson(file_path + operations_name + ".json");
+        geofencesFromJson(file_path + geofences_name + ".json");
+        // Server
+        read_operation_server_ = nh_.advertiseService("/gauss/read_operation", &DataBase::readOperationCB, this);
+        write_operation_server_ = nh_.advertiseService("/gauss/write_operation", &DataBase::writeOperationCB, this);
+        read_icao_server_ = nh_.advertiseService("/gauss/read_icao", &DataBase::readIcaoCB, this);
+        read_geofences_server_ = nh_.advertiseService("/gauss/read_geofences", &DataBase::readGeofenceCB, this);
+        write_geofences_server_ = nh_.advertiseService("/gauss/write_geofences", &DataBase::writeGeofenceCB, this);
+        dbsize_server_ = nh_.advertiseService("/gauss/db_size", &DataBase::returnDBsizeCB, this);
+        write_tracking_server_ = nh_.advertiseService("/gauss/write_tracking", &DataBase::writeTrackingCB, this);
+        write_plan_server_ = nh_.advertiseService("/gauss/write_plans", &DataBase::writePlansCB, this);
+    } else {
+        if (!ok_json_geofences) ROS_ERROR("Geofences JSON does not exist!");
+        if (!ok_json_operations) ROS_ERROR("Operations JSON does not exist!");
+    }
     ROS_INFO("Started DBManager node!");
 }
 
+bool DataBase::jsonExists(std::string _file_name) {
+    std::ifstream i(_file_name);
+    return i.good();
+}
+
 bool DataBase::operationsFromJson(std::string _file_name) {
-    std::string pkg_path = ros::package::getPath("db_manager");
-    std::string file_path = pkg_path + "/config/" + _file_name;
-    std::ifstream i(file_path);
+    std::ifstream i(_file_name);
     nlohmann::json jsonDB;
     i >> jsonDB;
     gauss_msgs::WriteOperation json_operation;
-    for (const auto &item : jsonDB.at("operations").items()) {
-        gauss_msgs::Operation operation;
-        operation.uav_id = item.value()["uav_id"].get<double>();
-        operation.autonomy = item.value()["autonomy"].get<double>();
-        operation.conop = item.value()["conop"].get<std::string>();
-        operation.operational_volume = item.value()["operational_volume"].get<double>();
-        operation.current_wp = item.value()["current_wp"].get<double>();
-        operation.dT = item.value()["dT"].get<double>();
-        operation.flight_geometry = item.value()["flight_geometry"].get<double>();
-        operation.frame = operation.FRAME_ROTOR;  // Check this parameter
-        operation.icao_address = item.value()["icao_address"].get<std::string>();
-        operation.priority = item.value()["priority"].get<double>();
-        operation.time_horizon = item.value()["time_horizon"].get<double>();
-        operation.time_tracked = item.value()["time_tracked"].get<double>();
-        gauss_msgs::WaypointList wp_list;
-        for (const auto &it : item.value()["flight_plan"].front().items()) {
-            gauss_msgs::Waypoint wp;
-            wp.x = it.value()["x"].get<double>();
-            wp.y = it.value()["y"].get<double>();
-            wp.z = it.value()["z"].get<double>();
-            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
-            wp.mandatory = it.value()["mandatory"].get<double>();
-            wp_list.waypoints.push_back(wp);
-        }
-        operation.flight_plan = wp_list;
-        //gauss_msgs::WaypointList wp_list_aux;
-        //wp_list_aux.waypoints = std::vector<gauss_msgs::Waypoint>(3,gauss_msgs::Waypoint());
-        // Fill estimated trajectory with at most 18 waypoints from flight plan
-        for (int index_1 = 0; index_1 < std::min((int)operation.flight_plan.waypoints.size(), 18); index_1++) {
-            operation.estimated_trajectory.waypoints.push_back(operation.flight_plan.waypoints.at(index_1));
-        }
+    if (jsonDB.at("operations").size() == 0) {
+        ROS_WARN("No operations on initial JSON!");
+    } else {
+        for (const auto &item : jsonDB.at("operations").items()) {
+            gauss_msgs::Operation operation;
+            operation.uav_id = item.value()["uav_id"].get<double>();
+            operation.autonomy = item.value()["autonomy"].get<double>();
+            operation.conop = item.value()["conop"].get<std::string>();
+            if (item.value()["current_wp"].get<double>() == 0) {
+                operation.current_wp = 1;
+            } else {
+                operation.current_wp = item.value()["current_wp"].get<double>();
+            }
+            operation.dT = item.value()["dT"].get<double>();
+            operation.flight_geometry = item.value()["flight_geometry"].get<double>();
+            if (item.value()["flight_geometry"].get<double>() < item.value()["operational_volume"].get<double>()) {
+                operation.operational_volume = item.value()["flight_geometry"].get<double>() * 0.8;
+            } else {
+                operation.operational_volume = item.value()["operational_volume"].get<double>();
+            }
+            operation.frame = operation.FRAME_ROTOR;  // Check this parameter
+            operation.icao_address = item.value()["icao_address"].get<std::string>();
+            operation.priority = item.value()["priority"].get<double>();
+            operation.time_horizon = item.value()["time_horizon"].get<double>();
+            operation.time_tracked = item.value()["time_tracked"].get<double>();
+            gauss_msgs::WaypointList wp_list;
+            if (item.value()["flight_plan"].front().size() == 0) {
+                ROS_WARN("Operation %d has empty flight plan on initial JSON!", item.value()["uav_id"].get<int>());
+            } else {
+                for (const auto &it : item.value()["flight_plan"].front().items()) {
+                    gauss_msgs::Waypoint wp;
+                    wp.x = it.value()["x"].get<double>();
+                    wp.y = it.value()["y"].get<double>();
+                    wp.z = it.value()["z"].get<double>();
+                    wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+                    wp.mandatory = it.value()["mandatory"].get<double>();
+                    wp_list.waypoints.push_back(wp);
+                }
+                operation.flight_plan = wp_list;
+            }
+            // Fill estimated trajectory with at most 18 waypoints from flight plan
+            for (int index_1 = 0; index_1 < std::min((int)operation.flight_plan.waypoints.size(), 18); index_1++) {
+                operation.estimated_trajectory.waypoints.push_back(operation.flight_plan.waypoints.at(index_1));
+            }
+            operation.track.waypoints.push_back(operation.flight_plan.waypoints.front());
+            wp_list.waypoints.clear();
 
-        wp_list.waypoints.clear();
-        for (const auto &it : item.value()["track"].front().items()) {
-            gauss_msgs::Waypoint wp;
-            wp.x = it.value()["x"].get<double>();
-            wp.y = it.value()["y"].get<double>();
-            wp.z = it.value()["z"].get<double>();
-            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
-            wp.mandatory = it.value()["mandatory"].get<double>();
-            wp_list.waypoints.push_back(wp);
+            if (item.value()["landing_spots"].front().size() == 0) {
+                ROS_WARN("Operation %d has empty landing spots on initial JSON!", item.value()["uav_id"].get<int>());
+            } else {
+                for (const auto &it : item.value()["landing_spots"].front().items()) {
+                    gauss_msgs::Waypoint wp;
+                    wp.x = it.value()["x"].get<double>();
+                    wp.y = it.value()["y"].get<double>();
+                    wp.z = it.value()["z"].get<double>();
+                    wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+                    wp.mandatory = it.value()["mandatory"].get<double>();
+                    wp_list.waypoints.push_back(wp);
+                }
+                operation.landing_spots = wp_list;
+            }
+            json_operation.request.operation.push_back(operation);
+            json_operation.request.uav_ids.push_back(operation.uav_id);
         }
-        operation.track = wp_list;
-        wp_list.waypoints.clear();
-        /*
-        for(const auto& it : item.value()["estimated_trajectory"].front().items()){
-            gauss_msgs::Waypoint wp;
-            wp.x = it.value()["x"].get<double>();
-            wp.y = it.value()["y"].get<double>();
-            wp.z = it.value()["z"].get<double>();
-            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
-            wp.mandatory = it.value()["mandatory"].get<double>();
-            wp_list.waypoints.push_back(wp);
-        }
-        operation.estimated_trajectory = wp_list;
-        wp_list.waypoints.clear();
-        */
-        for (const auto &it : item.value()["landing_spots"].front().items()) {
-            gauss_msgs::Waypoint wp;
-            wp.x = it.value()["x"].get<double>();
-            wp.y = it.value()["y"].get<double>();
-            wp.z = it.value()["z"].get<double>();
-            wp.stamp = ros::Time(it.value()["stamp"].get<double>());
-            wp.mandatory = it.value()["mandatory"].get<double>();
-            wp_list.waypoints.push_back(wp);
-        }
-        operation.landing_spots = wp_list;
-        json_operation.request.operation.push_back(operation);
-        json_operation.request.uav_ids.push_back(operation.uav_id);
     }
     if (json_operation.request.uav_ids.size() > 0) {
         writeOperationCB(json_operation.request, json_operation.response);
@@ -180,30 +182,36 @@ bool DataBase::operationsFromJson(std::string _file_name) {
 }
 
 bool DataBase::geofencesFromJson(std::string _file_name) {
-    std::string pkg_path = ros::package::getPath("db_manager");
-    std::string file_path = pkg_path + "/config/" + _file_name;
-    std::ifstream i(file_path);
+    std::ifstream i(_file_name);
     nlohmann::json jsonDB;
     i >> jsonDB;
     gauss_msgs::WriteGeofences json_geofence;
-    for (const auto &item : jsonDB.at("geofences").items()) {
-        gauss_msgs::Geofence geofence;
-        geofence.id = item.value()["id"].get<double>();
-        geofence.static_geofence = item.value()["static_geofence"].get<bool>();
-        geofence.cylinder_shape = item.value()["cylinder_shape"].get<bool>();
-        geofence.min_altitude = item.value()["min_altitude"].get<double>();
-        geofence.max_altitude = item.value()["max_altitude"].get<double>();
-        geofence.start_time = ros::Time(item.value()["start_time"].get<double>());
-        geofence.end_time = ros::Time(item.value()["end_time"].get<double>());
-        geofence.circle.x_center = item.value()["circle"]["x_center"].get<double>();
-        geofence.circle.y_center = item.value()["circle"]["y_center"].get<double>();
-        geofence.circle.radius = item.value()["circle"]["radius"].get<double>();
-        for (const auto &it : item.value()["polygon"].front().items()) {
-            geofence.polygon.x.push_back(it.value()["x"].get<double>());
-            geofence.polygon.y.push_back(it.value()["y"].get<double>());
+    if (jsonDB.at("geofences").size() == 0) {
+        ROS_WARN("No geofences on initial JSON!");
+    } else {
+        for (const auto &item : jsonDB.at("geofences").items()) {
+            gauss_msgs::Geofence geofence;
+            geofence.id = item.value()["id"].get<double>();
+            geofence.static_geofence = item.value()["static_geofence"].get<bool>();
+            geofence.cylinder_shape = item.value()["cylinder_shape"].get<bool>();
+            geofence.min_altitude = item.value()["min_altitude"].get<double>();
+            geofence.max_altitude = item.value()["max_altitude"].get<double>();
+            geofence.start_time = ros::Time(item.value()["start_time"].get<double>());
+            geofence.end_time = ros::Time(item.value()["end_time"].get<double>());
+            geofence.circle.x_center = item.value()["circle"]["x_center"].get<double>();
+            geofence.circle.y_center = item.value()["circle"]["y_center"].get<double>();
+            geofence.circle.radius = item.value()["circle"]["radius"].get<double>();
+            if (item.value()["polygon"].front().size() == 0) {
+                ROS_WARN("Geofence %d has empty polygon on initial JSON!", item.value()["id"].get<int>());
+            } else {
+                for (const auto &it : item.value()["polygon"].front().items()) {
+                    geofence.polygon.x.push_back(it.value()["x"].get<double>());
+                    geofence.polygon.y.push_back(it.value()["y"].get<double>());
+                }
+            }
+            json_geofence.request.geofences.push_back(geofence);
+            json_geofence.request.geofence_ids.push_back(geofence.id);
         }
-        json_geofence.request.geofences.push_back(geofence);
-        json_geofence.request.geofence_ids.push_back(geofence.id);
     }
     if (json_geofence.request.geofence_ids.size() > 0) {
         writeGeofenceCB(json_geofence.request, json_geofence.response);
@@ -299,7 +307,13 @@ bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_
                 it->second = req.operation[i];
             } else {
                 req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
+                if (req.operation[i].current_wp == 0) req.operation[i].current_wp = 1;
+                if (req.operation[i].track.waypoints.size() == 0) req.operation[i].track.waypoints.push_back(req.operation[i].flight_plan.waypoints.front());
+                if (req.operation[i].flight_geometry < req.operation[i].operational_volume) req.operation[i].operational_volume = req.operation[i].flight_geometry * 0.8;
+                for (int j = 0; j < std::min((int)req.operation[i].flight_plan.waypoints.size(), 18); j++) req.operation[i].estimated_trajectory.waypoints.push_back(req.operation[i].flight_plan.waypoints.at(j));
                 saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
+                if (req.operation[i].flight_plan.waypoints.size() == 0) ROS_WARN("Operation %d has empty flight plan!", (int)req.operation[i].uav_id);
+                if (req.operation[i].landing_spots.waypoints.size() == 0) ROS_WARN("Operation %d has empty landing spot!", (int)req.operation[i].uav_id);
             }
         }
     }
@@ -344,6 +358,7 @@ bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_m
             if (it != saved_geofences.end()) {
                 it->second = req.geofences[i];
             } else {
+                if (req.geofences[i].polygon.x.size() == 0 || req.geofences[i].polygon.y.size() == 0) ROS_WARN("Geofence %d has empty polygon!", req.geofences[i].id);
                 saved_geofences.insert(pair<int, gauss_msgs::Geofence>(req.geofences[i].id, req.geofences[i]));
             }
         }
