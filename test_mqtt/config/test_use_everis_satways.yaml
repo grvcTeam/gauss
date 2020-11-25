@@ -1,0 +1,30 @@
+mqtt:
+  client:
+    protocol: 4      # MQTTv311
+  connection:
+    host: 95.216.180.100
+    port: 1883
+    keepalive: 60
+serializer: json:dumps
+deserializer: json:loads
+bridge:
+
+  - factory: mqtt_bridge.bridge:MqttToRosBridge
+    msg_type: gauss_msgs_mqtt.msg:GCSFlightPlan
+    topic_from: gcsflightplan/+
+    topic_to: /gcsflightplan
+
+  - factory: mqtt_bridge.bridge:MqttToRosBridge
+    msg_type: gauss_msgs_mqtt.msg:RPSChangeFlightStatus
+    topic_from: flight/+
+    topic_to: /flight
+
+  - factory: mqtt_bridge.bridge:AlternativeFlightPlanRosToMqttBridge
+    msg_type: gauss_msgs_mqtt.msg:UTMAlternativeFlightPlan
+    topic_from: /utmflightplan 
+    topic_to: utmflightplan/
+
+  - factory: mqtt_bridge.bridge:MqttToRosBridge
+    msg_type: gauss_msgs_mqtt.msg:RPSFlightPlanAccept
+    topic_from: flightacceptance
+    topic_to: /flightacceptance
