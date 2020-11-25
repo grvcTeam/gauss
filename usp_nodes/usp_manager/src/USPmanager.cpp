@@ -1,10 +1,9 @@
 #include <ros/ros.h>
 
 #include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Point.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <geographic_msgs/GeoPoint.h>
-#include <usp_manager/geographic_to_cartesian.hpp>
 
 #include <gauss_msgs_mqtt/ADSBSurveillance.h>
 #include <gauss_msgs_mqtt/RPAStateInfo.h>
@@ -26,6 +25,13 @@
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadIcaoRequest.h>
 #include <gauss_msgs/ReadIcaoResponse.h>
+#include <gauss_msgs/PilotAnswer.h>
+#include <gauss_msgs/WritePlans.h>
+
+#include <GeographicLib/Geocentric.hpp>
+#include <GeographicLib/LocalCartesian.hpp>
+
+#include <sstream>
 
 #define ARENOSILLO_LATITUDE 37.101973
 #define ARENOSILLO_LONGITUDE -6.736522
@@ -33,6 +39,13 @@
 #define REFERENCE_LATITUDE ARENOSILLO_LATITUDE
 #define REFERENCE_LONGITUDE ARENOSILLO_LONGITUDE
 
+#define YES std::string("yes")
+#define NO std::string("no")
+
+struct ThreatFlightPlan {
+   uint8_t threat_id;
+   gauss_msgs::WaypointList new_flight_plan; 
+};
 
 // Class definition
 class USPManager
@@ -67,6 +80,8 @@ private:
 
     std::vector<int8_t> initial_uav_ids_;
 
+    std::map<uint8_t, std::vector<ThreatFlightPlan>> id_threat_flight_plan_map_;
+
     // Timer
     ros::Timer timer_sub_;
 
@@ -81,6 +96,8 @@ private:
     ros::ServiceClient write_operation_client_;
     ros::ServiceClient threats_client_;
     ros::ServiceClient read_icao_client_;
+    ros::ServiceClient send_pilot_answer_client_;
+    ros::ServiceClient write_plans_client_;
 
     // Publisher
     ros::Publisher rpacommands_pub_;       //TBD message to UAVs
@@ -90,12 +107,17 @@ private:
 
 
     // Variables for geographic to cartesian conversion
-    geographic_msgs::GeoPoint origin_geo_;
-
+    double lat0_, lon0_;
+    GeographicLib::Geocentric earth_;
+    GeographicLib::LocalCartesian proj_;
 };
 
 // USPManager Constructor
-USPManager::USPManager()
+USPManager::USPManager():
+lat0_(REFERENCE_LATITUDE),
+lon0_(REFERENCE_LONGITUDE),
+earth_(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f()),
+proj_(lat0_, lon0_, 0, earth_)
 {
     // Read parameters
     nh_.param("/gauss/monitoring_rate",rate,0.5);
@@ -120,6 +142,9 @@ USPManager::USPManager()
     threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
+    send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/pilotanswer");
+    send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/send_pilot_answer");
+    write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
 
     // Timer
     timer_sub_=nh_.createTimer(ros::Duration(1.0/rate),&USPManager::timerCallback,this);
@@ -132,33 +157,85 @@ USPManager::USPManager()
 // Notification callback
 void USPManager::notificationCB(const gauss_msgs::Notification::ConstPtr& msg)
 {
+    /*
     gauss_msgs_mqtt::UTMAlert utm_alert_msg;
-
     utm_alert_msg.alert_message = msg->description;
     //utm_alert_msg.alert_title = msg->
-
-
-    
-
     alert_pub_.publish(utm_alert_msg);
+    */
+
+    gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
+    alternative_flight_plan_msg.flight_plan_id = msg->uav_id;
+    alternative_flight_plan_msg.icao = atoi(id_icao_map_[msg->uav_id].c_str());
+
+    std::ostringstream new_flight_plan_ss;
+
+    new_flight_plan_ss << "[";
+
+    for(auto it=msg->new_flight_plan.waypoints.begin(); it!=msg->new_flight_plan.waypoints.end(); it++)
+    {
+        new_flight_plan_ss << "(";
+        double lat,lon,h;
+        proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
+        new_flight_plan_ss << lat <<", " << lon << ", " << h << ", " << it->stamp.toSec();
+        new_flight_plan_ss << ")";
+        if(it != (msg->new_flight_plan.waypoints.end()-1))
+        {
+            new_flight_plan_ss << ",";
+        }
+    }
+    alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
+
+    alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
+
+    ThreatFlightPlan threat_flight_plan;
+    threat_flight_plan.threat_id = msg->threat.threat_id;
+    threat_flight_plan.new_flight_plan = msg->new_flight_plan;
+    if(id_threat_flight_plan_map_.find(msg->uav_id) != id_threat_flight_plan_map_.end())
+    {
+        id_threat_flight_plan_map_[msg->uav_id].push_back(threat_flight_plan);
+    }
+    else
+    {
+        id_threat_flight_plan_map_[msg->uav_id] = std::vector<ThreatFlightPlan>();
+        id_threat_flight_plan_map_[msg->uav_id].push_back(threat_flight_plan);
+    }
 }
 
 void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg)
 {
-    gauss_msgs::WriteOperation write_operation_msg;
-
-    // TODO: Lookup flight plan on d
-
-    if (!write_operation_client_.call(write_operation_msg) || !write_operation_msg.response.success)
+    gauss_msgs::WritePlans write_plans_msg;
+    ThreatFlightPlan threat_flight_plan;
+    uint8_t flight_plan_id = atoi(msg->flight_plan_id.c_str());
+    if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
     {
-        ROS_WARN("Failed to write operation on database after receiving alternative flight plan acknowledge from pilot");
+        threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
+        id_threat_flight_plan_map_[flight_plan_id].erase(id_threat_flight_plan_map_[flight_plan_id].begin());
+    }
+    else
+        return;
+    
+    if (!write_plans_client_.call(write_plans_msg) || !write_plans_msg.response.success)
+    {
+        ROS_WARN("Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
     }
     else
     {
-        ROS_INFO_STREAM(write_operation_msg.response.message);
+        ROS_INFO_STREAM(write_plans_msg.response.message);
     }
     
-    
+    // Send PilotAnswer to Emergency Management
+    gauss_msgs::PilotAnswer pilot_answer_msg;
+    if(msg->accept == 0)
+        pilot_answer_msg.request.pilot_answers.push_back(NO);
+    else if(msg->accept == 1)
+        pilot_answer_msg.request.pilot_answers.push_back(YES);
+
+    pilot_answer_msg.request.threat_ids.push_back(threat_flight_plan.threat_id);
+    if (!send_pilot_answer_client_.call(pilot_answer_msg) || !pilot_answer_msg.response.success)
+    {
+        ROS_WARN("Failed to send pilot answer to Emergency Management");
+    }
 }
 
 // RPAStatus Callback
@@ -189,19 +266,13 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     // TODO: Convert latitude, longitude, altitude to x,y,z
     // The origin latitude and longitude must be known
 
-    geographic_msgs::GeoPoint uav_geo_point;
-    uav_geo_point.altitude = msg->altitude;
-    uav_geo_point.latitude = msg->latitude;
-    uav_geo_point.longitude = msg->longitude;
+    geometry_msgs::Point cartesian_translation;
 
-    geometry_msgs::Point32 cartesian_translation;
-
-    cartesian_translation = geographic_to_cartesian(uav_geo_point, origin_geo_);
+    proj_.Forward(msg->latitude, msg->longitude, msg->altitude, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
 
     //float uav_heading = msg->yaw;
     //tf2::Quaternion aux_quaternion_tf2;
     //aux_quaternion_tf2.setRPY(0,0,(90-uav_heading)/180*M_PI);
-
 
     position_report_msg.position.x = cartesian_translation.x;
     position_report_msg.position.y = cartesian_translation.y;
@@ -230,14 +301,9 @@ void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::Con
     // TODO: Convert latitude, longitude, altitude to x,y,z
     // The origin latitude and longitude must be known
 
-    geographic_msgs::GeoPoint uav_geo_point;
-    uav_geo_point.altitude = msg->altitude;
-    uav_geo_point.latitude = msg->latitude;
-    uav_geo_point.longitude = msg->longitude;
+    geometry_msgs::Point cartesian_translation;
 
-    geometry_msgs::Point32 cartesian_translation;
-
-    cartesian_translation = geographic_to_cartesian(uav_geo_point, origin_geo_);
+    proj_.Forward(msg->latitude, msg->longitude, msg->altitude, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
 
     //float uav_heading = msg->heading;
     //tf2::Quaternion aux_quaternion_tf2;

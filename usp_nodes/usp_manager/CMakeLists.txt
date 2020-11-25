@@ -146,7 +146,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/usp_nodes_node.cpp)
 
 add_executable(USPmanager src/USPmanager.cpp)
-target_link_libraries(USPmanager ${catkin_LIBRARIES})
+target_link_libraries(USPmanager ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES})
 add_dependencies(USPmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 add_executable(usp_manager_ual_bridge src/usp_manager_ual_bridge.cpp)
