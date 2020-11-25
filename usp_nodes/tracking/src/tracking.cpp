@@ -13,18 +13,12 @@
 #include <tracking/target_tracker.h>
 #include <limits>
 
-#include <tracking/geographic_to_cartesian.hpp>
-
 #include <gauss_msgs/Operation.h>
 
 //#define DEBUG
 
 #define COV_SPEED_XY 0.0
 #define VAR_SPEED 1.0
-
-// TODO: Maybe a conversion from geographical coordinates will be needed in the future
-//#define GEO_ORIGIN_LATITUDE 36.536291
-//#define GEO_ORIGIN_LONGITUDE -6.282740
 
 #define pair_uav_id_icao std::pair<uint8_t, std::string>
 #define pair_icao_uav_id std::pair<std::string, uint8_t>
@@ -95,7 +89,6 @@ private:
     // Estimator
     std::vector<Candidate *> candidates_;
 
-    geographic_msgs::GeoPoint origin_geo_;
     double origin_frame_longitude_;
     double origin_frame_latitude_;
 
