@@ -111,7 +111,7 @@ find_package(Boost REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include
+#INCLUDE_DIRS include
  LIBRARIES usp_nodes
  CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs
  DEPENDS EIGEN3 Boost
@@ -124,7 +124,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
- include
+#include
  ${catkin_INCLUDE_DIRS}
  ${EIGEN3_INCLUDE_DIR}
  ${Boost_INCLUDE_DIR}
