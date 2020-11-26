@@ -13,7 +13,7 @@
 #include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
 
 #include <gauss_msgs/PositionReport.h>
-#include <gauss_msgs/Notification.h>
+#include <gauss_msgs/Notifications.h>
 // #include <gauss_msgs/Alert.h>
 #include <gauss_msgs/Operation.h>
 #include <gauss_msgs/Waypoint.h>
@@ -55,9 +55,10 @@ public:
 
 private:
     // Topic Callbacks
-    void notificationCB(const gauss_msgs::Notification::ConstPtr& msg); // UTM -> RPS
     void RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg); // RPS -> UTM
     void ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::ConstPtr& msg); // RPS -> UTM
+    // Server Callbacks
+    bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res); // UTM -> RPS
 
     // TODO: Think how to implement this
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
@@ -88,9 +89,11 @@ private:
     //ros::Timer timer_sub_;
 
     // Subscribers
-    ros::Subscriber notification_sub_;
     ros::Subscriber rpaState_sub_;
     ros::Subscriber adsb_sub_;
+
+    // Server 
+    ros::ServiceServer notification_server_;
 
     // Clients
     //ros::ServiceClient alert_client_;
@@ -134,9 +137,11 @@ proj_(lat0_, lon0_, 0, earth_)
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
 
     // Subscribe
-    notification_sub_ = nh_.subscribe<gauss_msgs::Notification>("/gauss/notification",1,&USPManager::notificationCB,this);
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",10,&USPManager::RPAStateCB,this);
     adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
+
+    // Server 
+    notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
 
     // Client
     // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
@@ -157,7 +162,7 @@ proj_(lat0_, lon0_, 0, earth_)
 }
 
 // Notification callback
-void USPManager::notificationCB(const gauss_msgs::Notification::ConstPtr& msg)
+bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res)
 {
     /*
     gauss_msgs_mqtt::UTMAlert utm_alert_msg;
@@ -166,46 +171,50 @@ void USPManager::notificationCB(const gauss_msgs::Notification::ConstPtr& msg)
     alert_pub_.publish(utm_alert_msg);
     */
 
-    gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
-    std::string uav_id_string = std::to_string(msg->uav_id);
-    int n_zeros = 0;
-    if(uav_id_string.length() == 1)
-        n_zeros = 1;
-    alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
-    alternative_flight_plan_msg.icao = id_icao_map_[msg->uav_id].c_str();
+    for (auto msg : req.notifications){
+        gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
+        std::string uav_id_string = std::to_string(msg.uav_id);
+        int n_zeros = 0;
+        if(uav_id_string.length() == 1)
+            n_zeros = 1;
+        alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
+        alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id].c_str();
 
-    std::ostringstream new_flight_plan_ss;
+        std::ostringstream new_flight_plan_ss;
 
-    new_flight_plan_ss << "[";
-
-    for(auto it=msg->new_flight_plan.waypoints.begin(); it!=msg->new_flight_plan.waypoints.end(); it++)
-    {
         new_flight_plan_ss << "[";
-        double lat,lon,h;
-        proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
-        new_flight_plan_ss << lon <<", " << lat << ", " << h << ", " << it->stamp.toSec();
-        new_flight_plan_ss << "]";
-        if(it != (msg->new_flight_plan.waypoints.end()-1))
+
+        for(auto it=msg.new_flight_plan.waypoints.begin(); it!=msg.new_flight_plan.waypoints.end(); it++)
         {
-            new_flight_plan_ss << ",";
+            new_flight_plan_ss << "[";
+            double lat,lon,h;
+            proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
+            new_flight_plan_ss << lon <<", " << lat << ", " << h << ", " << it->stamp.toSec();
+            new_flight_plan_ss << "]";
+            if(it != (msg.new_flight_plan.waypoints.end()-1))
+            {
+                new_flight_plan_ss << ",";
+            }
+        }
+        alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
+
+        alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
+
+        ThreatFlightPlan threat_flight_plan;
+        threat_flight_plan.threat_id = msg.threat.threat_id;
+        threat_flight_plan.new_flight_plan = msg.new_flight_plan;
+        if(id_threat_flight_plan_map_.find(msg.uav_id) != id_threat_flight_plan_map_.end())
+        {
+            id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
+        }
+        else
+        {
+            id_threat_flight_plan_map_[msg.uav_id] = std::vector<ThreatFlightPlan>();
+            id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
         }
     }
-    alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
-
-    alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
-
-    ThreatFlightPlan threat_flight_plan;
-    threat_flight_plan.threat_id = msg->threat.threat_id;
-    threat_flight_plan.new_flight_plan = msg->new_flight_plan;
-    if(id_threat_flight_plan_map_.find(msg->uav_id) != id_threat_flight_plan_map_.end())
-    {
-        id_threat_flight_plan_map_[msg->uav_id].push_back(threat_flight_plan);
-    }
-    else
-    {
-        id_threat_flight_plan_map_[msg->uav_id] = std::vector<ThreatFlightPlan>();
-        id_threat_flight_plan_map_[msg->uav_id].push_back(threat_flight_plan);
-    }
+    res.success = true;
+    return res.success;
 }
 
 void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg)

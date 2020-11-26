@@ -43,6 +43,7 @@ class USPUALBridge {
     void callbackPose(const geometry_msgs::PoseStampedConstPtr& pose_ptr);
     void callbackState(const uav_abstraction_layer::State& state_ptr);
     void callbackVelocity(const geometry_msgs::TwistStampedConstPtr& velocity_ptr);
+    void callbackAlternativeFlightPlan(const gauss_msgs_mqtt::UTMAlternativeFlightPlan& alt_flight_plan);
     // Auxilary variables
     double rate_;
     int uav_id_;
@@ -55,6 +56,7 @@ class USPUALBridge {
     ros::Subscriber pose_sub_;
     ros::Subscriber state_sub_;
     ros::Subscriber velocity_sub_;
+    ros::Subscriber alternative_flight_plan_sub_;
 
     //message_filters::Synchronizer<ApproxTimeSyncPolicy> sync_;
 
@@ -103,6 +105,7 @@ USPUALBridge::USPUALBridge() : available_velocity_msg_(false),
     state_sub_ = nh_.subscribe("/" + ns_prefix + std::to_string(uav_id_) + "/ual/state", 1, &USPUALBridge::callbackState, this);
     pose_sub_ = nh_.subscribe<geometry_msgs::PoseStamped>("/" + ns_prefix + std::to_string(uav_id_) + "/ual/pose", 1, &USPUALBridge::callbackPose, this);
     velocity_sub_ = nh_.subscribe<geometry_msgs::TwistStamped>("/" + ns_prefix + std::to_string(uav_id_) + "/ual/velocity", 1, &USPUALBridge::callbackVelocity, this);
+    alternative_flight_plan_sub_ = nh_.subscribe("/gauss/alternative_flight_plan", 1, &USPUALBridge::callbackAlternativeFlightPlan, this);
 
     // Service client
     ros::ServiceClient read_operation_client = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
@@ -154,6 +157,43 @@ void USPUALBridge::callbackSyncPoseVelocity(const geometry_msgs::PoseStampedCons
     std::cout << "Pose stamp " << pose_ptr->header.stamp << std::endl;
     std::cout << "Velocity stamp " << velocity_ptr->header.stamp << std::endl;
 }*/
+
+void USPUALBridge::callbackAlternativeFlightPlan(const gauss_msgs_mqtt::UTMAlternativeFlightPlan& alt_flight_plan){
+    if (alt_flight_plan.icao == icao_address_){
+        std::string flight_plan_string = alt_flight_plan.new_flight_plan;
+        // Replace characters
+        std::string replace_str = "],[";
+        for (int i = flight_plan_string.find(replace_str); i >= 0; i = flight_plan_string.find(replace_str))
+            flight_plan_string.replace(i, replace_str.size(), " ");
+        // Remove useless characters
+        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), ','),  flight_plan_string.end());
+        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), '['),  flight_plan_string.end());
+        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), ']'),  flight_plan_string.end());
+        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), '\n'), flight_plan_string.end());
+        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), '\r'), flight_plan_string.end());
+        // Clear follower input
+        ual_communication_.times_.clear();
+        ual_communication_.flag_redo_ = true;
+        ual_communication_.init_path_.poses.clear();
+        ual_communication_.init_path_.header.frame_id = "map";
+        // Save the value and substract it from the string
+        std::string::size_type sz;
+        while (flight_plan_string.size()>0){
+            geometry_msgs::PoseStamped new_poses;
+            double longitude, latitude, altitude;
+            longitude = (double)std::stod(flight_plan_string, &sz);
+            flight_plan_string = flight_plan_string.substr(sz);
+            latitude = (double)std::stod(flight_plan_string, &sz);
+            flight_plan_string = flight_plan_string.substr(sz);
+            altitude = (double)std::stod(flight_plan_string, &sz);
+            flight_plan_string = flight_plan_string.substr(sz);
+            proj_.Forward(latitude, longitude, altitude, new_poses.pose.position.x, new_poses.pose.position.y, new_poses.pose.position.z);
+            ual_communication_.init_path_.poses.push_back(new_poses);
+            ual_communication_.times_.push_back((double)std::stod(flight_plan_string, &sz));
+            flight_plan_string = flight_plan_string.substr(sz);
+        }
+    }    
+}
 
 void USPUALBridge::callbackPose(const geometry_msgs::PoseStampedConstPtr& pose_ptr) {
     // if (available_velocity_msg_) {
