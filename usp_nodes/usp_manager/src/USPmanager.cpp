@@ -66,8 +66,10 @@ private:
     bool initializeICAOIDMap();
     bool initializeIDOperationMap();
 
+    /*
     // Timer Callbacks
     void timerCallback(const ros::TimerEvent&);
+    */
 
     // Auxilary variables
     double rate;
@@ -83,7 +85,7 @@ private:
     std::map<uint8_t, std::vector<ThreatFlightPlan>> id_threat_flight_plan_map_;
 
     // Timer
-    ros::Timer timer_sub_;
+    //ros::Timer timer_sub_;
 
     // Subscribers
     ros::Subscriber notification_sub_;
@@ -147,7 +149,7 @@ proj_(lat0_, lon0_, 0, earth_)
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
 
     // Timer
-    timer_sub_=nh_.createTimer(ros::Duration(1.0/rate),&USPManager::timerCallback,this);
+    //timer_sub_=nh_.createTimer(ros::Duration(1.0/rate),&USPManager::timerCallback,this);
 
     ROS_INFO("Started USPManager node!");
 
@@ -165,8 +167,12 @@ void USPManager::notificationCB(const gauss_msgs::Notification::ConstPtr& msg)
     */
 
     gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
-    alternative_flight_plan_msg.flight_plan_id = msg->uav_id;
-    alternative_flight_plan_msg.icao = atoi(id_icao_map_[msg->uav_id].c_str());
+    std::string uav_id_string = std::to_string(msg->uav_id);
+    int n_zeros = 0;
+    if(uav_id_string.length() == 1)
+        n_zeros = 1;
+    alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
+    alternative_flight_plan_msg.icao = id_icao_map_[msg->uav_id].c_str();
 
     std::ostringstream new_flight_plan_ss;
 
@@ -206,7 +212,8 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
 {
     gauss_msgs::WritePlans write_plans_msg;
     ThreatFlightPlan threat_flight_plan;
-    uint8_t flight_plan_id = atoi(msg->flight_plan_id.c_str());
+    std::string flight_plan_id_aux = msg->flight_plan_id;
+    uint8_t flight_plan_id = atoi(flight_plan_id_aux.erase((size_t)0,(size_t)7).c_str());
     if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
     {
         threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
@@ -320,6 +327,7 @@ void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::Con
     position_report_pub_.publish(position_report_msg);
 }
 
+/*
 // Timer Callback
 void USPManager::timerCallback(const ros::TimerEvent &)
 {
@@ -327,6 +335,7 @@ void USPManager::timerCallback(const ros::TimerEvent &)
 
 
 }
+*/
 
 bool USPManager::initializeICAOIDMap()
 {
