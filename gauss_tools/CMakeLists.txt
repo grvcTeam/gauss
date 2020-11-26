@@ -1,26 +1,23 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(monitoring)
+cmake_minimum_required(VERSION 3.0.2)
+project(gauss_tools)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++11 -g3)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  gauss_msgs
   roscpp
   rospy
-  geometry_msgs
-  nav_msgs
-  std_msgs
 )
-find_package(Eigen3 REQUIRED)
-
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(GeographicLib REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP jsoncpp)
+link_libraries(${JSONCPP_LIBRARIES})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -75,7 +72,7 @@ find_package(Eigen3 REQUIRED)
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   gauss_msgs
+#   std_msgs  # Or other packages containing msgs
 # )
 
 ################################################
@@ -109,9 +106,9 @@ find_package(Eigen3 REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
- LIBRARIES usp_nodes
- CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs
- DEPENDS EIGEN3
+#  LIBRARIES gauss_tools
+#  CATKIN_DEPENDS roscpp rospy
+#  DEPENDS system_lib
 )
 
 ###########
@@ -121,14 +118,14 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-#  include
- ${catkin_INCLUDE_DIRS}
- ${EIGEN3_INCLUDE_DIR}
+# include
+  ${catkin_INCLUDE_DIRS}
+  ${jsoncpp_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/usp_nodes.cpp
+#   src/${PROJECT_NAME}/gauss_tools.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -139,11 +136,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/usp_nodes_node.cpp)
-
-add_executable(monitoring src/monitoring.cpp)
-target_link_libraries(monitoring ${catkin_LIBRARIES})
-add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+# add_executable(${PROJECT_NAME}_node src/gauss_tools_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -159,6 +152,10 @@ add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+link_directories(/usr/lib/x86_64-linux-gnu)
+add_executable(flight_plan_kml_to_json src/flight_plan_kml_to_json.cpp)
+add_dependencies(flight_plan_kml_to_json ${catkin_EXPORTED_TARGETS})
+target_link_libraries(flight_plan_kml_to_json ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES} /usr/lib/x86_64-linux-gnu/libpugixml.so)
 
 #############
 ## Install ##
@@ -169,16 +166,23 @@ add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
+# catkin_install_python(PROGRAMS
 #   scripts/my_python_script
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
-## Mark executables and/or libraries for installation
-# install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
+## Mark executables for installation
+## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
+# install(TARGETS ${PROJECT_NAME}_node
+#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
+
+## Mark libraries for installation
+## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
+# install(TARGETS ${PROJECT_NAME}
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 # )
 
 ## Mark cpp header files for installation
@@ -200,7 +204,7 @@ add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_usp_nodes.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_gauss_tools.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

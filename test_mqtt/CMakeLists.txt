@@ -104,9 +104,9 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+# INCLUDE_DIRS include
 #  LIBRARIES test_mqtt
-#  CATKIN_DEPENDS mqqt_bridge roscpp rospy
+  CATKIN_DEPENDS mqtt_bridge roscpp rospy
 #  DEPENDS system_lib
 )
 

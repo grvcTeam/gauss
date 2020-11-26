@@ -29,7 +29,7 @@ class EmergencyManagement():
         
         # Initialization
 
-        self._threats_list = [] # Lista de objetos Threat2Solve() que la relleno en el threats_cb
+        self._threats_list = [] 
         self._notifications_list = []   
         self._conflictive_operations = []
         self._conflictive_geofences = []    
@@ -94,7 +94,6 @@ class EmergencyManagement():
     def create_new_flight_plan(self, conflictive_operations, threat2solve, maneuver, tactical_wps):
         conflictive_operation = ConflictiveOperation()
         conflict_operation_list = conflictive_operations
-        #print("La lista de operaciones conflictivas es:", conflict_operation_list)
         new_flight_plan = WaypointList()
         merge2end = False
         flighplansection = 0
@@ -108,12 +107,6 @@ class EmergencyManagement():
                 flightplan = conflictive_operation.flight_plan_updated
                 current_wp = conflictive_operation.current_wp
                 actual_wp  = conflictive_operation.actual_wp
-
-        # print("_____________________________________________________________")
-        # print("tactical_wps:", tactical_wps)
-        # print("flightplan:", flightplan)
-        # print("current_wp:", current_wp)
-        # print(threat.threat_type)
 
         if threat.threat_type == threat.GEOFENCE_CONFLICT:
             if maneuver == 1: # Route to my destination avoiding a geofence.
@@ -205,7 +198,6 @@ class EmergencyManagement():
                 flightplan.waypoints[i].y == tactical_wps.waypoints[-1].y and
                 flightplan.waypoints[i].z == tactical_wps.waypoints[-1].z):
                     flighplansection = 4
-                    # rospy.loginfo('section = {}'.format(flighplansection))
 
             elif flighplansection == 4: #Introduce the rest of the flight plan
                 temp_pose = Waypoint()
@@ -214,10 +206,7 @@ class EmergencyManagement():
                 temp_pose.z = flightplan.waypoints[i].z
                 temp_pose.stamp = flightplan.waypoints[i].stamp
                 new_flight_plan.waypoints.append(temp_pose)
-                # print("new_flight_plan at {}: {}".format(i, new_flight_plan))
-
-        # print("new_flight_plan:", new_flight_plan)
-        # print("_________________________________")
+        
         return new_flight_plan
         
 
@@ -275,7 +264,6 @@ class EmergencyManagement():
 
             if threat_type == Threat.LOSS_OF_SEPARATION:
                 self.send_threat2deconfliction(threat)
-                print("Respuesta de Tactical deconfliction", self._deconfliction_response)
                 for uav in uavs_threatened:
                     if uav == self._deconfliction_response.deconfliction_plans[0].uav_id:
                         best_solution = self.select_optimal_route()
@@ -290,8 +278,6 @@ class EmergencyManagement():
                         current_wp = conflictive_operation.current_wp
                 notification.current_wp = current_wp
                 notification.waypoints = best_solution.waypoint_list
-                #print("Esto le mandamos a hector:", notification.waypoints)
-                #print("La solucion de tactical es", notification.waypoints)
                 notification.flight_plan = flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
@@ -346,8 +332,7 @@ class EmergencyManagement():
                     
             '''Threat GEOFENCE CONFLICT: we ask to tactical possible solution trajectories'''
 
-            if threat_type == Threat.GEOFENCE_CONFLICT:  
-                #Publish the action which the UAV has to make.    
+            if threat_type == Threat.GEOFENCE_CONFLICT:     
                 self.send_threat2deconfliction(threat)
                 best_solution = self.select_optimal_route()
                 notification.uav_id = best_solution.uav_id
@@ -361,7 +346,6 @@ class EmergencyManagement():
                         current_wp = conflictive_operation.current_wp
                 notification.current_wp = current_wp
                 notification.waypoints = best_solution.waypoint_list
-                #print("La solucion de tactical es", notification.waypoints)
                 notification.flight_plan = flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
@@ -501,7 +485,8 @@ class EmergencyManagement():
                 notification.flight_plan = flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
-        #print(self._notifications_list)
+        self.send_notifications(self._notifications_list)
+
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
@@ -515,9 +500,6 @@ class EmergencyManagement():
             self._conflictive_operations.append(req.operations[i])
         for i in range(len(req.geofences)):
             self._conflictive_geofences.append(req.geofences[i])    
-        #print(self._threats_list)
-        #print(self._conflictive_operations)
-        #print(self._conflictive_geofences)
         res = ThreatsResponse()
         res.success = True
         return res 
@@ -553,10 +535,8 @@ class EmergencyManagement():
                     conflictive_operations_updated = self.ask_update_threat(threat_id).operations
                     self.action_decision_maker(threat.threat_msg, conflictive_operations_updated)
                     threat.status = 'DONE'
-            self.send_notifications(self._notifications_list)
-            
+                        
         rospy.loginfo("The number of Threats active in the U-space is %d", num)
-        #print(self._notifications_list)
 
 ''' The node and the EmergencyManagement class are initialized'''
 
