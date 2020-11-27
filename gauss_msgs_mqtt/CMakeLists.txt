@@ -56,6 +56,7 @@ find_package(catkin REQUIRED COMPONENTS
    RPSFlightPlanAccept.msg
    UTMAlert.msg
    UTMAlternativeFlightPlan.msg
+   UTMGeofenceCreation.msg
  )
 
 ## Generate services in the 'srv' folder
