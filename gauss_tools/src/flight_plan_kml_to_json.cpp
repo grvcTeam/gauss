@@ -146,7 +146,7 @@ int main(int argc, char** argv)
                 previous_y = y;
                 previous_z = z;
                 //flight_plan_ss << ",(" << std::setw(10) << x << std::setw(1) <<"," << std::setw(10) << y << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< ")";
-                flight_plan_ss << ",(" << std::setw(10) << lon << std::setw(1) <<"," << std::setw(10) << lat << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< ")";
+                flight_plan_ss << ",[" << std::setw(10) << lon << std::setw(1) <<"," << std::setw(10) << lat << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< "]";
             }
             
             //root["flight_plan"]["waypoints"].append(waypoint);
