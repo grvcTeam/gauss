@@ -12,19 +12,19 @@ bridge:
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:GCSFlightPlan
     topic_from: gcsflightplan/+
-    topic_to: /gcsflightplan
+    topic_to: /gauss/gcsflightplan
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPSChangeFlightStatus
     topic_from: flight/+
-    topic_to: /flight
+    topic_to: /gauss/flight
 
   - factory: mqtt_bridge.bridge:AlternativeFlightPlanRosToMqttBridge
     msg_type: gauss_msgs_mqtt.msg:UTMAlternativeFlightPlan
-    topic_from: /utmflightplan 
+    topic_from: /gauss/alternative_flight_plan 
     topic_to: utmflightplan/
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPSFlightPlanAccept
     topic_from: flightacceptance
-    topic_to: /flightacceptance
+    topic_to: /gauss/flightacceptance
