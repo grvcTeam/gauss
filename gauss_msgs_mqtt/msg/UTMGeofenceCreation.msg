@@ -5,6 +5,6 @@ float32 circle_radius
 float32 start_altitude
 float32 end_altitude
 uint32 start_time
-uint32 end_time
+uint32 finish_time
 float32 confidence
 string description
