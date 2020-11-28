@@ -68,54 +68,27 @@ class GaussPlugin(Plugin):
 
     def show_pop_up(self):
         msg = QMessageBox()
-        msg.setWindowTitle('Request from UTM')
-        msg.setText('Alternative flight plan received')
+        msg.setWindowTitle('Alternative flight plan received')
+        msg.setText('Accept alternative flight plan?')
         msg.setIcon(QMessageBox.Question)
         msg.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
         msg.setDefaultButton(QMessageBox.No)
-        msg.setInformativeText('Accept new plan?')
+        # msg.setInformativeText('Accept new plan?')
         msg.setDetailedText('{}'.format(self.alternative_flight_plan))
         # msg.buttonClicked.connect(self.handle_message_box)  # TODO: do handling here?
-
         pop_up_response = msg.exec_()
         ros_response = RPSFlightPlanAccept()
         ros_response.icao = self.alternative_flight_plan.icao
         ros_response.flight_plan_id = self.alternative_flight_plan.flight_plan_id
-        # print(pop_up_response.text())
         if pop_up_response == QMessageBox.Yes:
             ros_response.accept = True
-            print('yes')
         if pop_up_response == QMessageBox.No:
             ros_response.accept = False
-            print('no')
         self.acceptance_pub.publish(ros_response)
         self.alternative_flight_plan = None
 
-    # def handle_message_box(self, x):
-    #     # self.alternative_flight_plan = None
-    #     response = RPSFlightPlanAccept()
-    #     response.icao = self.alternative_flight_plan.icao
-    #     response.flight_plan_id = self.alternative_flight_plan.flight_plan_id
-    #     print(x.text())
-    #     if x == QMessageBox.Yes:
-    #         print('yes')
-    #     if x == QMessageBox.No:
-    #         print('no')
-    #     self.acceptance_pub.publish(response)
-
     # def handle_gauss_test_button_clicked(self):
     #     rospy.logerr('Having fun pushing buttons?')
-    #     msg = QMessageBox()
-    #     msg.setWindowTitle('Congratulations')
-    #     msg.setText('Having fun pushing buttons?')
-    #     msg.setIcon(QMessageBox.Information)
-    #     msg.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
-    #     msg.setDefaultButton(QMessageBox.No)
-    #     msg.setInformativeText('Always read the small text...')
-    #     msg.setDetailedText('Well done!')
-    #     msg.buttonClicked.connect(self.handle_message_box)
-
-    #     x = msg.exec_()
 
     def shutdown_plugin(self):
         # TODO unregister all publishers here
