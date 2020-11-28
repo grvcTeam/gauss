@@ -4,9 +4,12 @@ import rospy
 
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
-from python_qt_binding.QtWidgets import QWidget
+from python_qt_binding.QtCore import Signal
+from python_qt_binding.QtWidgets import QWidget, QMessageBox
+from gauss_msgs_mqtt.msg import UTMAlternativeFlightPlan, RPSFlightPlanAccept, RPSChangeFlightStatus
 
 class GaussPlugin(Plugin):
+    pop_up = Signal()
 
     def __init__(self, context):
         super(GaussPlugin, self).__init__(context)
@@ -38,7 +41,12 @@ class GaussPlugin(Plugin):
 
         # Do connections and stuff here. For complex plugins, consider
         # creating custom helper classes instead of QWidget
-        self._widget.gauss_test_button.clicked[bool].connect(self._handle_gauss_test_button_clicked)
+        # self._widget.gauss_test_button.clicked[bool].connect(self.handle_gauss_test_button_clicked)
+        self.status_pub = rospy.Publisher('/gauss/flight', RPSChangeFlightStatus, queue_size=1)
+        self.acceptance_pub = rospy.Publisher('/gauss/flightacceptance', RPSFlightPlanAccept, queue_size=1)
+        rospy.Subscriber('/gauss/alternative_flight_plan', UTMAlternativeFlightPlan, self.alternative_flight_plan_callback)
+        self.pop_up.connect(self.show_pop_up)
+        self.alternative_flight_plan = None
 
         # Show _widget.windowTitle on left-top of each plugin (when 
         # it's set in _widget). This is useful when you open multiple 
@@ -50,8 +58,64 @@ class GaussPlugin(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
 
-    def _handle_gauss_test_button_clicked(self):
-        rospy.logerr('Having fun pushing buttons?')
+    def alternative_flight_plan_callback(self, data):
+        if self.alternative_flight_plan is None:
+            self.alternative_flight_plan = data
+            rospy.loginfo('Received: [{}]'.format(data))
+            self.pop_up.emit()
+        else:
+            rospy.loginfo('Waiting for pilot response...')
+
+    def show_pop_up(self):
+        msg = QMessageBox()
+        msg.setWindowTitle('Request from UTM')
+        msg.setText('Alternative flight plan received')
+        msg.setIcon(QMessageBox.Question)
+        msg.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.No)
+        msg.setInformativeText('Accept new plan?')
+        msg.setDetailedText('{}'.format(self.alternative_flight_plan))
+        # msg.buttonClicked.connect(self.handle_message_box)  # TODO: do handling here?
+
+        pop_up_response = msg.exec_()
+        ros_response = RPSFlightPlanAccept()
+        ros_response.icao = self.alternative_flight_plan.icao
+        ros_response.flight_plan_id = self.alternative_flight_plan.flight_plan_id
+        # print(pop_up_response.text())
+        if pop_up_response == QMessageBox.Yes:
+            ros_response.accept = True
+            print('yes')
+        if pop_up_response == QMessageBox.No:
+            ros_response.accept = False
+            print('no')
+        self.acceptance_pub.publish(ros_response)
+        self.alternative_flight_plan = None
+
+    # def handle_message_box(self, x):
+    #     # self.alternative_flight_plan = None
+    #     response = RPSFlightPlanAccept()
+    #     response.icao = self.alternative_flight_plan.icao
+    #     response.flight_plan_id = self.alternative_flight_plan.flight_plan_id
+    #     print(x.text())
+    #     if x == QMessageBox.Yes:
+    #         print('yes')
+    #     if x == QMessageBox.No:
+    #         print('no')
+    #     self.acceptance_pub.publish(response)
+
+    # def handle_gauss_test_button_clicked(self):
+    #     rospy.logerr('Having fun pushing buttons?')
+    #     msg = QMessageBox()
+    #     msg.setWindowTitle('Congratulations')
+    #     msg.setText('Having fun pushing buttons?')
+    #     msg.setIcon(QMessageBox.Information)
+    #     msg.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
+    #     msg.setDefaultButton(QMessageBox.No)
+    #     msg.setInformativeText('Always read the small text...')
+    #     msg.setDetailedText('Well done!')
+    #     msg.buttonClicked.connect(self.handle_message_box)
+
+    #     x = msg.exec_()
 
     def shutdown_plugin(self):
         # TODO unregister all publishers here
