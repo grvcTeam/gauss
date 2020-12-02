@@ -59,6 +59,7 @@ private:
     void ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::ConstPtr& msg); // RPS -> UTM
     // Server Callbacks
     bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res); // UTM -> RPS
+    void RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg); // RPS -> UTM
 
     // TODO: Think how to implement this
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
@@ -91,6 +92,8 @@ private:
     // Subscribers
     ros::Subscriber rpaState_sub_;
     ros::Subscriber adsb_sub_;
+    ros::Subscriber flight_plan_accept_sub_;
+    ros::Subscriber flight_status_sub_;
 
     // Server 
     ros::ServiceServer notification_server_;
@@ -129,19 +132,19 @@ proj_(lat0_, lon0_, 0, earth_)
 
     // Initialization
 
-
     // Publish
     rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
 
-    // Subscribe
-    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",10,&USPManager::RPAStateCB,this);
-    adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
-
     // Server 
     notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
+    // Subscribe
+    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",1,&USPManager::RPAStateCB,this);
+    adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 1, &USPManager::ADSBSurveillanceCB, this);
+    flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 1, &USPManager::RPSFlightPlanAcceptCB, this);
+    flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 1, &USPManager::RPSChangeFlightStatusCB, this);
 
     // Client
     // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
@@ -222,7 +225,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
     gauss_msgs::WritePlans write_plans_msg;
     ThreatFlightPlan threat_flight_plan;
     std::string flight_plan_id_aux = msg->flight_plan_id;
-    uint8_t flight_plan_id = atoi(flight_plan_id_aux.erase((size_t)0,(size_t)7).c_str());
+    uint8_t flight_plan_id = std::atoi(flight_plan_id_aux.erase((size_t)0,(size_t)7).c_str());
     if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
     {
         threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
@@ -334,6 +337,12 @@ void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::Con
     position_report_msg.speed = msg->speed;
 
     position_report_pub_.publish(position_report_msg);
+}
+
+void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg)
+{
+    std::cout << "Executing callback\n";
+    ROS_INFO_STREAM("Received RPSChangeFlightStatus message. Flight Plan ID: " << msg->flight_plan_id << " ICAO: " << msg->icao << " STATUS: " << msg->status);
 }
 
 /*
