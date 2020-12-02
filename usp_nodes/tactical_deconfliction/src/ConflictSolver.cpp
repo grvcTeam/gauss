@@ -62,12 +62,12 @@ ConflictSolver::ConflictSolver()
 {
     // Read parameters
     nh_.param("/gauss/safetyDistance",minDist,10.0);
-    nh_.param("/gauss/deltaX",minX,0.0);
-    nh_.param("/gauss/deltaY",minY,0.0);
-    nh_.param("/gauss/deltaZ",minZ,0.0);
-    nh_.param("/gauss/deltaX",maxX,200.0);
-    nh_.param("/gauss/deltaY",maxY,200.0);
-    nh_.param("/gauss/deltaZ",maxZ,30.0);
+    nh_.param("/gauss/minX",minX,-200.0);
+    nh_.param("/gauss/minY",minY,-200.0);
+    nh_.param("/gauss/minZ",minZ,0.0);
+    nh_.param("/gauss/maxX",maxX,200.0);
+    nh_.param("/gauss/maxY",maxY,200.0);
+    nh_.param("/gauss/maxZ",maxZ,30.0);
 
     nh_.param("/gauss/monitoring_rate",rate,0.2);
 
@@ -523,8 +523,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 if (k>0)
                     newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
                 newwp=traj2.waypoints.at(k);
-                newwp.x=wp1.x+sep_hor*(wp2.x-wp1.x)/dist_hor;
-                newwp.y=wp1.y+sep_hor*(wp2.y-wp1.y)/dist_hor;
+                if (dist_hor == 0){
+                    newwp.x=wp1.x+sep_hor;
+                    newwp.y=wp1.y+sep_hor;
+                } else {
+                    newwp.x=wp1.x+sep_hor*(wp2.x-wp1.x)/dist_hor;
+                    newwp.y=wp1.y+sep_hor*(wp2.y-wp1.y)/dist_hor;
+                }
                 if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
                 {
                     newplan.waypoint_list.push_back(newwp);
@@ -540,8 +545,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 if (k>0)
                     newplan.waypoint_list.push_back(traj2.waypoints.at(k-1));
                 newwp=traj2.waypoints.at(k);
-                newwp.x=wp1.x-sep_hor*(wp2.x-wp1.x)/dist_hor;
-                newwp.y=wp1.y-sep_hor*(wp2.y-wp1.y)/dist_hor;
+                if (dist_hor == 0){
+                    newwp.x=wp1.x-sep_hor;
+                    newwp.y=wp1.y-sep_hor;
+                } else {
+                    newwp.x=wp1.x-sep_hor*(wp2.x-wp1.x)/dist_hor;
+                    newwp.y=wp1.y-sep_hor*(wp2.y-wp1.y)/dist_hor;
+                }
                 if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
                 {
                     newplan.waypoint_list.push_back(newwp);
@@ -592,8 +602,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 if (j>0)
                     newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
                 newwp=traj1.waypoints.at(j);
-                newwp.x=wp2.x+sep_hor*(wp1.x-wp2.x)/dist_hor;
-                newwp.y=wp2.y+sep_hor*(wp1.y-wp2.y)/dist_hor;
+                if (dist_hor == 0){
+                    newwp.x=wp2.x+sep_hor;
+                    newwp.y=wp2.y+sep_hor;
+                } else {
+                    newwp.x=wp2.x+sep_hor*(wp1.x-wp2.x)/dist_hor;
+                    newwp.y=wp2.y+sep_hor*(wp1.y-wp2.y)/dist_hor;
+                }
                 if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
                 {
                     newplan.waypoint_list.push_back(newwp);
@@ -609,8 +624,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 if (j>0)
                     newplan.waypoint_list.push_back(traj1.waypoints.at(j-1));
                 newwp=traj1.waypoints.at(j);
-                newwp.x=wp2.x-sep_hor*(wp1.x-wp2.x)/dist_hor;
-                newwp.y=wp2.y-sep_hor*(wp1.y-wp2.y)/dist_hor;
+                if (dist_hor == 0){
+                    newwp.x=wp2.x-sep_hor;
+                    newwp.y=wp2.y-sep_hor;
+                } else {
+                    newwp.x=wp2.x-sep_hor*(wp1.x-wp2.x)/dist_hor;
+                    newwp.y=wp2.y-sep_hor*(wp1.y-wp2.y)/dist_hor;
+                }
                 if (newwp.x<=maxX && newwp.x>=minX && newwp.y<=maxY && newwp.y>=minY)
                 {
                     newplan.waypoint_list.push_back(newwp);
