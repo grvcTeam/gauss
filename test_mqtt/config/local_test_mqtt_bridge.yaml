@@ -2,7 +2,7 @@ mqtt:
   client:
     protocol: 4      # MQTTv311
   connection:
-    host: 95.216.180.100
+    host: 127.0.0.1
     port: 1883
     keepalive: 60
 serializer: json:dumps
