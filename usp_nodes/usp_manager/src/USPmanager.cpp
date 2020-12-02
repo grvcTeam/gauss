@@ -13,7 +13,7 @@
 #include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
 
 #include <gauss_msgs/PositionReport.h>
-#include <gauss_msgs/Notification.h>
+#include <gauss_msgs/Notifications.h>
 // #include <gauss_msgs/Alert.h>
 #include <gauss_msgs/Operation.h>
 #include <gauss_msgs/Waypoint.h>
@@ -55,9 +55,11 @@ public:
 
 private:
     // Topic Callbacks
-    void notificationCB(const gauss_msgs::Notification::ConstPtr& msg); // UTM -> RPS
     void RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg); // RPS -> UTM
     void ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::ConstPtr& msg); // RPS -> UTM
+    // Server Callbacks
+    bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res); // UTM -> RPS
+    void RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg); // RPS -> UTM
 
     // TODO: Think how to implement this
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
@@ -88,9 +90,13 @@ private:
     //ros::Timer timer_sub_;
 
     // Subscribers
-    ros::Subscriber notification_sub_;
     ros::Subscriber rpaState_sub_;
     ros::Subscriber adsb_sub_;
+    ros::Subscriber flight_plan_accept_sub_;
+    ros::Subscriber flight_status_sub_;
+
+    // Server 
+    ros::ServiceServer notification_server_;
 
     // Clients
     //ros::ServiceClient alert_client_;
@@ -126,17 +132,19 @@ proj_(lat0_, lon0_, 0, earth_)
 
     // Initialization
 
-
     // Publish
     rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
 
+    // Server 
+    notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
     // Subscribe
-    notification_sub_ = nh_.subscribe<gauss_msgs::Notification>("/gauss/notification",1,&USPManager::notificationCB,this);
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",1,&USPManager::RPAStateCB,this);
     adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 1, &USPManager::ADSBSurveillanceCB, this);
+    flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 1, &USPManager::RPSFlightPlanAcceptCB, this);
+    flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 1, &USPManager::RPSChangeFlightStatusCB, this);
 
     // Client
     // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
@@ -157,7 +165,7 @@ proj_(lat0_, lon0_, 0, earth_)
 }
 
 // Notification callback
-void USPManager::notificationCB(const gauss_msgs::Notification::ConstPtr& msg)
+bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res)
 {
     /*
     gauss_msgs_mqtt::UTMAlert utm_alert_msg;
@@ -166,46 +174,50 @@ void USPManager::notificationCB(const gauss_msgs::Notification::ConstPtr& msg)
     alert_pub_.publish(utm_alert_msg);
     */
 
-    gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
-    std::string uav_id_string = std::to_string(msg->uav_id);
-    int n_zeros = 0;
-    if(uav_id_string.length() == 1)
-        n_zeros = 1;
-    alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
-    alternative_flight_plan_msg.icao = id_icao_map_[msg->uav_id].c_str();
+    for (auto msg : req.notifications){
+        gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
+        std::string uav_id_string = std::to_string(msg.uav_id);
+        int n_zeros = 0;
+        if(uav_id_string.length() == 1)
+            n_zeros = 1;
+        alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
+        alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id].c_str();
 
-    std::ostringstream new_flight_plan_ss;
+        std::ostringstream new_flight_plan_ss;
 
-    new_flight_plan_ss << "[";
-
-    for(auto it=msg->new_flight_plan.waypoints.begin(); it!=msg->new_flight_plan.waypoints.end(); it++)
-    {
         new_flight_plan_ss << "[";
-        double lat,lon,h;
-        proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
-        new_flight_plan_ss << lon <<", " << lat << ", " << h << ", " << it->stamp.toSec();
-        new_flight_plan_ss << "]";
-        if(it != (msg->new_flight_plan.waypoints.end()-1))
+
+        for(auto it=msg.new_flight_plan.waypoints.begin(); it!=msg.new_flight_plan.waypoints.end(); it++)
         {
-            new_flight_plan_ss << ",";
+            new_flight_plan_ss << "[";
+            double lat,lon,h;
+            proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
+            new_flight_plan_ss << lon <<", " << lat << ", " << h << ", " << it->stamp.toSec();
+            new_flight_plan_ss << "]";
+            if(it != (msg.new_flight_plan.waypoints.end()-1))
+            {
+                new_flight_plan_ss << ",";
+            }
+        }
+        alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
+
+        alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
+
+        ThreatFlightPlan threat_flight_plan;
+        threat_flight_plan.threat_id = msg.threat.threat_id;
+        threat_flight_plan.new_flight_plan = msg.new_flight_plan;
+        if(id_threat_flight_plan_map_.find(msg.uav_id) != id_threat_flight_plan_map_.end())
+        {
+            id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
+        }
+        else
+        {
+            id_threat_flight_plan_map_[msg.uav_id] = std::vector<ThreatFlightPlan>();
+            id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
         }
     }
-    alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
-
-    alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
-
-    ThreatFlightPlan threat_flight_plan;
-    threat_flight_plan.threat_id = msg->threat.threat_id;
-    threat_flight_plan.new_flight_plan = msg->new_flight_plan;
-    if(id_threat_flight_plan_map_.find(msg->uav_id) != id_threat_flight_plan_map_.end())
-    {
-        id_threat_flight_plan_map_[msg->uav_id].push_back(threat_flight_plan);
-    }
-    else
-    {
-        id_threat_flight_plan_map_[msg->uav_id] = std::vector<ThreatFlightPlan>();
-        id_threat_flight_plan_map_[msg->uav_id].push_back(threat_flight_plan);
-    }
+    res.success = true;
+    return res.success;
 }
 
 void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg)
@@ -213,7 +225,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
     gauss_msgs::WritePlans write_plans_msg;
     ThreatFlightPlan threat_flight_plan;
     std::string flight_plan_id_aux = msg->flight_plan_id;
-    uint8_t flight_plan_id = atoi(flight_plan_id_aux.erase((size_t)0,(size_t)7).c_str());
+    uint8_t flight_plan_id = std::atoi(flight_plan_id_aux.erase((size_t)0,(size_t)7).c_str());
     if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
     {
         threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
@@ -251,44 +263,45 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     gauss_msgs::PositionReport position_report_msg;
 
     position_report_msg.header.stamp = ros::Time().fromSec(msg->timestamp/1000.0);
-    position_report_msg.icao_address = msg->icao;
+    position_report_msg.icao_address = std::to_string(msg->icao);
     // TODO: Get uav_id from db_manager knowing its icao address
     // Consider the posibility that an RPAStateInfo message could be received from an UAV which hasn't a registered flight plan yet 
     // position_report_msg.uav_id;
-    auto it = icao_id_map_.find(std::to_string(msg->icao));
+    auto it = icao_id_map_.find(position_report_msg.icao_address);
     if (it != icao_id_map_.end())
     {
         position_report_msg.uav_id = (*it).second;
+        position_report_msg.confidence = msg->covariance_h + msg->covariance_v; // TODO: Find a proper method for calculating confidence
+        position_report_msg.source = position_report_msg.SOURCE_RPA;
+        position_report_msg.position.mandatory = true;
+        position_report_msg.position.stamp = position_report_msg.header.stamp;
+        position_report_msg.header.frame_id = "map";
+
+        // TODO: Convert latitude, longitude, altitude to x,y,z
+        // The origin latitude and longitude must be known
+
+        geometry_msgs::Point cartesian_translation;
+
+        proj_.Forward(msg->latitude, msg->longitude, msg->altitude, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
+
+        //float uav_heading = msg->yaw;
+        //tf2::Quaternion aux_quaternion_tf2;
+        //aux_quaternion_tf2.setRPY(0,0,(90-uav_heading)/180*M_PI);
+
+        position_report_msg.position.x = cartesian_translation.x;
+        position_report_msg.position.y = cartesian_translation.y;
+        position_report_msg.position.z = cartesian_translation.z;
+
+        position_report_msg.heading = msg->yaw;
+        position_report_msg.speed = msg->groundspeed;
+
+        position_report_pub_.publish(position_report_msg);
     }
     else
     {
-        
+        ROS_WARN("USP Manager can not find the uav id associated with icao address %s", position_report_msg.icao_address.c_str());
     }
     
-    position_report_msg.confidence = msg->covariance_h + msg->covariance_v; // TODO: Find a proper method for calculating confidence
-    position_report_msg.source = position_report_msg.SOURCE_RPA;
-    position_report_msg.position.mandatory = true;
-    position_report_msg.position.stamp = position_report_msg.header.stamp;
-
-    // TODO: Convert latitude, longitude, altitude to x,y,z
-    // The origin latitude and longitude must be known
-
-    geometry_msgs::Point cartesian_translation;
-
-    proj_.Forward(msg->latitude, msg->longitude, msg->altitude, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
-
-    //float uav_heading = msg->yaw;
-    //tf2::Quaternion aux_quaternion_tf2;
-    //aux_quaternion_tf2.setRPY(0,0,(90-uav_heading)/180*M_PI);
-
-    position_report_msg.position.x = cartesian_translation.x;
-    position_report_msg.position.y = cartesian_translation.y;
-    position_report_msg.position.z = cartesian_translation.z;
-
-    position_report_msg.heading = msg->yaw;
-    position_report_msg.speed = msg->groundspeed;
-
-    position_report_pub_.publish(position_report_msg);
 }
 
 void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::ConstPtr& msg)
@@ -324,6 +337,12 @@ void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::Con
     position_report_msg.speed = msg->speed;
 
     position_report_pub_.publish(position_report_msg);
+}
+
+void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg)
+{
+    std::cout << "Executing callback\n";
+    ROS_INFO_STREAM("Received RPSChangeFlightStatus message. Flight Plan ID: " << msg->flight_plan_id << " ICAO: " << msg->icao << " STATUS: " << msg->status);
 }
 
 /*

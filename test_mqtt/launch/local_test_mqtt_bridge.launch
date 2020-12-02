@@ -1,6 +1,6 @@
 <launch>
   <node name="mqtt_bridge" pkg="mqtt_bridge" type="mqtt_bridge_node.py" output="screen">
     <rosparam command="delete" param="" />
-    <rosparam command="load" file="$(find test_mqtt)/config/test_use_everis_satways.yaml" />
+    <rosparam command="load" file="$(find test_mqtt)/config/local_test_mqtt_bridge.yaml" />
   </node>
 </launch>

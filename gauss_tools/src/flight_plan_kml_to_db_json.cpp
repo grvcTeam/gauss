@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 {
     if(argc != 3)
     {
-        std::cout << "Usage: flight_plan_kml_to_json KML_filename KML_INPUT_FILE JSON_OUTPUT_FILE\n"; 
+        std::cout << "Usage: flight_plan_kml_to_db_json KML_filename KML_INPUT_FILE JSON_OUTPUT_FILE\n"; 
         return 1;
     }
     
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
     std::string json_filename(argv[2]);
 
     Json::Value root;
-    /*
+
     root["flight_plan"]["waypoints"] = Json::arrayValue;
 
     Json::Value waypoint;
@@ -46,20 +46,6 @@ int main(int argc, char** argv)
     waypoint["z"] = 0;
     waypoint["stamp"] = 0;
     waypoint["mandatory"] = 0;
-    */
-
-    root["icao"] = 11259137;
-    root["flight_plan_id"] = "MISSION01";
-    root["new_flight_plan"] = Json::arrayValue;
-
-    Json::Value flight_plan_array = Json::arrayValue;
-
-    /*
-    std::stringstream flight_plan_ss;
-    flight_plan_ss << std::fixed;
-    flight_plan_ss << std::setprecision(6);
-    flight_plan_ss << "[";
-    */
 
     // Read kml file
     pugi::xml_document doc;
@@ -67,8 +53,7 @@ int main(int argc, char** argv)
 
     //std::cout << "Result description: " << result.description() << "\n";
     
-    ros::Time::init();
-    double initial_timestamp = ros::Time::now().toSec();
+    double initial_timestamp = 0;
     double current_timestamp;
     double previous_timestamp;
 
@@ -117,6 +102,7 @@ int main(int argc, char** argv)
             double latitude,longitude,altitude;
             longitude = atof(comma_separated_strings[0].c_str());
             latitude = atof(comma_separated_strings[1].c_str());
+            altitude = atof(comma_separated_strings[2].c_str());
 
             pugi::xml_node look_at_node = placemark_node.child("LookAt");
             //pugi::xml_node longitude_node = look_at_node.child("longitude");
@@ -130,62 +116,30 @@ int main(int argc, char** argv)
             // Convert geographic coordinates to local coordinates
             double x,y,z;
             proj.Forward(latitude,longitude,altitude,x,y,z);
-            /*
+
+            if(first_waypoint)
+            {
+                current_timestamp = initial_timestamp;
+                previous_timestamp = current_timestamp;
+                first_waypoint = false;
+            }
+            else
+            {
+                double delta_time = distanceBetweenWaypoints(x,y,z,previous_x,previous_y,previous_z)/NOMINAL_SPEED;
+                current_timestamp = previous_timestamp + delta_time;
+
+                previous_timestamp = current_timestamp;
+            }
+
             waypoint["x"] = x;
             waypoint["y"] = y;
             waypoint["z"] = z;
-            waypoint["stamp"] = timestamp;
-            */
-
-            /*
-            if(first_waypoint)
-            {
-                current_timestamp = initial_timestamp;
-                previous_timestamp = current_timestamp;
-                previous_x = x;
-                previous_y = y;
-                previous_z = z;
-                first_waypoint = false;
-                //flight_plan_ss << "(" << x << "," << y << "," << z << "," << current_timestamp << ")";
-                flight_plan_ss << "[" << std::setw(10) << lon << std::setw(1) <<"," << std::setw(10) << lat << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< "]";
-            }
-            else
-            {
-                double delta_time = distanceBetweenWaypoints(x,y,z,previous_x,previous_y,previous_z)/NOMINAL_SPEED;
-
-                current_timestamp = previous_timestamp + delta_time;
-
-                previous_timestamp = current_timestamp;
-                previous_x = x;
-                previous_y = y;
-                previous_z = z;
-                //flight_plan_ss << ",(" << std::setw(10) << x << std::setw(1) <<"," << std::setw(10) << y << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< ")";
-                flight_plan_ss << ",[" << std::setw(10) << lon << std::setw(1) <<"," << std::setw(10) << lat << std::setw(1) << "," << z << std::setw(1) << "," << std::setw(10) << current_timestamp << std::setw(1)<< "]";
-            }
-            */
-            
-            if(first_waypoint)
-            {
-                current_timestamp = initial_timestamp;
-                previous_timestamp = current_timestamp;
-                first_waypoint = false;
-            }
-            else
-            {
-                double delta_time = distanceBetweenWaypoints(x,y,z,previous_x,previous_y,previous_z)/NOMINAL_SPEED;
-                current_timestamp = previous_timestamp + delta_time;
-
-                previous_timestamp = current_timestamp;
-            }
-            
-            waypoint_array.append(longitude);
-            waypoint_array.append(latitude);
-            waypoint_array.append(altitude);
-            waypoint_array.append(current_timestamp);
-
-            flight_plan_array.append(waypoint_array);
-
-            //root["flight_plan"]["waypoints"].append(waypoint);
+            waypoint["stamp"] = current_timestamp;
+            previous_x = x;
+            previous_y = y;
+            previous_z = z;
+          
+            root["flight_plan"]["waypoints"].append(waypoint);
         }
         else
         {
@@ -196,11 +150,7 @@ int main(int argc, char** argv)
         if(placemark_node.empty())
             kml_end_found = true;
     }
-    /*
-    flight_plan_ss << "]";
-    root["new_flight_plan"] = flight_plan_ss.str();
-    */
-   root["new_flight_plan"] = flight_plan_array;
+
 
     // Write flight plan JSON to file
     std::ofstream json_filestream(json_filename.c_str());

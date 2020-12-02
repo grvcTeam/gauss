@@ -2,7 +2,7 @@
 	"operations": [
 		{
 			"uav_id": 0,
-			"icao_address": "UAV0gauss2020",
+			"icao_address": "11259137",
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
@@ -101,7 +101,7 @@
 		},
 		{
 			"uav_id": 1,
-			"icao_address": "UAV2gauss2020",
+			"icao_address": "11259138",
 			"frame": "",
 			"autonomy": 10,
 			"priority": 1,
