@@ -94,6 +94,7 @@ private:
     ros::Subscriber adsb_sub_;
     ros::Subscriber flight_plan_accept_sub_;
     ros::Subscriber flight_status_sub_;
+    ros::Subscriber rpa_flight_acceptance_sub_;
 
     // Server 
     ros::ServiceServer notification_server_;
@@ -138,6 +139,12 @@ proj_(lat0_, lon0_, 0, earth_)
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
 
+
+    // Subscribe
+    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",10,&USPManager::RPAStateCB,this);
+    adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
+    rpa_flight_acceptance_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 1, &USPManager::RPSFlightPlanAcceptCB, this);
+
     // Server 
     notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
     // Subscribe
@@ -153,7 +160,7 @@ proj_(lat0_, lon0_, 0, earth_)
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
     send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/pilotanswer");
-    send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/send_pilot_answer");
+    // send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/send_pilot_answer");
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
 
     // Timer
@@ -230,6 +237,13 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
     {
         threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
         id_threat_flight_plan_map_[flight_plan_id].erase(id_threat_flight_plan_map_[flight_plan_id].begin());
+        auto it = icao_id_map_.find(msg->icao);
+        if (it != icao_id_map_.end()){
+            write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
+            write_plans_msg.request.uav_ids.push_back((*it).second);
+        } else {
+            ROS_WARN("USP Manager can not find the uav id associated with icao address %s", msg->icao.c_str());
+        }
     }
     else
         return;
