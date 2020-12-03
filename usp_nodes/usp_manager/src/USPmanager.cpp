@@ -77,8 +77,8 @@ private:
     double rate;
     ros::NodeHandle nh_;
 
-    std::map<uint8_t, std::string> id_icao_map_;
-    std::map<std::string, uint8_t> icao_id_map_;
+    std::map<uint8_t, uint8_t> id_icao_map_;
+    std::map<uint8_t, uint8_t> icao_id_map_;
 
     std::map<uint8_t, gauss_msgs::Operation> id_operation_map_;
 
@@ -188,7 +188,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
         if(uav_id_string.length() == 1)
             n_zeros = 1;
         alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
-        alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id].c_str();
+        alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id];
 
         std::ostringstream new_flight_plan_ss;
 
@@ -242,7 +242,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
             write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
             write_plans_msg.request.uav_ids.push_back((*it).second);
         } else {
-            ROS_WARN("USP Manager can not find the uav id associated with icao address %s", msg->icao.c_str());
+            ROS_WARN("USP Manager can not find the uav id associated with icao address %06x", msg->icao);
         }
     }
     else
@@ -281,7 +281,7 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     // TODO: Get uav_id from db_manager knowing its icao address
     // Consider the posibility that an RPAStateInfo message could be received from an UAV which hasn't a registered flight plan yet 
     // position_report_msg.uav_id;
-    auto it = icao_id_map_.find(position_report_msg.icao_address);
+    auto it = icao_id_map_.find(msg->icao);
     if (it != icao_id_map_.end())
     {
         position_report_msg.uav_id = (*it).second;
@@ -385,8 +385,8 @@ bool USPManager::initializeICAOIDMap()
         auto it_icao = read_icao_res.icao_address.begin();
         for(auto it_id = read_icao_res.uav_id.begin(); it_id != read_icao_res.uav_id.end(); it_id++, it_icao++)
         {
-            id_icao_map_[*it_id] = *it_icao;
-            icao_id_map_[*it_icao] = *it_id;
+            id_icao_map_[*it_id] = std::atoi((*it_icao).c_str());
+            icao_id_map_[std::atoi((*it_icao).c_str())] = *it_id;
             std::cout << "ID: " << (int) *it_id << " ICAO: " << *it_icao << std::endl;
         }
     }
