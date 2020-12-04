@@ -25,8 +25,8 @@
 
 //typedef message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, geometry_msgs::TwistStamped> ApproxTimeSyncPolicy;
 
-#define ARENOSILLO_LATITUDE 37.101973
-#define ARENOSILLO_LONGITUDE -6.736522
+#define ARENOSILLO_LATITUDE 37.094784
+#define ARENOSILLO_LONGITUDE -6.735478
 
 #define REFERENCE_LATITUDE ARENOSILLO_LATITUDE
 #define REFERENCE_LONGITUDE ARENOSILLO_LONGITUDE
@@ -122,10 +122,14 @@ USPUALBridge::USPUALBridge() : available_velocity_msg_(false),
         ros::spinOnce();
         sleep(1.0);
     }
-    while (!ual_communication_.setPX4Param("MPC_XY_VEL_MAX", ual_communication_.max_vxy_)) sleep(1.0);
+    ual_communication_.max_vxy_ =   8.0;
+    ual_communication_.max_vz_up_ = 8.0;
+    ual_communication_.max_vz_dn_ = 8.0;
+    while (!ual_communication_.setPX4Param("MPC_XY_VEL_MAX",   ual_communication_.max_vxy_)) sleep(1.0);
     while (!ual_communication_.setPX4Param("MPC_Z_VEL_MAX_UP", ual_communication_.max_vz_up_)) sleep(1.0);
     while (!ual_communication_.setPX4Param("MPC_Z_VEL_MAX_DN", ual_communication_.max_vz_dn_)) sleep(1.0);
     ROS_INFO("[UPAT] UAL %d and MAVROS ready!", uav_id_);
+    sleep(1.0);
     // Get initial flight plan for uav_id
     gauss_msgs::ReadOperation operation_msg;
     operation_msg.request.uav_ids.push_back(uav_id_);
@@ -154,7 +158,7 @@ USPUALBridge::USPUALBridge() : available_velocity_msg_(false),
         ual_communication_.times_ = res_times;
     }
 
-    ROS_INFO("Started usp_ual_bridge node!");
+    ROS_INFO("Started usp_ual_bridge node (%d)!", uav_id_);
 }
 
 /*
@@ -259,7 +263,7 @@ void USPUALBridge::csvStore(const gauss_msgs_mqtt::RPAStateInfo& rpa_data) {
         csv_file << std::fixed << std::setprecision(8);
         csv_file << "ICAO, latitude, longitude, altitude, yaw, pitch, roll, groundspeed, timestamp\n";
         do_once = false;
-    } else if ((ros::Time::now().toSec() - store_time) > wait_time) {
+    } else if ((ros::Time::now().toSec() - store_time) >= wait_time) {
         store_time = ros::Time::now().toSec();
         csv_file << rpa_data.icao << ", " << rpa_data.latitude << ", " << rpa_data.longitude << ", " << rpa_data.altitude << ", "
                  << rpa_data.yaw << ", " << rpa_data.pitch << ", " << rpa_data.roll << ", " << rpa_data.groundspeed << ", "
