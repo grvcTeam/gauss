@@ -11,6 +11,7 @@
 #include <gauss_msgs_mqtt/UTMAlternativeFlightPlan.h>
 #include <gauss_msgs_mqtt/RPSFlightPlanAccept.h>
 #include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
+#include <gauss_msgs_mqtt/Waypoint.h>
 
 #include <gauss_msgs/PositionReport.h>
 #include <gauss_msgs/Notifications.h>
@@ -190,31 +191,17 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
         alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
         alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id];
 
-        std::cout << "USPManager received alternative flight plan: \n";
-        std::cout << msg.new_flight_plan << "\n"; 
-
-        std::ostringstream new_flight_plan_ss;
-
-        new_flight_plan_ss << "[";
-
         for(auto it=msg.new_flight_plan.waypoints.begin(); it!=msg.new_flight_plan.waypoints.end(); it++)
         {
-            new_flight_plan_ss << "[";
+            gauss_msgs_mqtt::Waypoint waypoint_mqtt;
             double lat,lon,h;
             proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
-            new_flight_plan_ss << lon <<", " << lat << ", " << h << ", " << it->stamp.toSec();
-            new_flight_plan_ss << "]";
-            if(it != (msg.new_flight_plan.waypoints.end()-1))
-            {
-                new_flight_plan_ss << ",";
-            }
-            else
-            {
-                new_flight_plan_ss << "]";
-            }
-            
+            waypoint_mqtt.waypoint_elements[0] = lon;
+            waypoint_mqtt.waypoint_elements[1] = lat;
+            waypoint_mqtt.waypoint_elements[2] = h;
+            waypoint_mqtt.waypoint_elements[3] = it->stamp.toSec();
+            alternative_flight_plan_msg.new_flight_plan.push_back(waypoint_mqtt);
         }
-        alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
 
         alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
 

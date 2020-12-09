@@ -166,7 +166,8 @@ void USPUALBridge::callbackSyncPoseVelocity(const geometry_msgs::PoseStampedCons
 
 void USPUALBridge::callbackAlternativeFlightPlan(const gauss_msgs_mqtt::UTMAlternativeFlightPlan& alt_flight_plan) {
     if (alt_flight_plan.icao == std::atoi(icao_address_.c_str())) {
-        std::string flight_plan_string = alt_flight_plan.new_flight_plan;
+        //std::string flight_plan_string = alt_flight_plan.new_flight_plan;
+        std::string flight_plan_string;
         // Replace characters
         std::string replace_str = "],[";
         for (int i = flight_plan_string.find(replace_str); i >= 0; i = flight_plan_string.find(replace_str))
