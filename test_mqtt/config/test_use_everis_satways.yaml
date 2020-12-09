@@ -35,11 +35,11 @@ bridge:
     topic_to: geofence_creation
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
-    msg_type: test_mqtt.msg:AdsbData
+    msg_type: gauss_msgs_mqtt.msg:ADSBSurveillance
     topic_from: adsb/+
     topic_to: /gauss/adsb
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
-    msg_type: test_mqtt.msg:RPAStateInfo
+    msg_type: gauss_msgs_mqtt.msg:RPAStateInfo
     topic_from: rpastateinfo/+
     topic_to: /gauss/rpastateinfo
