@@ -78,6 +78,7 @@ private:
 // Monitoring Constructor
 Monitoring::Monitoring()
 {
+    std::cout << "MONITORING starting\n";
     // Read
     nh_.param("/gauss/monitoring_rate",rate,0.2);
     nh_.param("/gauss/minX",minX,-200.0);
@@ -226,7 +227,9 @@ gauss_msgs::Threats Monitoring::fillConflictiveFields(gauss_msgs::Threats &_in_t
         conflictive_operation.actual_wp = _msg_op.response.operation.at(i).track.waypoints.back();
         conflictive_operation.operational_volume = _msg_op.response.operation.at(i).operational_volume;
         conflictive_operation.estimated_trajectory = _msg_op.response.operation.at(i).estimated_trajectory;
+        std::cout << "MONITORING flight plan updated\n";
         conflictive_operation.flight_plan_updated = _msg_op.response.operation.at(i).flight_plan_updated;
+        std::cout << conflictive_operation.flight_plan_updated << "\n";
         _in_threats.request.operations.push_back(conflictive_operation);
     }
     // Check which geofences are conflictive and do not repeat it
@@ -695,6 +698,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         gauss_msgs::Threats new_threats_msgs = manageThreatList(threats_msg);
         // Fill conflictive operations
         if (new_threats_msgs.request.threats.size() > 0){
+            std::cout << "MONITORING sending threats\n";
+            std::cout << "flight plan updated of first operation\n";
+            std::cout << msg_op.response.operation[0].flight_plan_updated << "\n";
             new_threats_msgs = fillConflictiveFields(new_threats_msgs, msg_op, msg_geofence);
             // Call threats service
             if(!(threats_client_.call(new_threats_msgs)) || !(new_threats_msgs.response.success))
