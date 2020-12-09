@@ -190,6 +190,9 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
         alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
         alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id];
 
+        std::cout << "USPManager received alternative flight plan: \n";
+        std::cout << msg.new_flight_plan << "\n"; 
+
         std::ostringstream new_flight_plan_ss;
 
         new_flight_plan_ss << "[";
@@ -205,6 +208,11 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
             {
                 new_flight_plan_ss << ",";
             }
+            else
+            {
+                new_flight_plan_ss << "]";
+            }
+            
         }
         alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
 
@@ -232,31 +240,40 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
     gauss_msgs::WritePlans write_plans_msg;
     ThreatFlightPlan threat_flight_plan;
     std::string flight_plan_id_aux = msg->flight_plan_id;
-    uint8_t flight_plan_id = std::atoi(flight_plan_id_aux.erase((size_t)0,(size_t)7).c_str());
-    if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
+    flight_plan_id_aux.erase((size_t)0,(size_t)7);
+    std::cout << "Received PILOT answer\n";
+    std::cout << msg->flight_plan_id << "\n";
+    std::cout << (int)msg->accept << "\n";
+    uint8_t flight_plan_id = std::atoi(flight_plan_id_aux.c_str());
+    if(msg->accept)
     {
-        threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
-        id_threat_flight_plan_map_[flight_plan_id].erase(id_threat_flight_plan_map_[flight_plan_id].begin());
-        auto it = icao_id_map_.find(msg->icao);
-        if (it != icao_id_map_.end()){
-            write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
-            write_plans_msg.request.uav_ids.push_back((*it).second);
-        } else {
-            ROS_WARN("USP Manager can not find the uav id associated with icao address %06x", msg->icao);
+        if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
+        {
+            if(!id_threat_flight_plan_map_[flight_plan_id].empty())
+            {
+                threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
+                id_threat_flight_plan_map_[flight_plan_id].erase(id_threat_flight_plan_map_[flight_plan_id].begin());
+                auto it = icao_id_map_.find(msg->icao);
+                if (it != icao_id_map_.end()){
+                    write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
+                    write_plans_msg.request.uav_ids.push_back((*it).second);
+                } else {
+                    ROS_WARN("USP Manager can not find the uav id associated with icao address %06x", msg->icao);
+                }
+            }
+        }
+        else
+            return;
+
+        if (!write_plans_client_.call(write_plans_msg) || !write_plans_msg.response.success)
+        {
+            ROS_WARN("Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
+        }
+        else
+        {
+            ROS_INFO_STREAM(write_plans_msg.response.message);
         }
     }
-    else
-        return;
-    
-    if (!write_plans_client_.call(write_plans_msg) || !write_plans_msg.response.success)
-    {
-        ROS_WARN("Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
-    }
-    else
-    {
-        ROS_INFO_STREAM(write_plans_msg.response.message);
-    }
-    
     // Send PilotAnswer to Emergency Management
     gauss_msgs::PilotAnswer pilot_answer_msg;
     if(msg->accept == 0)
