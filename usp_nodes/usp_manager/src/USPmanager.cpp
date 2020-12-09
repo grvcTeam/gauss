@@ -77,8 +77,8 @@ private:
     double rate;
     ros::NodeHandle nh_;
 
-    std::map<uint8_t, uint8_t> id_icao_map_;
-    std::map<uint8_t, uint8_t> icao_id_map_;
+    std::map<uint8_t, uint32_t> id_icao_map_;
+    std::map<uint32_t, uint8_t> icao_id_map_;
 
     std::map<uint8_t, gauss_msgs::Operation> id_operation_map_;
 
