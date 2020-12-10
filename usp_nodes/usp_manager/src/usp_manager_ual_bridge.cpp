@@ -172,39 +172,22 @@ void USPUALBridge::callbackAlternativeFlightPlan(const gauss_msgs_mqtt::UTMAlter
     std::cout << "Alternative flight plan received for icao_address: " << alt_flight_plan.icao << "\n";
     std::cout << "Expected icao address: " << icao_address_ << "\n";
     if (alt_flight_plan.icao == std::atoi(icao_address_.c_str())) {
-        std::string flight_plan_string = alt_flight_plan.new_flight_plan;
-        std::cout << "Received alternative flight plan: \n";
-        std::cout << alt_flight_plan.new_flight_plan << "\n";
-        // Replace characters
-        std::string replace_str = "],[";
-        for (int i = flight_plan_string.find(replace_str); i >= 0; i = flight_plan_string.find(replace_str))
-            flight_plan_string.replace(i, replace_str.size(), " ");
-        // Remove useless characters
-        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), ','), flight_plan_string.end());
-        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), '['), flight_plan_string.end());
-        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), ']'), flight_plan_string.end());
-        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), '\n'), flight_plan_string.end());
-        flight_plan_string.erase(std::remove(flight_plan_string.begin(), flight_plan_string.end(), '\r'), flight_plan_string.end());
         // Clear follower input
         ual_communication_.times_.clear();
         ual_communication_.flag_redo_ = true;
         ual_communication_.init_path_.poses.clear();
         ual_communication_.init_path_.header.frame_id = "map";
-        // Save the value and substract it from the string
-        std::string::size_type sz;
-        while (flight_plan_string.size() > 0) {
+
+        for(auto it=alt_flight_plan.new_flight_plan.begin(); it != alt_flight_plan.new_flight_plan.end(); it++)
+        {
             geometry_msgs::PoseStamped new_poses;
             double longitude, latitude, altitude;
-            longitude = (double)std::stod(flight_plan_string, &sz);
-            flight_plan_string = flight_plan_string.substr(sz);
-            latitude = (double)std::stod(flight_plan_string, &sz);
-            flight_plan_string = flight_plan_string.substr(sz);
-            altitude = (double)std::stod(flight_plan_string, &sz);
-            flight_plan_string = flight_plan_string.substr(sz);
+            longitude = (*it).waypoint_elements[0];
+            latitude = (*it).waypoint_elements[1];
+            altitude = (*it).waypoint_elements[2];
             proj_.Forward(latitude, longitude, altitude, new_poses.pose.position.x, new_poses.pose.position.y, new_poses.pose.position.z);
             ual_communication_.init_path_.poses.push_back(new_poses);
-            ual_communication_.times_.push_back((double)std::stod(flight_plan_string, &sz));
-            flight_plan_string = flight_plan_string.substr(sz);
+            ual_communication_.times_.push_back((*it).waypoint_elements[3]);
         }
     }
 }
