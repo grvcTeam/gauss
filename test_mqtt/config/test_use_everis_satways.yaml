@@ -41,5 +41,5 @@ bridge:
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPAStateInfo
-    topic_from: rpastateinfo/+
+    topic_from: rpastateinfo
     topic_to: /gauss/rpastateinfo
