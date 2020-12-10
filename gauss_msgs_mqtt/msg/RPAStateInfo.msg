@@ -13,7 +13,7 @@ float32 hal
 float32 vpl
 float32 val
 string solution_mode
-uint32 timestamp # UTC in ms
+uint64 timestamp # UTC in ms
 float32 jamming
 float32 spoofing
 bool anomalous_clock_drift

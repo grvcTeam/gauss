@@ -5,4 +5,4 @@ float64 longitude
 float32 altitude
 float32 heading
 float32 speed
-uint32 timestamp # UTC time in ms
+uint64 timestamp # UTC time in ms
