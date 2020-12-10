@@ -166,7 +166,7 @@ void USPUALBridge::callbackSyncPoseVelocity(const geometry_msgs::PoseStampedCons
 
 void USPUALBridge::callbackAlternativeFlightPlan(const gauss_msgs_mqtt::UTMAlternativeFlightPlan& alt_flight_plan) {
     std::cout << "Alternative flight plan received for icao_address: " << alt_flight_plan.icao << "\n";
-    std::cout << "Expected icao address: " << icao_address_ << "\n"; 
+    std::cout << "Expected icao address: " << icao_address_ << "\n";
     if (alt_flight_plan.icao == std::atoi(icao_address_.c_str())) {
         std::string flight_plan_string = alt_flight_plan.new_flight_plan;
         std::cout << "Received alternative flight plan: \n";
@@ -206,35 +206,33 @@ void USPUALBridge::callbackAlternativeFlightPlan(const gauss_msgs_mqtt::UTMAlter
 }
 
 void USPUALBridge::callbackPose(const geometry_msgs::PoseStampedConstPtr& pose_ptr) {
-    if (latest_state_msgs_.state == uav_abstraction_layer::State::FLYING_AUTO) {
-        gauss_msgs_mqtt::RPAStateInfo rpa_state_info_msg;
+    gauss_msgs_mqtt::RPAStateInfo rpa_state_info_msg;
 
-        double lat, lon, h;
-        proj_.Reverse(pose_ptr->pose.position.x, pose_ptr->pose.position.y, pose_ptr->pose.position.z, lat, lon, h);
+    double lat, lon, h;
+    proj_.Reverse(pose_ptr->pose.position.x, pose_ptr->pose.position.y, pose_ptr->pose.position.z, lat, lon, h);
 
-        rpa_state_info_msg.altitude = h;
-        rpa_state_info_msg.latitude = lat;
-        rpa_state_info_msg.longitude = lon;
-        rpa_state_info_msg.timestamp = pose_ptr->header.stamp.toNSec() / 1000000;
+    rpa_state_info_msg.altitude = h;
+    rpa_state_info_msg.latitude = lat;
+    rpa_state_info_msg.longitude = lon;
+    rpa_state_info_msg.timestamp = pose_ptr->header.stamp.toNSec() / 1000000;
 
-        rpa_state_info_msg.groundspeed = sqrt(pow(latest_velocity_msg_.twist.linear.x, 2) +
-                                              pow(latest_velocity_msg_.twist.linear.y, 2) +
-                                              pow(latest_velocity_msg_.twist.linear.z, 2));
+    rpa_state_info_msg.groundspeed = sqrt(pow(latest_velocity_msg_.twist.linear.x, 2) +
+                                          pow(latest_velocity_msg_.twist.linear.y, 2) +
+                                          pow(latest_velocity_msg_.twist.linear.z, 2));
 
-        // --- Check this with real data ---
-        Eigen::Quaternionf orientation_quaternion(pose_ptr->pose.orientation.w, pose_ptr->pose.orientation.x, pose_ptr->pose.orientation.y, pose_ptr->pose.orientation.z);
-        Eigen::Vector3f orientation_euler = Eigen::Matrix3f(orientation_quaternion).eulerAngles(0, 1, 2);
-        rpa_state_info_msg.roll = orientation_euler.x();
-        rpa_state_info_msg.pitch = orientation_euler.y();
-        rpa_state_info_msg.yaw = orientation_euler.z();
-        // std::cout << "quaternion: " << orientation_quaternion.w() << " " << orientation_quaternion.x() << " " << orientation_quaternion.y() << " " << orientation_quaternion.z() << "\n";
-        // std::cout << "euler:      " << orientation_euler.x() << " " << orientation_euler.y() << " " << orientation_euler.z() << "\n";
-        // --------------------------------
-        rpa_state_info_msg.icao = atoi(icao_address_.c_str());
+    // --- Check this with real data ---
+    Eigen::Quaternionf orientation_quaternion(pose_ptr->pose.orientation.w, pose_ptr->pose.orientation.x, pose_ptr->pose.orientation.y, pose_ptr->pose.orientation.z);
+    Eigen::Vector3f orientation_euler = Eigen::Matrix3f(orientation_quaternion).eulerAngles(0, 1, 2);
+    rpa_state_info_msg.roll = orientation_euler.x();
+    rpa_state_info_msg.pitch = orientation_euler.y();
+    rpa_state_info_msg.yaw = orientation_euler.z();
+    // std::cout << "quaternion: " << orientation_quaternion.w() << " " << orientation_quaternion.x() << " " << orientation_quaternion.y() << " " << orientation_quaternion.z() << "\n";
+    // std::cout << "euler:      " << orientation_euler.x() << " " << orientation_euler.y() << " " << orientation_euler.z() << "\n";
+    // --------------------------------
+    rpa_state_info_msg.icao = atoi(icao_address_.c_str());
 
-        rpa_state_info_pub_.publish(rpa_state_info_msg);
-        if (store_data_) csvStore(rpa_state_info_msg);
-    }
+    rpa_state_info_pub_.publish(rpa_state_info_msg);
+    if (store_data_) csvStore(rpa_state_info_msg);
 }
 
 void USPUALBridge::callbackState(const uav_abstraction_layer::State& state_ptr) {
@@ -263,7 +261,7 @@ void USPUALBridge::csvStore(const gauss_msgs_mqtt::RPAStateInfo& rpa_data) {
         csv_file << std::fixed << std::setprecision(8);
         csv_file << "ICAO, latitude, longitude, altitude, yaw, pitch, roll, groundspeed, timestamp\n";
         do_once = false;
-    } else if ((ros::Time::now().toSec() - store_time) > wait_time) {
+    } else if ((ros::Time::now().toSec() - store_time) > wait_time && latest_state_msgs_.state == uav_abstraction_layer::State::FLYING_AUTO) {
         store_time = ros::Time::now().toSec();
         csv_file << rpa_data.icao << ", " << rpa_data.latitude << ", " << rpa_data.longitude << ", " << rpa_data.altitude << ", "
                  << rpa_data.yaw << ", " << rpa_data.pitch << ", " << rpa_data.roll << ", " << rpa_data.groundspeed << ", "
