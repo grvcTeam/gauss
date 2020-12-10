@@ -59,6 +59,7 @@ private:
     void ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::ConstPtr& msg); // RPS -> UTM
     // Server Callbacks
     bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res); // UTM -> RPS
+    void RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg); // RPS -> UTM
 
     // TODO: Think how to implement this
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
@@ -76,8 +77,8 @@ private:
     double rate;
     ros::NodeHandle nh_;
 
-    std::map<uint8_t, std::string> id_icao_map_;
-    std::map<std::string, uint8_t> icao_id_map_;
+    std::map<uint8_t, uint32_t> id_icao_map_;
+    std::map<uint32_t, uint8_t> icao_id_map_;
 
     std::map<uint8_t, gauss_msgs::Operation> id_operation_map_;
 
@@ -91,6 +92,8 @@ private:
     // Subscribers
     ros::Subscriber rpaState_sub_;
     ros::Subscriber adsb_sub_;
+    ros::Subscriber flight_plan_accept_sub_;
+    ros::Subscriber flight_status_sub_;
     ros::Subscriber rpa_flight_acceptance_sub_;
 
     // Server 
@@ -130,12 +133,12 @@ proj_(lat0_, lon0_, 0, earth_)
 
     // Initialization
 
-
     // Publish
     rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
+
 
     // Subscribe
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",10,&USPManager::RPAStateCB,this);
@@ -144,6 +147,11 @@ proj_(lat0_, lon0_, 0, earth_)
 
     // Server 
     notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
+    // Subscribe
+    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",1,&USPManager::RPAStateCB,this);
+    adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 1, &USPManager::ADSBSurveillanceCB, this);
+    flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 1, &USPManager::RPSFlightPlanAcceptCB, this);
+    flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 1, &USPManager::RPSChangeFlightStatusCB, this);
 
     // Client
     // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
@@ -180,7 +188,10 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
         if(uav_id_string.length() == 1)
             n_zeros = 1;
         alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
-        alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id].c_str();
+        alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id];
+
+        std::cout << "USPManager received alternative flight plan: \n";
+        std::cout << msg.new_flight_plan << "\n"; 
 
         std::ostringstream new_flight_plan_ss;
 
@@ -197,6 +208,11 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
             {
                 new_flight_plan_ss << ",";
             }
+            else
+            {
+                new_flight_plan_ss << "]";
+            }
+            
         }
         alternative_flight_plan_msg.new_flight_plan = new_flight_plan_ss.str();
 
@@ -224,31 +240,40 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
     gauss_msgs::WritePlans write_plans_msg;
     ThreatFlightPlan threat_flight_plan;
     std::string flight_plan_id_aux = msg->flight_plan_id;
-    uint8_t flight_plan_id = atoi(flight_plan_id_aux.erase((size_t)0,(size_t)7).c_str());
-    if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
+    flight_plan_id_aux.erase((size_t)0,(size_t)7);
+    std::cout << "Received PILOT answer\n";
+    std::cout << msg->flight_plan_id << "\n";
+    std::cout << (int)msg->accept << "\n";
+    uint8_t flight_plan_id = std::atoi(flight_plan_id_aux.c_str());
+    if(msg->accept)
     {
-        threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
-        id_threat_flight_plan_map_[flight_plan_id].erase(id_threat_flight_plan_map_[flight_plan_id].begin());
-        auto it = icao_id_map_.find(msg->icao);
-        if (it != icao_id_map_.end()){
-            write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
-            write_plans_msg.request.uav_ids.push_back((*it).second);
-        } else {
-            ROS_WARN("USP Manager can not find the uav id associated with icao address %s", msg->icao.c_str());
+        if(id_threat_flight_plan_map_.find(flight_plan_id) != id_threat_flight_plan_map_.end())
+        {
+            if(!id_threat_flight_plan_map_[flight_plan_id].empty())
+            {
+                threat_flight_plan = id_threat_flight_plan_map_[flight_plan_id].front();
+                id_threat_flight_plan_map_[flight_plan_id].erase(id_threat_flight_plan_map_[flight_plan_id].begin());
+                auto it = icao_id_map_.find(msg->icao);
+                if (it != icao_id_map_.end()){
+                    write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
+                    write_plans_msg.request.uav_ids.push_back((*it).second);
+                } else {
+                    ROS_WARN("USP Manager can not find the uav id associated with icao address %06x", msg->icao);
+                }
+            }
+        }
+        else
+            return;
+
+        if (!write_plans_client_.call(write_plans_msg) || !write_plans_msg.response.success)
+        {
+            ROS_WARN("Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
+        }
+        else
+        {
+            ROS_INFO_STREAM(write_plans_msg.response.message);
         }
     }
-    else
-        return;
-    
-    if (!write_plans_client_.call(write_plans_msg) || !write_plans_msg.response.success)
-    {
-        ROS_WARN("Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
-    }
-    else
-    {
-        ROS_INFO_STREAM(write_plans_msg.response.message);
-    }
-    
     // Send PilotAnswer to Emergency Management
     gauss_msgs::PilotAnswer pilot_answer_msg;
     if(msg->accept == 0)
@@ -273,7 +298,7 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     // TODO: Get uav_id from db_manager knowing its icao address
     // Consider the posibility that an RPAStateInfo message could be received from an UAV which hasn't a registered flight plan yet 
     // position_report_msg.uav_id;
-    auto it = icao_id_map_.find(position_report_msg.icao_address);
+    auto it = icao_id_map_.find(msg->icao);
     if (it != icao_id_map_.end())
     {
         position_report_msg.uav_id = (*it).second;
@@ -345,6 +370,12 @@ void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::Con
     position_report_pub_.publish(position_report_msg);
 }
 
+void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg)
+{
+    std::cout << "Executing callback\n";
+    ROS_INFO_STREAM("Received RPSChangeFlightStatus message. Flight Plan ID: " << msg->flight_plan_id << " ICAO: " << msg->icao << " STATUS: " << msg->status);
+}
+
 /*
 // Timer Callback
 void USPManager::timerCallback(const ros::TimerEvent &)
@@ -371,8 +402,8 @@ bool USPManager::initializeICAOIDMap()
         auto it_icao = read_icao_res.icao_address.begin();
         for(auto it_id = read_icao_res.uav_id.begin(); it_id != read_icao_res.uav_id.end(); it_id++, it_icao++)
         {
-            id_icao_map_[*it_id] = *it_icao;
-            icao_id_map_[*it_icao] = *it_id;
+            id_icao_map_[*it_id] = std::atoi((*it_icao).c_str());
+            icao_id_map_[std::atoi((*it_icao).c_str())] = *it_id;
             std::cout << "ID: " << (int) *it_id << " ICAO: " << *it_icao << std::endl;
         }
     }
