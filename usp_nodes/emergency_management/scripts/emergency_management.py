@@ -92,6 +92,7 @@ class EmergencyManagement():
         return best_solution
 
     def create_new_flight_plan(self, conflictive_operations, threat2solve, maneuver, tactical_wps):
+        print "Create new flight plan function"
         conflictive_operation = ConflictiveOperation()
         conflict_operation_list = conflictive_operations
         new_flight_plan = WaypointList()
@@ -105,8 +106,14 @@ class EmergencyManagement():
         for conflictive_operation in conflict_operation_list:
             if conflictive_operation.uav_id == self._uav_id_afected:
                 flightplan = conflictive_operation.flight_plan_updated
+                print "Conflictive operation flight plan updated"
+                print flightplan
                 current_wp = conflictive_operation.current_wp
+                print "current waypoint"
+                print current_wp
                 actual_wp  = conflictive_operation.actual_wp
+                print "actual waypoint"
+                print actual_wp
 
         if threat.threat_type == threat.GEOFENCE_CONFLICT:
             if maneuver == 1: # Route to my destination avoiding a geofence.
@@ -140,6 +147,7 @@ class EmergencyManagement():
         elif threat.threat_type == threat.LOSS_OF_SEPARATION:
             merge2end = True
             flighplansection = 0
+            print "LOSS OF SEPARATION THREAT"
     
         elif threat.threat_type == threat.UAS_OUT_OV:
             if maneuver == 9: # Route for going back to the flight geometry and its flight plan.
@@ -206,7 +214,8 @@ class EmergencyManagement():
                 temp_pose.z = flightplan.waypoints[i].z
                 temp_pose.stamp = flightplan.waypoints[i].stamp
                 new_flight_plan.waypoints.append(temp_pose)
-        
+        print "create_new_flight_plan output: "
+        print new_flight_plan
         return new_flight_plan
         
 
@@ -267,6 +276,7 @@ class EmergencyManagement():
                 for uav in uavs_threatened:
                     if uav == self._deconfliction_response.deconfliction_plans[0].uav_id:
                         best_solution = self.select_optimal_route()
+                        print best_solution.waypoint_list
                 notification.uav_id = best_solution.uav_id
                 notification.action = best_solution.maneuver_type
                 notification.description = actions_dictionary[notification.action]
@@ -280,6 +290,8 @@ class EmergencyManagement():
                 notification.waypoints = best_solution.waypoint_list
                 notification.flight_plan = flight_plan
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
+                print "Emergency management sending alternative flight plan in notification"
+                print notification.new_flight_plan
                 self._notifications_list.append(notification) 
 
             '''Threat ALERT WARNING: we create a cylindrical geofence with center in "location". Besides, we notifies to all UAVs the alert detected'''
