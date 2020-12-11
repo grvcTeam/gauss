@@ -557,7 +557,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     for (int i=0; i<missions; i++)
     {
         gauss_msgs::Operation operation = msg_op.response.operation[i];
-        if (operation.current_wp != 0){
+        if (operation.current_wp != 0 && operation.is_started){
             gauss_msgs::WaypointList trajectory = operation.estimated_trajectory;
             gauss_msgs::WaypointList plan = operation.flight_plan;
 
@@ -685,7 +685,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                             }
             }
         } else {
-            ROS_WARN("Current wp of operation %d is 0", operation.uav_id);
+            ROS_WARN("Operation %d did not start or current wp is 0", operation.uav_id);
         }
     }
     //locker=false;
