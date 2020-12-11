@@ -6,6 +6,7 @@
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
+			"is_started": false,
 			"current_wp": 1,
 			"flight_plan" : 
 			{
