@@ -112,6 +112,7 @@ bool DataBase::operationsFromJson(std::string _file_name) {
             operation.uav_id = item.value()["uav_id"].get<double>();
             operation.autonomy = item.value()["autonomy"].get<double>();
             operation.conop = item.value()["conop"].get<std::string>();
+            operation.is_started = item.value()["is_started"].get<bool>();
             if (item.value()["current_wp"].get<double>() == 0) {
                 operation.current_wp = 1;
             } else {

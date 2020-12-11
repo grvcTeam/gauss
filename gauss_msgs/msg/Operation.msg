@@ -4,6 +4,7 @@ uint8 frame
 float64 autonomy			# distance (meters)
 uint8 priority		
 int32 current_wp
+bool is_started
 WaypointList flight_plan
 WaypointList flight_plan_updated
 float64 flight_plan_mod_t
