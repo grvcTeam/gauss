@@ -84,7 +84,7 @@ find_package(catkin REQUIRED COMPONENTS
    WriteOperation.srv
    DB_size.srv
    CheckConflicts.srv
-
+   ChangeFlightStatus.srv
 #   Service2.srv
  )
 

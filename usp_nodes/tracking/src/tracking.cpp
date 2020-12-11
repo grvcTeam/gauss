@@ -7,6 +7,7 @@
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadIcaoRequest.h>
 #include <gauss_msgs/ReadIcaoResponse.h>
+#include <gauss_msgs/ChangeFlightStatus.h>
 #include <boost/thread/mutex.hpp>
 #include <map>
 #include <vector>
@@ -28,6 +29,8 @@ inline double dotProduct(Eigen::Vector3d vector_1, Eigen::Vector3d vector_2);
 inline double distanceBetweenWaypoints(gauss_msgs::Waypoint &waypoint_a, gauss_msgs::Waypoint &waypoint_b);
 inline double distanceFromPointToLine(Eigen::Vector3d point, Eigen::Vector3d inline_point, Eigen::Vector3d line_vector);
 
+enum class FlightStatus {NOT_STARTED, STARTED, ENDED};
+
 // Class definition
 class Tracking
 {
@@ -42,6 +45,7 @@ private:
 
     // Service Callbacks
     bool updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_msgs::WritePlans::Response &res); 
+    bool changeFlightStatusCB(gauss_msgs::ChangeFlightStatus::Request &req, gauss_msgs::ChangeFlightStatus::Response &res);
 
     // Auxilary methods
     void predict(ros::Time &now);
@@ -79,6 +83,7 @@ private:
 
     // Server
     ros::ServiceServer update_fligh_plan_server_;
+    ros::ServiceServer change_flight_status_server_;
 
     // Client
     ros::ServiceClient read_operation_client_;
@@ -95,6 +100,7 @@ private:
     std::map<uint8_t, TargetTracker *> cooperative_targets_; /// Map with cooperative targets
     std::map<uint8_t, std::string> uav_id_icao_address_map_; // Map relating uav_id and icao_address
     std::map<std::string, uint8_t> icao_address_uav_id_map_; // Inverse map
+    std::map<uint8_t, FlightStatus> uav_id_flight_status_map_;
     std::map<uint8_t, gauss_msgs::Operation> cooperative_operations_;
     std::map<uint8_t, pair_wp_index> cooperative_operations_flight_plan_segment_wp_indices_;
     std::map<uint8_t, bool> already_tracked_cooperative_operations_;
@@ -133,6 +139,7 @@ Tracking::Tracking()
 
     // Server
     update_fligh_plan_server_ = nh_.advertiseService("/gauss/update_flight_plans", &Tracking::updateFlightPlansCB, this);
+    change_flight_status_server_ = nh_.advertiseService("/gauss/change_flight_status", &Tracking::changeFlightStatusCB, this);
 
     // Client
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
@@ -161,6 +168,7 @@ Tracking::Tracking()
         {
             uav_id_icao_address_map_.insert( std::make_pair((*it),icao_address[index_icao]) );
             icao_address_uav_id_map_.insert( std::make_pair(icao_address[index_icao], (*it)) );
+            uav_id_flight_status_map_.insert( std::make_pair((*it), FlightStatus::NOT_STARTED) );
             index_icao++;
         }
         ROS_INFO("Started Tracking node!");
@@ -223,7 +231,8 @@ void Tracking::predict(ros::Time &prediction_time)
 {
     for(auto it = cooperative_targets_.begin(); it != cooperative_targets_.end(); ++it)
 	{
-		(it->second)->predict(prediction_time);
+        if(uav_id_flight_status_map_[it->first] == FlightStatus::STARTED)
+		    (it->second)->predict(prediction_time);
 	}
 }
 
@@ -237,14 +246,17 @@ bool Tracking::update(std::vector<Candidate*> &cand_list)
         // Check if Candidate information comes from a non cooperative uav, in that case the info is discarded
         if ((*candidates_it)->uav_id != std::numeric_limits<uint8_t>::max() )
         {
-            auto it_target_tracker = cooperative_targets_.find((*candidates_it)->uav_id);
-            if(it_target_tracker != cooperative_targets_.end())
-                it_target_tracker->second->update(*candidates_it);
-            else
+            if(uav_id_flight_status_map_[((*candidates_it)->uav_id)] == FlightStatus::STARTED)
             {
-                cooperative_targets_[(*candidates_it)->uav_id] = new TargetTracker((*candidates_it)->uav_id);
-                cooperative_targets_[(*candidates_it)->uav_id]->initialize(*candidates_it);
-                already_tracked_cooperative_operations_[(*candidates_it)->uav_id] = true;
+                auto it_target_tracker = cooperative_targets_.find((*candidates_it)->uav_id);
+                if(it_target_tracker != cooperative_targets_.end())
+                    it_target_tracker->second->update(*candidates_it);
+                else
+                {
+                    cooperative_targets_[(*candidates_it)->uav_id] = new TargetTracker((*candidates_it)->uav_id);
+                    cooperative_targets_[(*candidates_it)->uav_id]->initialize(*candidates_it);
+                    already_tracked_cooperative_operations_[(*candidates_it)->uav_id] = true;
+                }
             }
         }
 
@@ -294,6 +306,33 @@ bool Tracking::updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_m
     return result;
 }
 
+bool Tracking::changeFlightStatusCB(gauss_msgs::ChangeFlightStatus::Request &req, gauss_msgs::ChangeFlightStatus::Response &res)
+{
+    bool result = true;
+    uint8_t uav_id = icao_address_uav_id_map_[std::to_string(req.icao)];
+
+    switch (uav_id_flight_status_map_[uav_id])
+    {
+    case FlightStatus::NOT_STARTED:
+        if(req.is_started == true)
+            uav_id_flight_status_map_[uav_id] = FlightStatus::STARTED;
+        break;
+    case FlightStatus::STARTED:
+        if(req.is_started == false)
+            uav_id_flight_status_map_[uav_id] = FlightStatus::ENDED;
+        break;
+    case FlightStatus::ENDED:
+        // Nothing
+        break;
+    default:
+        break;
+    }
+
+    res.success = true;
+    res.message = "Succesfully changed flight status";
+    return result;
+}
+
 // PositionReport callback
 void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
 {
@@ -311,19 +350,22 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
         bool create_candidate = false;
         if (use_position_report_ && msg->source == msg->SOURCE_RPA)
         {
-            // Reduce the rate at which the candidates are produced
-            if (uav_id_last_time_position_update_map_.find(msg->uav_id) == uav_id_last_time_position_update_map_.end())
+            if(uav_id_flight_status_map_[msg->uav_id] == FlightStatus::STARTED)
             {
-                uav_id_last_time_position_update_map_.insert(std::make_pair(msg->uav_id, msg->header.stamp));
-                create_candidate = true;
-            }
-            else
-            {
-                ros::Duration time_delta = msg->header.stamp - uav_id_last_time_position_update_map_[msg->uav_id];
-                if (time_delta.toSec() > 0.2)
+                // Reduce the rate at which the candidates are produced
+                if (uav_id_last_time_position_update_map_.find(msg->uav_id) == uav_id_last_time_position_update_map_.end())
                 {
+                    uav_id_last_time_position_update_map_.insert(std::make_pair(msg->uav_id, msg->header.stamp));
                     create_candidate = true;
-                    uav_id_last_time_position_update_map_[msg->uav_id] = msg->header.stamp;
+                }
+                else
+                {
+                    ros::Duration time_delta = msg->header.stamp - uav_id_last_time_position_update_map_[msg->uav_id];
+                    if (time_delta.toSec() > 0.2)
+                    {
+                        create_candidate = true;
+                        uav_id_last_time_position_update_map_[msg->uav_id] = msg->header.stamp;
+                    }
                 }
             }
             if (create_candidate)
@@ -483,70 +525,86 @@ bool Tracking::writeTrackingInfoToDatabase()
     // Write cooperative uavs operations
     for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
 	{
-        if(updated_flight_plan_flag_map_[it->first])
+        if(uav_id_flight_status_map_[it->first] == FlightStatus::STARTED)
         {
-            std::cout << "New flight plan received by tracking\n";
-            std::cout << it->second.flight_plan << "\n";
-            std::cout << "Flight plan updated field\n";
-            std::cout << it->second.flight_plan_updated << "\n"; 
-            write_operation_msg_.request.uav_ids.push_back(it->first);
-            write_operation_msg_.request.operation.push_back(it->second);
-            new_operation_pub_.publish(it->second);
+            if(updated_flight_plan_flag_map_[it->first])
+            {
+                std::cout << "New flight plan received by tracking\n";
+                std::cout << it->second.flight_plan << "\n";
+                std::cout << "Flight plan updated field\n";
+                std::cout << it->second.flight_plan_updated << "\n"; 
+                write_operation_msg_.request.uav_ids.push_back(it->first);
+                write_operation_msg_.request.operation.push_back(it->second);
+                new_operation_pub_.publish(it->second);
+            }
+            else if(modified_cooperative_operations_flags_[it->first] == true)
+            {
+                #ifdef DEBUG
+                std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
+                std::cout << "Estimated trajectory waypoint count: " << it->second.estimated_trajectory.waypoints.size() << std::endl;
+                #endif
+
+                write_tracking_msg_.request.uav_ids.push_back(it->first);
+                write_tracking_msg_.request.current_wps.push_back(it->second.current_wp);
+                write_tracking_msg_.request.estimated_trajectories.push_back(it->second.estimated_trajectory);
+                write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
+                write_tracking_msg_.request.tracks.push_back(it->second.track);
+                write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
+                write_tracking_msg_.request.is_started.push_back(true);
+                it->second.is_started = true;
+                std::cout << "Writing flight plan updated on database\n";
+                std::cout << it->second.flight_plan_updated << "\n";
+                //std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
+                //std::cout << "First waypoint of estimated trajectory\n";
+                //std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
+
+                /*
+                if(it->first == 0)
+                {
+                    std::cout << "Current waypoint: " << it->second.current_wp << "\n";
+                    std::cout << it->second.flight_plan.waypoints[it->second.current_wp] << "\n";
+                    std::cout << "Track size: " << it->second.track.waypoints.size() << "\n";
+                    std::cout << "Current position:\n"; 
+                    std::cout << it->second.track.waypoints.back();
+                } */
+
+            }
+            /*
+            if(it->first == 0)
+            {
+                if(updated_flight_plan_flag_map_[it->first])
+                {
+                    std::cout << "RECEIVED FLIGHT PLAN UPDATE\n";
+                    if(it->second.track.waypoints.size() != 0)
+                    {
+                        std::cout << "Current position\n";
+                        std::cout << it->second.track.waypoints.back() << "\n";
+                    }
+                    std::cout << "First waypoint of flight plan after tracking update of uav 0" << std::endl;
+                    std::cout << it->second.flight_plan.waypoints[0] << "\n";
+                    std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
+                    std::cout << "Estimated trajectory (first 3 waypoints): \n";
+                    std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
+                    std::cout << it->second.estimated_trajectory.waypoints[1] << "\n";
+                    std::cout << it->second.estimated_trajectory.waypoints[2] << "\n";
+                }
+            }
+            */
+
+            updated_flight_plan_flag_map_[it->first] = false;
+            modified_cooperative_operations_flags_[it->first] = false;
         }
-        else if(modified_cooperative_operations_flags_[it->first] == true)
+        else if(uav_id_flight_status_map_[it->first] == FlightStatus::ENDED)
         {
-            #ifdef DEBUG
-            std::cout << "Writing UAV ID " << (int)it->first << " operation on database\n";
-            std::cout << "Estimated trajectory waypoint count: " << it->second.estimated_trajectory.waypoints.size() << std::endl;
-            #endif
-            
+            it->second.is_started = false;
             write_tracking_msg_.request.uav_ids.push_back(it->first);
             write_tracking_msg_.request.current_wps.push_back(it->second.current_wp);
             write_tracking_msg_.request.estimated_trajectories.push_back(it->second.estimated_trajectory);
             write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
             write_tracking_msg_.request.tracks.push_back(it->second.track);
             write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-            std::cout << "Writing flight plan updated on database\n";
-            std::cout << it->second.flight_plan_updated << "\n";
-            //std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
-            //std::cout << "First waypoint of estimated trajectory\n";
-            //std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
-            
-            /*
-            if(it->first == 0)
-            {
-                std::cout << "Current waypoint: " << it->second.current_wp << "\n";
-                std::cout << it->second.flight_plan.waypoints[it->second.current_wp] << "\n";
-                std::cout << "Track size: " << it->second.track.waypoints.size() << "\n";
-                std::cout << "Current position:\n"; 
-                std::cout << it->second.track.waypoints.back();
-            } */
-            
+            write_tracking_msg_.request.is_started.push_back(false);
         }
-        /*
-        if(it->first == 0)
-        {
-            if(updated_flight_plan_flag_map_[it->first])
-            {
-                std::cout << "RECEIVED FLIGHT PLAN UPDATE\n";
-                if(it->second.track.waypoints.size() != 0)
-                {
-                    std::cout << "Current position\n";
-                    std::cout << it->second.track.waypoints.back() << "\n";
-                }
-                std::cout << "First waypoint of flight plan after tracking update of uav 0" << std::endl;
-                std::cout << it->second.flight_plan.waypoints[0] << "\n";
-                std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
-                std::cout << "Estimated trajectory (first 3 waypoints): \n";
-                std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
-                std::cout << it->second.estimated_trajectory.waypoints[1] << "\n";
-                std::cout << it->second.estimated_trajectory.waypoints[2] << "\n";
-            }
-        }
-        */
-
-        updated_flight_plan_flag_map_[it->first] = false;
-        modified_cooperative_operations_flags_[it->first] = false;
 	}
     write_tracking_msg_.response.message.clear();
     if(!write_tracking_msg_.request.uav_ids.empty())
@@ -630,22 +688,25 @@ void Tracking::fillTrackingWaypointList()
     // First we fill tracking waypoint list of cooperative UAVs
     for(auto it=cooperative_targets_.begin(); it!=cooperative_targets_.end(); ++it)
     {
-        gauss_msgs::Waypoint waypoint_aux;
-        waypoint_aux.stamp = it->second->currentPositionTimestamp();
-        it->second->getPose(waypoint_aux.x,waypoint_aux.y,waypoint_aux.z);
-        cooperative_operations_[it->first].track.waypoints.push_back(waypoint_aux); 
+        if(uav_id_flight_status_map_[it->first] == FlightStatus::STARTED)
+        {
+            gauss_msgs::Waypoint waypoint_aux;
+            waypoint_aux.stamp = it->second->currentPositionTimestamp();
+            it->second->getPose(waypoint_aux.x,waypoint_aux.y,waypoint_aux.z);
+            cooperative_operations_[it->first].track.waypoints.push_back(waypoint_aux); 
 
-        if (cooperative_operations_[it->first].track.waypoints.size() > 1)
-        {
-            auto it_last_element = cooperative_operations_[it->first].track.waypoints.rbegin();
-            auto it_first_element = cooperative_operations_[it->first].track.waypoints.begin();
-            cooperative_operations_[it->first].time_tracked = (it_last_element)->stamp.toSec() - (it_first_element)->stamp.toSec();
+            if (cooperative_operations_[it->first].track.waypoints.size() > 1)
+            {
+                auto it_last_element = cooperative_operations_[it->first].track.waypoints.rbegin();
+                auto it_first_element = cooperative_operations_[it->first].track.waypoints.begin();
+                cooperative_operations_[it->first].time_tracked = (it_last_element)->stamp.toSec() - (it_first_element)->stamp.toSec();
+            }
+            else
+            {
+                cooperative_operations_[it->first].time_tracked = 0;
+            }
+            modified_cooperative_operations_flags_[it->first] = true;
         }
-        else
-        {
-            cooperative_operations_[it->first].time_tracked = 0;
-        }
-        modified_cooperative_operations_flags_[it->first] = true;
     }
 }
 
@@ -671,7 +732,11 @@ void Tracking::estimateTrajectory()
     for(auto it=cooperative_operations_.begin(); it!=cooperative_operations_.end(); ++it)
     {
         uint8_t uav_id = it->first;
-        if ( already_tracked_cooperative_operations_[uav_id] == true )
+        bool started_flight = false;
+        if(uav_id_flight_status_map_[uav_id] == FlightStatus::STARTED)
+            started_flight = true;
+        bool estimate_flag = already_tracked_cooperative_operations_[uav_id] && started_flight;
+        if ( estimate_flag )
         {
             #ifdef DEBUG
             std::cout << "##################################" << std::endl;

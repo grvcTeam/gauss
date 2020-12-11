@@ -28,6 +28,7 @@
 #include <gauss_msgs/ReadIcaoResponse.h>
 #include <gauss_msgs/PilotAnswer.h>
 #include <gauss_msgs/WritePlans.h>
+#include <gauss_msgs/ChangeFlightStatus.h>
 
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
@@ -107,6 +108,7 @@ private:
     ros::ServiceClient read_icao_client_;
     ros::ServiceClient send_pilot_answer_client_;
     ros::ServiceClient write_plans_client_;
+    ros::ServiceClient change_flight_status_client_;
 
     // Publisher
     ros::Publisher rpacommands_pub_;       //TBD message to UAVs
@@ -156,6 +158,7 @@ proj_(lat0_, lon0_, 0, earth_)
     send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/pilotanswer");
     // send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/send_pilot_answer");
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
+    change_flight_status_client_ = nh_.serviceClient<gauss_msgs::ChangeFlightStatus>("/gauss/change_flight_status");
 
     // Timer
     //timer_sub_=nh_.createTimer(ros::Duration(1.0/rate),&USPManager::timerCallback,this);
@@ -352,8 +355,14 @@ void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::Con
 
 void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg)
 {
-    std::cout << "Executing callback\n";
+    gauss_msgs::ChangeFlightStatus change_flight_status_msg;
     ROS_INFO_STREAM("Received RPSChangeFlightStatus message. Flight Plan ID: " << msg->flight_plan_id << " ICAO: " << msg->icao << " STATUS: " << msg->status);
+    change_flight_status_msg.request.icao = msg->icao;
+    if(msg->status == "start")
+        change_flight_status_msg.request.is_started = true;
+    else if(msg->status == "stop")
+        change_flight_status_msg.request.is_started = false;
+    change_flight_status_client_.call(change_flight_status_msg);
 }
 
 /*
