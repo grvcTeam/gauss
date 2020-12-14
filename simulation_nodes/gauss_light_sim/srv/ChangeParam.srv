@@ -1,0 +1,4 @@
+string icao_address  # Icao address of RPA
+time stamp           # Time (relative to RPA t = 0) when param should change
+string yaml          # yaml containing param name/type/info in a dict
+---                  # e.g: "{name: hal, type: float, value: 9000.1}"
