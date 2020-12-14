@@ -20,39 +20,32 @@
 						"x": 0,
 						"y": 0,
 						"z": 5,
-						"stamp": 2.0,
+						"stamp": 7.5,
 						"mandatory": 0
 					},
 					{
 						"x": 20,
 						"y": 0,
 						"z": 5,
-						"stamp": 7.5,
+						"stamp": 15.0,
 						"mandatory": 0
 					},
 					{
 						"x": 40,
 						"y": 0,
 						"z": 5,
-						"stamp": 15.0,
+						"stamp": 22.5,
 						"mandatory": 0
 					},
 					{
 						"x": 60,
 						"y": 0,
 						"z": 5,
-						"stamp": 22.5,
-						"mandatory": 0
-					},
-					{
-						"x": 80,
-						"y": 0,
-						"z": 5,
 						"stamp": 30.0,
 						"mandatory": 0
 					},
 					{
-						"x": 100,
+						"x": 80,
 						"y": 0,
 						"z": 5,
 						"stamp": 37.5,
@@ -61,8 +54,15 @@
 					{
 						"x": 100,
 						"y": 0,
-						"z": 1,
-						"stamp": 40.0,
+						"z": 5,
+						"stamp": 45.0,
+						"mandatory": 0
+					},
+					{
+						"x": 100,
+						"y": 0,
+						"z": 0,
+						"stamp": 52.5,
 						"mandatory": 0
 					}
 				]
@@ -97,7 +97,7 @@
 				]
 			},
 			"flight_geometry": 4.0,
-			"operational_volume": 6.0,
+			"operational_volume": 2.0,
 			"conop": "Power line inspection"
 		}
 	]
