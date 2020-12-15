@@ -28,6 +28,7 @@
 #include <gauss_msgs/ReadIcaoResponse.h>
 #include <gauss_msgs/PilotAnswer.h>
 #include <gauss_msgs/WritePlans.h>
+#include <gauss_msgs/ChangeFlightStatus.h>
 
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
@@ -107,6 +108,7 @@ private:
     ros::ServiceClient read_icao_client_;
     ros::ServiceClient send_pilot_answer_client_;
     ros::ServiceClient write_plans_client_;
+    ros::ServiceClient change_flight_status_client_;
 
     // Publisher
     ros::Publisher rpacommands_pub_;       //TBD message to UAVs
@@ -142,7 +144,7 @@ proj_(lat0_, lon0_, 0, earth_)
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",10,&USPManager::RPAStateCB,this);
     adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
     flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 10, &USPManager::RPSFlightPlanAcceptCB, this);
-    flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10, &USPManager::RPSChangeFlightStatusCB, this);
+    flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/flight_status", 10, &USPManager::RPSChangeFlightStatusCB, this);
 
     // Server 
     notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
@@ -156,11 +158,12 @@ proj_(lat0_, lon0_, 0, earth_)
     send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/pilotanswer");
     // send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/send_pilot_answer");
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
+    change_flight_status_client_ = nh_.serviceClient<gauss_msgs::ChangeFlightStatus>("/gauss/change_flight_status");
 
     // Timer
     //timer_sub_=nh_.createTimer(ros::Duration(1.0/rate),&USPManager::timerCallback,this);
 
-    ROS_INFO("Started USPManager node!");
+    ROS_INFO("[USPM] Started USPManager node!");
 
     this->initializeICAOIDMap();
 }
@@ -221,9 +224,6 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
     ThreatFlightPlan threat_flight_plan;
     std::string flight_plan_id_aux = msg->flight_plan_id;
     flight_plan_id_aux.erase((size_t)0,(size_t)7);
-    std::cout << "Received PILOT answer\n";
-    std::cout << msg->flight_plan_id << "\n";
-    std::cout << (int)msg->accept << "\n";
     uint8_t flight_plan_id = std::atoi(flight_plan_id_aux.c_str());
     if(msg->accept)
     {
@@ -352,8 +352,14 @@ void USPManager::ADSBSurveillanceCB(const gauss_msgs_mqtt::ADSBSurveillance::Con
 
 void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg)
 {
-    std::cout << "Executing callback\n";
-    ROS_INFO_STREAM("Received RPSChangeFlightStatus message. Flight Plan ID: " << msg->flight_plan_id << " ICAO: " << msg->icao << " STATUS: " << msg->status);
+    gauss_msgs::ChangeFlightStatus change_flight_status_msg;
+    ROS_INFO_STREAM("[USPM] Received RPSChangeFlightStatus message. Flight Plan ID: " << msg->flight_plan_id << " ICAO: " << msg->icao << " STATUS: " << msg->status);
+    change_flight_status_msg.request.icao = msg->icao;
+    if(msg->status == "start")
+        change_flight_status_msg.request.is_started = true;
+    else if(msg->status == "stop")
+        change_flight_status_msg.request.is_started = false;
+    change_flight_status_client_.call(change_flight_status_msg);
 }
 
 /*
@@ -384,7 +390,6 @@ bool USPManager::initializeICAOIDMap()
         {
             id_icao_map_[*it_id] = std::atoi((*it_icao).c_str());
             icao_id_map_[std::atoi((*it_icao).c_str())] = *it_id;
-            std::cout << "ID: " << (int) *it_id << " ICAO: " << *it_icao << std::endl;
         }
     }
 
