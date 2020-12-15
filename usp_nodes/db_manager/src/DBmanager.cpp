@@ -91,7 +91,7 @@ DataBase::DataBase() : nh_(), pnh_("~") {
         if (!ok_json_geofences) ROS_ERROR("Geofences JSON does not exist!");
         if (!ok_json_operations) ROS_ERROR("Operations JSON does not exist!");
     }
-    ROS_INFO("Started DBManager node!");
+    ROS_INFO("[DB] Started DBManager node!");
 }
 
 bool DataBase::jsonExists(std::string _file_name) {
@@ -385,6 +385,7 @@ bool DataBase::writeTrackingCB(gauss_msgs::WriteTracking::Request &req, gauss_ms
                 it->second.time_tracked = req.times_tracked[i];
                 it->second.estimated_trajectory = req.estimated_trajectories[i];
                 it->second.flight_plan_updated = req.flight_plans_updated[i];
+                it->second.is_started = req.is_started[i];
             } else {
                 not_found_ids.push_back(i);
             }

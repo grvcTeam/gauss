@@ -529,10 +529,6 @@ bool Tracking::writeTrackingInfoToDatabase()
         {
             if(updated_flight_plan_flag_map_[it->first])
             {
-                std::cout << "New flight plan received by tracking\n";
-                std::cout << it->second.flight_plan << "\n";
-                std::cout << "Flight plan updated field\n";
-                std::cout << it->second.flight_plan_updated << "\n"; 
                 write_operation_msg_.request.uav_ids.push_back(it->first);
                 write_operation_msg_.request.operation.push_back(it->second);
                 new_operation_pub_.publish(it->second);
@@ -552,8 +548,6 @@ bool Tracking::writeTrackingInfoToDatabase()
                 write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
                 write_tracking_msg_.request.is_started.push_back(true);
                 it->second.is_started = true;
-                std::cout << "Writing flight plan updated on database\n";
-                std::cout << it->second.flight_plan_updated << "\n";
                 //std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
                 //std::cout << "First waypoint of estimated trajectory\n";
                 //std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
