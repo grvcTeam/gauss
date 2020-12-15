@@ -7,6 +7,14 @@
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
+#include <GeographicLib/Geocentric.hpp>
+#include <GeographicLib/LocalCartesian.hpp>
+
+#define ARENOSILLO_LATITUDE 37.094784
+#define ARENOSILLO_LONGITUDE -6.735478
+
+#define REFERENCE_LATITUDE ARENOSILLO_LATITUDE
+#define REFERENCE_LONGITUDE ARENOSILLO_LONGITUDE
 
 class RPAStateInfoWrapper : public gauss_msgs_mqtt::RPAStateInfo {
    public:
@@ -141,12 +149,20 @@ class LightSim {
 
     gauss_msgs_mqtt::RPAStateInfo createRPAStateInfoMsg(std::string icao) {
         gauss_msgs_mqtt::RPAStateInfo out_msg;
+        // Auxiliary variables for cartesian to geographic conversion
+        static double origin_latitude(REFERENCE_LATITUDE);
+        static double origin_longitude(REFERENCE_LONGITUDE);
+        static GeographicLib::Geocentric earth(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
+        static GeographicLib::LocalCartesian proj(origin_latitude, origin_longitude, 0, earth);
+        double latitude, longitude, altitude;
+        // Calculate next waypoint
         static gauss_msgs::Waypoint current_position;
         current_position = nextWaypoint(current_position, icao_to_operations_map[icao].front().flight_plan);
-        // TODO: Cartesian to geographic conversion
-        out_msg.altitude = current_position.z;
-        out_msg.latitude = current_position.x;
-        out_msg.longitude = current_position.y;
+        // Cartesian to geographic conversion
+        proj.Reverse(current_position.x, current_position.y, current_position.z, latitude, longitude, altitude);
+        out_msg.altitude = altitude;
+        out_msg.latitude = latitude;
+        out_msg.longitude = longitude;
         out_msg.timestamp = current_position.stamp.toNSec() / 1000000;
         out_msg.icao = atoi(icao.c_str());
 
