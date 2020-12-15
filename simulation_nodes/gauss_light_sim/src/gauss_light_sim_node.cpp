@@ -1,21 +1,21 @@
-#include <ros/ros.h>
-#include <yaml-cpp/yaml.h>
+#include <gauss_light_sim/ChangeParam.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
-#include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
 #include <gauss_msgs_mqtt/RPAStateInfo.h>
-#include <gauss_light_sim/ChangeParam.h>
+#include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
+#include <ros/ros.h>
+#include <yaml-cpp/yaml.h>
+
 #include <Eigen/Eigen>
 
-class RPAStateInfoWrapper: public gauss_msgs_mqtt::RPAStateInfo {
-public:
-
-    void addChangeParamRequest(const gauss_light_sim::ChangeParam::Request& req) {
+class RPAStateInfoWrapper : public gauss_msgs_mqtt::RPAStateInfo {
+   public:
+    void addChangeParamRequest(const gauss_light_sim::ChangeParam::Request &req) {
         change_param_request_list.push_back(req);
         // TODO: Is it worth sorting based on time?
     }
 
-    void update(const ros::Duration& elapsed) {
+    void update(const ros::Duration &elapsed) {
         // TODO: Update also physics?
         // Pass flight_plan from operation?
         auto it = change_param_request_list.begin();
@@ -30,11 +30,10 @@ public:
             } else {
                 ++it;
             }
-        }    
+        }
     }
 
-    void applyChange(const YAML::Node& yaml_change) {
-
+    void applyChange(const YAML::Node &yaml_change) {
         std::string param_name = yaml_change["name"].as<std::string>();
         std::string param_type = yaml_change["type"].as<std::string>();
 
@@ -46,80 +45,75 @@ public:
 
         } else if ((param_name == "hpl") && (param_type == "float")) {
             this->hpl = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "hal") && (param_type == "float")) {
             this->hal = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "vpl") && (param_type == "float")) {
             this->vpl = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "val") && (param_type == "float")) {
             this->val = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "solution_mode") && (param_type == "string")) {
             this->solution_mode = yaml_change["value"].as<std::string>();
-        
+
         } else if ((param_name == "jamming") && (param_type == "float")) {
             this->jamming = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "spoofing") && (param_type == "float")) {
             this->spoofing = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "anomalous_clock_drift") && (param_type == "bool")) {
             this->anomalous_clock_drift = yaml_change["value"].as<bool>();
-        
+
         } else if ((param_name == "anomalous_pos_drift") && (param_type == "bool")) {
             this->anomalous_pos_drift = yaml_change["value"].as<bool>();
-        
+
         } else if ((param_name == "signal_noise_ratio") && (param_type == "float")) {
             this->signal_noise_ratio = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "received_power") && (param_type == "float")) {
             this->received_power = yaml_change["value"].as<float>();
-        
+
         } else {
             ROS_ERROR("Unexpected param [%s] of type [%s]", param_name.c_str(), param_type.c_str());
         }
     }
 
-protected:
-
+   protected:
     std::vector<gauss_light_sim::ChangeParam::Request> change_param_request_list;  // TODO: other container?
-
 };
 
 class LightSim {
-public:
-
-    LightSim(ros::NodeHandle &n): n(n) {
-
+   public:
+    LightSim(ros::NodeHandle &n) : n(n) {
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
         rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state", 1);
         timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);  // TODO: rate 1Hz?
     }
 
-    void addRPAs(const std::vector<std::string>& icao_addresses) {
-        for (auto icao: icao_addresses) {
+    void addRPAs(const std::vector<std::string> &icao_addresses) {
+        for (auto icao : icao_addresses) {
             icao_to_is_started_map[icao] = false;
         }
     }
 
-    void addOperations(const std::vector<gauss_msgs::Operation>& operations) {
-        for (auto operation: operations) {
+    void addOperations(const std::vector<gauss_msgs::Operation> &operations) {
+        for (auto operation : operations) {
             // TODO: More than one operation for one icao_address?
             icao_to_operations_map[operation.icao_address].push_back(operation);
         }
     }
 
-protected:
-
+   protected:
     bool changeParamCallback(gauss_light_sim::ChangeParam::Request &req, gauss_light_sim::ChangeParam::Response &res) {
         icao_to_state_info_map[req.icao_address].addChangeParamRequest(req);
         return true;
     }
 
-    void flightStatusCallback(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg) {
+    void flightStatusCallback(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr &msg) {
         // TODO: Decide if icao is a string or a uint32
         std::string icao_address = std::to_string(msg->icao);
         bool started = icao_to_is_started_map[icao_address];
@@ -132,8 +126,8 @@ protected:
         }
     }
 
-    void updateCallback(const ros::TimerEvent& time) {
-        for (auto element: icao_to_is_started_map) {
+    void updateCallback(const ros::TimerEvent &time) {
+        for (auto element : icao_to_is_started_map) {
             auto icao = element.first;
             bool is_started = element.second;
             if (is_started) {
@@ -155,7 +149,7 @@ protected:
         out_msg.longitude = current_position.y;
         out_msg.timestamp = current_position.stamp.toNSec() / 1000000;
         out_msg.icao = atoi(icao.c_str());
-        
+
         return out_msg;
     }
 
@@ -282,7 +276,7 @@ protected:
                 // Get speed to go from B to C
                 double next_time_between_wps = (_flight_plan.waypoints.at(b_waypoint_index + 1).stamp - _flight_plan.waypoints.at(b_waypoint_index).stamp).toSec();
                 double next_speed = (wpc - wpb).norm() / next_time_between_wps;  // m/s
-                // Rule of three. BO was calculated with previous speed, get new speed and calculate new BO distance. 
+                // Rule of three. BO was calculated with previous speed, get new speed and calculate new BO distance.
                 double dist_bo_next_speed = next_speed * dist_bo / speed;
                 sum_vec = unit_vec * dist_bo_next_speed;
                 // Create next waypoint using the speed and the unit vector
@@ -313,8 +307,7 @@ protected:
     ros::ServiceServer change_param_service;
 };
 
-
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     ros::init(argc, argv, "gauss_light_sim_node");
     ros::NodeHandle n;
 
