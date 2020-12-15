@@ -115,7 +115,7 @@ public:
     // float32 signal_noise_ratio  ---------------------- applyChange
     // float32 received_power      ---------------------- applyChange
 
-    void update(const ros::Duration& elapsed, const gauss_msgs::Operation& operation) {
+    bool update(const ros::Duration& elapsed, const gauss_msgs::Operation& operation) {
 
         // TODO: Solve icao string vs uint32 issue
         data.icao = std::stoi(operation.icao_address);
@@ -123,27 +123,39 @@ public:
         // TODO: Solve timing issues
         data.timestamp = ros::Time::now().toSec();
 
-        updatePhysics(elapsed, operation.flight_plan);
-
         auto it = change_param_request_list.begin();
         while (it != change_param_request_list.end()) {
             auto change = *it;
             if (elapsed.toSec() > change.stamp.toSec()) {
-                YAML::Node yaml_change = YAML::Load(change.yaml);
-                applyChange(yaml_change);
+                try {
+                    YAML::Node yaml_change = YAML::Load(change.yaml);
+                    if (!applyChange(yaml_change)) {
+                        auto icao = operation.icao_address.c_str();
+                        ROS_ERROR("RPA[%s] colud not apply: %s", icao, change.yaml.c_str());
+                    }
+
+                } catch (const std::runtime_error& error) {
+                    auto icao = operation.icao_address.c_str();
+                    ROS_ERROR("RPA[%s] could not apply [%s]: %s", icao, change.yaml.c_str(), error.what());
+                }
                 // And erase this change, keepin valid it
                 it = change_param_request_list.erase(it);
             } else {
                 ++it;
             }
-        }    
+        }
+
+        return updatePhysics(elapsed, operation.flight_plan);
     }
 
     // TODO: Initialize phyics?
-    void updatePhysics(const ros::Duration& elapsed, const gauss_msgs::WaypointList& flight_plan) {
+    bool updatePhysics(const ros::Duration& elapsed, const gauss_msgs::WaypointList& flight_plan) {
+        // This function returns true if 'physics' is running
+        bool running = false;  // otherwise, it returns false 
+
         if (flight_plan.waypoints.size() == 0) {
             ROS_ERROR("Flight plan is empty");
-            return;
+            return false;
 
         } else if (flight_plan.waypoints.size() == 1) {
             // TODO: Transform to lat, lon
@@ -151,7 +163,7 @@ public:
             data.longitude = flight_plan.waypoints[0].x;
             data.altitude =  flight_plan.waypoints[0].z;
             data.groundspeed = 0;
-            return;
+            return false;
         }
 
         // flight_plan.waypoints.size() >= 2
@@ -170,9 +182,10 @@ public:
         gauss_msgs::Waypoint target_point;
         if (prev.stamp == next.stamp) {
             // Last waypoint is reached
-            // TODO: Flag it!
+            running = false;
             target_point = next;
         } else {
+            running = true;
             target_point = interpolate(prev, next, elapsed);
         }
 
@@ -183,10 +196,27 @@ public:
         data.longitude = target_point.x;
         data.altitude =  target_point.z;
         data.groundspeed = calculateMeanSpeed(prev, next);
-        return;
+        return running;
     }
 
-    void applyChange(const YAML::Node& yaml_change) {
+    bool applyChange(const YAML::Node& yaml_change) {
+        // This function returns true if change is correctly applied
+        if(!yaml_change.IsMap()) {
+            ROS_ERROR("A map {name: param_name, type: float|bool|string, value: param_value} is expected!");
+            return false;
+
+        } else if (!yaml_change["name"]) {
+            ROS_ERROR("Key [name] not found!");
+            return false;
+
+        } else if (!yaml_change["type"]) {
+            ROS_ERROR("Key [type] not found!");
+            return false;
+
+        } else if (!yaml_change["value"]) {
+            ROS_ERROR("Key [value] not found!");
+            return false;
+        }
 
         std::string param_name = yaml_change["name"].as<std::string>();
         std::string param_type = yaml_change["type"].as<std::string>();
@@ -232,7 +262,10 @@ public:
         
         } else {
             ROS_ERROR("Unexpected param [%s] of type [%s]", param_name.c_str(), param_type.c_str());
+            return false;
         }
+
+        return true;
     }
 
     void addChangeParamRequest(const gauss_light_sim::ChangeParam::Request& req) {
@@ -275,6 +308,11 @@ public:
 protected:
 
     bool changeParamCallback(gauss_light_sim::ChangeParam::Request &req, gauss_light_sim::ChangeParam::Response &res) {
+        if (icao_to_state_info_map.count(req.icao_address) == 0) {
+            ROS_WARN("Discarding ChangeParam request for unknown RPA[%s]", req.icao_address.c_str());
+            return false;
+        }
+
         ROS_INFO("RPA[%s] at t = %lf will change: %s", req.icao_address.c_str(), req.stamp.toSec(), req.yaml.c_str());
         icao_to_state_info_map[req.icao_address].addChangeParamRequest(req);
         return true;
@@ -283,9 +321,12 @@ protected:
     void flightStatusCallback(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg) {
         // TODO: Decide if icao is a string or a uint32
         std::string icao_address = std::to_string(msg->icao);
-        // Use at() instead of [] to throw an exception if icao is not found
-        // TODO: Warn it!
-        bool started = icao_to_is_started_map.at(icao_address);
+        if (icao_to_is_started_map.count(icao_address) == 0) {
+            ROS_WARN("Discarding RPSChangeFlightStatus for unknown RPA[%s]", icao_address.c_str());
+            return;
+        }
+
+        bool started = icao_to_is_started_map[icao_address];
         // TODO: Magic word for start?
         if ((msg->status == "start") && !started) {
             icao_to_time_zero_map[icao_address] = ros::Time::now();
@@ -300,11 +341,14 @@ protected:
             bool is_started = element.second;
             if (is_started) {
                 // TODO: Fix base-time issues!
-                // Use at() instead of [] to throw an exception if icao is not found
-                ros::Duration elapsed = time.current_real - icao_to_time_zero_map.at(icao);
-                auto operation = icao_to_operation_map.at(icao);
-                icao_to_state_info_map.at(icao).update(elapsed, operation);
-                rpa_state_info_pub.publish(icao_to_state_info_map.at(icao).data);
+                ros::Duration elapsed = time.current_real - icao_to_time_zero_map[icao];
+                auto operation = icao_to_operation_map[icao];
+                if (!icao_to_state_info_map[icao].update(elapsed, operation)) {
+                    // Operation is finished, TODO: publish RPSChangeFlightStatus?
+                    ROS_INFO("RPA[%s] finished operation", icao.c_str());
+                    icao_to_is_started_map[icao] = false;
+                }
+                rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
             }
         }
     }
