@@ -48,7 +48,7 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
 */
 
 // This is a trickier version of the previous function, as time-base issues must be addressed (TODO!)
-gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_msgs::Waypoint& to, const ros::Duration& t) {
+gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
         ROS_ERROR("from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
@@ -59,7 +59,11 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
     }
 
     // Make sure that from.stamp < dt < to.stamp (now we have to convert it to seconds before comparing)
-    if (t.toSec() <= from.stamp.toSec()) { return from; } else if (t.toSec() >= to.stamp.toSec()) { return to; }
+    if (t.toSec() <= from.stamp.toSec()) {
+        return from;
+    } else if (t.toSec() >= to.stamp.toSec()) {
+        return to;
+    }
 
     // Now safely interpolate in space-time :)
     double delta_t = to.stamp.toSec() - from.stamp.toSec();
@@ -77,7 +81,7 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
 }
 
 // TODO: Much code from interpolate is reused and repeated, see how to merge?
-float calculateMeanSpeed(const gauss_msgs::Waypoint& from, const gauss_msgs::Waypoint& to) {
+float calculateMeanSpeed(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
         ROS_ERROR("from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
@@ -91,14 +95,13 @@ float calculateMeanSpeed(const gauss_msgs::Waypoint& from, const gauss_msgs::Way
     double delta_x = to.x - from.x;
     double delta_y = to.y - from.y;
     double delta_z = to.z - from.z;
-    double distance = sqrt(delta_x*delta_x + delta_y*delta_y + delta_z*delta_z);
+    double distance = sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
 
     return distance / delta_t;
 }
 
 class RPAStateInfoWrapper {
-public:
-
+   public:
     // RPAStateInfoWrapper wraps (has-a) RPAStateInfo named data
     gauss_msgs_mqtt::RPAStateInfo data;
 
@@ -126,13 +129,12 @@ public:
     // float32 signal_noise_ratio  ---------------------- applyChange
     // float32 received_power      ---------------------- applyChange
 
-    bool update(const ros::Duration& elapsed, const gauss_msgs::Operation& operation) {
-
+    bool update(const ros::Duration &elapsed, const gauss_msgs::Operation &operation) {
         // TODO: Solve icao string vs uint32 issue
         data.icao = std::stoi(operation.icao_address);
 
         // TODO: Solve timing issues
-        data.timestamp = ros::Time::now().toSec();
+        data.timestamp = ros::Time::now().toNSec() / 1000000;
 
         auto it = change_param_request_list.begin();
         while (it != change_param_request_list.end()) {
@@ -145,7 +147,7 @@ public:
                         ROS_ERROR("RPA[%s] colud not apply: %s", icao, change.yaml.c_str());
                     }
 
-                } catch (const std::runtime_error& error) {
+                } catch (const std::runtime_error &error) {
                     auto icao = operation.icao_address.c_str();
                     ROS_ERROR("RPA[%s] could not apply [%s]: %s", icao, change.yaml.c_str(), error.what());
                 }
@@ -160,19 +162,25 @@ public:
     }
 
     // TODO: Initialize phyics?
-    bool updatePhysics(const ros::Duration& elapsed, const gauss_msgs::WaypointList& flight_plan) {
+    bool updatePhysics(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan) {
         // This function returns true if 'physics' is running
-        bool running = false;  // otherwise, it returns false 
+        bool running = false;  // otherwise, it returns false
+        // Auxiliary variables for cartesian to geographic conversion
+        static double origin_latitude(REFERENCE_LATITUDE);
+        static double origin_longitude(REFERENCE_LONGITUDE);
+        static GeographicLib::Geocentric earth(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
+        static GeographicLib::LocalCartesian proj(origin_latitude, origin_longitude, 0, earth);
+        double latitude, longitude, altitude;
 
         if (flight_plan.waypoints.size() == 0) {
             ROS_ERROR("Flight plan is empty");
             return false;
 
         } else if (flight_plan.waypoints.size() == 1) {
-            // TODO: Transform to lat, lon
-            data.latitude =  flight_plan.waypoints[0].y;
-            data.longitude = flight_plan.waypoints[0].x;
-            data.altitude =  flight_plan.waypoints[0].z;
+            proj.Reverse(flight_plan.waypoints[0].x, flight_plan.waypoints[0].y, flight_plan.waypoints[0].z, latitude, longitude, altitude);
+            data.latitude = latitude;
+            data.longitude = longitude;
+            data.altitude = altitude;
             data.groundspeed = 0;
             return false;
         }
@@ -181,7 +189,7 @@ public:
         gauss_msgs::Waypoint prev, next;
         prev = flight_plan.waypoints[0];
         auto it = flight_plan.waypoints.begin();
-        while (it !=  flight_plan.waypoints.end()) {
+        while (it != flight_plan.waypoints.end()) {
             next = *it;
             if (next.stamp.toSec() > elapsed.toSec()) {
                 break;
@@ -200,19 +208,19 @@ public:
             target_point = interpolate(prev, next, elapsed);
         }
 
-        // TODO: Play with a current_point and target_point to add some memory 
-        // and behave more realistically if flight_plan is changed
-        // TODO: Transform to lat, lon
-        data.latitude =  target_point.y;
-        data.longitude = target_point.x;
-        data.altitude =  target_point.z;
+        // TODO: Play with a current_point and target_point to add some memory and behave more realistically if flight_plan is changed
+        // Cartesian to geographic conversion
+        proj.Reverse(target_point.x, target_point.y, target_point.z, latitude, longitude, altitude);
+        data.latitude = latitude;
+        data.longitude = longitude;
+        data.altitude = altitude;
         data.groundspeed = calculateMeanSpeed(prev, next);
         return running;
     }
 
-    bool applyChange(const YAML::Node& yaml_change) {
+    bool applyChange(const YAML::Node &yaml_change) {
         // This function returns true if change is correctly applied
-        if(!yaml_change.IsMap()) {
+        if (!yaml_change.IsMap()) {
             ROS_ERROR("A map {name: param_name, type: float|bool|string, value: param_value} is expected!");
             return false;
 
@@ -240,34 +248,34 @@ public:
 
         } else if ((param_name == "hpl") && (param_type == "float")) {
             data.hpl = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "hal") && (param_type == "float")) {
             data.hal = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "vpl") && (param_type == "float")) {
             data.vpl = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "val") && (param_type == "float")) {
             data.val = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "solution_mode") && (param_type == "string")) {
             data.solution_mode = yaml_change["value"].as<std::string>();
-        
+
         } else if ((param_name == "jamming") && (param_type == "float")) {
             data.jamming = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "spoofing") && (param_type == "float")) {
             data.spoofing = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "anomalous_clock_drift") && (param_type == "bool")) {
             data.anomalous_clock_drift = yaml_change["value"].as<bool>();
-        
+
         } else if ((param_name == "anomalous_pos_drift") && (param_type == "bool")) {
             data.anomalous_pos_drift = yaml_change["value"].as<bool>();
-        
+
         } else if ((param_name == "signal_noise_ratio") && (param_type == "float")) {
             data.signal_noise_ratio = yaml_change["value"].as<float>();
-        
+
         } else if ((param_name == "received_power") && (param_type == "float")) {
             data.received_power = yaml_change["value"].as<float>();
 
@@ -279,22 +287,18 @@ public:
         return true;
     }
 
-    void addChangeParamRequest(const gauss_light_sim::ChangeParam::Request& req) {
+    void addChangeParamRequest(const gauss_light_sim::ChangeParam::Request &req) {
         change_param_request_list.push_back(req);
     }
 
-protected:
-
+   protected:
     std::vector<gauss_light_sim::ChangeParam::Request> change_param_request_list;
-
 };
 
 class LightSim {
-public:
-
-    LightSim(ros::NodeHandle &n, const std::vector<std::string>& icao_addresses): n(n) {
-
-        for (auto icao: icao_addresses) {
+   public:
+    LightSim(ros::NodeHandle &n, const std::vector<std::string> &icao_addresses) : n(n) {
+        for (auto icao : icao_addresses) {
             icao_to_is_started_map[icao] = false;
             icao_to_time_zero_map[icao] = ros::Time(0);
             icao_to_operation_map[icao] = gauss_msgs::Operation();
@@ -302,21 +306,22 @@ public:
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
-        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("rpa_state_info", 1);  // TODO: Check topic url
+        status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("flight_status", 10);
+        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state", 10);
     }
 
     void start() {
-        timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);  // TODO: rate 1Hz?
+        timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);
     }
 
-    void setOperations(const std::vector<gauss_msgs::Operation>& operations) {
-        for (auto operation: operations) {
+    void setOperations(const std::vector<gauss_msgs::Operation> &operations) {
+        for (auto operation : operations) {
             // There should be one operation for each icao_address
             icao_to_operation_map[operation.icao_address] = operation;
         }
     }
 
-protected:
+   protected:
     bool changeParamCallback(gauss_light_sim::ChangeParam::Request &req, gauss_light_sim::ChangeParam::Response &res) {
         if (icao_to_state_info_map.count(req.icao_address) == 0) {
             ROS_WARN("Discarding ChangeParam request for unknown RPA[%s]", req.icao_address.c_str());
@@ -357,9 +362,14 @@ protected:
                 ros::Duration elapsed = time.current_real - icao_to_time_zero_map[icao];
                 auto operation = icao_to_operation_map[icao];
                 if (!icao_to_state_info_map[icao].update(elapsed, operation)) {
-                    // Operation is finished, TODO: publish RPSChangeFlightStatus?
+                    // Operation is finished
                     ROS_INFO("RPA[%s] finished operation", icao.c_str());
                     icao_to_is_started_map[icao] = false;
+                    // TODO: Check tracking, it stop instantly the update of the operation instead of wait for the next service call (writeTracking)
+                    gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
+                    status_msg.icao = std::stoi(icao);
+                    status_msg.status = "stop";
+                    status_pub.publish(status_msg);
                 }
                 rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
                 // rpa_state_info_pub.publish(createRPAStateInfoMsg(icao));  // TODO: Test both!
@@ -468,7 +478,7 @@ protected:
     ros::NodeHandle n;
     ros::Timer timer;
     ros::Subscriber status_sub;
-    ros::Publisher rpa_state_info_pub;
+    ros::Publisher rpa_state_info_pub, status_pub;
     ros::ServiceServer change_param_service;
 };
 

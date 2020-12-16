@@ -137,7 +137,7 @@ proj_(lat0_, lon0_, 0, earth_)
 
     // Publish
     rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
-    position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 1);
+    position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 10);
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
 
