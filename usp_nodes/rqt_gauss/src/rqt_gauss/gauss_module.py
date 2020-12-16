@@ -7,6 +7,7 @@ from python_qt_binding import loadUi
 from python_qt_binding.QtCore import Signal
 from python_qt_binding.QtWidgets import QWidget, QMessageBox
 from gauss_msgs_mqtt.msg import UTMAlternativeFlightPlan, RPSFlightPlanAccept, RPSChangeFlightStatus
+from gauss_msgs.srv import ReadIcao, ReadIcaoRequest
 
 class GaussPlugin(Plugin):
     pop_up = Signal()
@@ -41,12 +42,18 @@ class GaussPlugin(Plugin):
 
         # Do connections and stuff here. For complex plugins, consider
         # creating custom helper classes instead of QWidget
-        # self._widget.gauss_test_button.clicked[bool].connect(self.handle_gauss_test_button_clicked)
-        self.status_pub = rospy.Publisher('/gauss/flight', RPSChangeFlightStatus, queue_size=1)
+        self.status_pub = rospy.Publisher('flight_status', RPSChangeFlightStatus, queue_size=1)
         self.acceptance_pub = rospy.Publisher('/gauss/flightacceptance', RPSFlightPlanAccept, queue_size=1)
         rospy.Subscriber('/gauss/alternative_flight_plan', UTMAlternativeFlightPlan, self.alternative_flight_plan_callback)
+        self.read_icao_service = rospy.ServiceProxy('/gauss/read_icao', ReadIcao)
+
+        self._widget.refresh_button.clicked.connect(self.handle_refresh_button_clicked)
+        self._widget.start_button.clicked.connect(self.handle_start_button_clicked)
+        self._widget.stop_button.clicked.connect(self.handle_stop_button_clicked)
         self.pop_up.connect(self.show_pop_up)
         self.alternative_flight_plan = None
+
+        self.handle_refresh_button_clicked()  # Try to refresh here
 
         # Show _widget.windowTitle on left-top of each plugin (when 
         # it's set in _widget). This is useful when you open multiple 
@@ -57,6 +64,39 @@ class GaussPlugin(Plugin):
             self._widget.setWindowTitle(self._widget.windowTitle() + (' (%d)' % context.serial_number()))
         # Add widget to the user interface
         context.add_widget(self._widget)
+
+    def handle_refresh_button_clicked(self):
+        try:
+            read_icao_response = self.read_icao_service.call(ReadIcaoRequest())
+
+            self._widget.icao_list.clear()
+            for icao in read_icao_response.icao_address:
+                self._widget.icao_list.addItem(icao)
+
+        except rospy.ServiceException as e:
+            print("Service call failed: %s"%e)
+
+    def change_flight_status(self, status):
+        selected_icao = self._widget.icao_list.currentItem()
+        if selected_icao is None:
+            rospy.logerr('Select an icao address')
+            return
+        icao = selected_icao.text()
+
+        change_flight_msg = RPSChangeFlightStatus()
+        change_flight_msg.icao = int(icao)
+        # change_flight_msg.flight_plan_id  # TODO
+        change_flight_msg.status = status
+        # change_flight_msg.timestamp  # TODO
+
+        rospy.loginfo('RPA[{}]: mission {}'.format(icao, status))
+        self.status_pub.publish(change_flight_msg)
+
+    def handle_start_button_clicked(self):
+        self.change_flight_status('start')
+
+    def handle_stop_button_clicked(self):
+        self.change_flight_status('stop')
 
     def alternative_flight_plan_callback(self, data):
         if self.alternative_flight_plan is None:
@@ -86,9 +126,6 @@ class GaussPlugin(Plugin):
             ros_response.accept = False
         self.acceptance_pub.publish(ros_response)
         self.alternative_flight_plan = None
-
-    # def handle_gauss_test_button_clicked(self):
-    #     rospy.logerr('Having fun pushing buttons?')
 
     def shutdown_plugin(self):
         # TODO unregister all publishers here
