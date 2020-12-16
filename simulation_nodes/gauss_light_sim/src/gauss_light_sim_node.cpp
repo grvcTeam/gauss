@@ -9,6 +9,7 @@
 #include <Eigen/Eigen>
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
+#include <limits>
 
 #define ARENOSILLO_LATITUDE 37.094784
 #define ARENOSILLO_LONGITUDE -6.735478
@@ -98,7 +99,7 @@ class LightSim {
     LightSim(ros::NodeHandle &n) : n(n) {
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
-        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state", 1);
+        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state", 10);
         timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);  // TODO: rate 1Hz?
     }
 
@@ -112,6 +113,7 @@ class LightSim {
         for (auto operation : operations) {
             // TODO: More than one operation for one icao_address?
             icao_to_operations_map[operation.icao_address].push_back(operation);
+            icao_to_current_position_map[operation.icao_address] = operation.flight_plan.waypoints.front();
         }
     }
 
@@ -156,14 +158,13 @@ class LightSim {
         static GeographicLib::LocalCartesian proj(origin_latitude, origin_longitude, 0, earth);
         double latitude, longitude, altitude;
         // Calculate next waypoint
-        static gauss_msgs::Waypoint current_position;
-        current_position = nextWaypoint(current_position, icao_to_operations_map[icao].front().flight_plan);
+        icao_to_current_position_map[icao] = nextWaypoint(icao_to_current_position_map[icao], icao_to_operations_map[icao].front().flight_plan, out_msg.groundspeed);
         // Cartesian to geographic conversion
-        proj.Reverse(current_position.x, current_position.y, current_position.z, latitude, longitude, altitude);
+        proj.Reverse(icao_to_current_position_map[icao].x, icao_to_current_position_map[icao].y, icao_to_current_position_map[icao].z, latitude, longitude, altitude);
         out_msg.altitude = altitude;
         out_msg.latitude = latitude;
         out_msg.longitude = longitude;
-        out_msg.timestamp = current_position.stamp.toNSec() / 1000000;
+        out_msg.timestamp = icao_to_current_position_map[icao].stamp.toNSec() / 1000000;
         out_msg.icao = atoi(icao.c_str());
 
         return out_msg;
@@ -173,100 +174,27 @@ class LightSim {
         return sqrt(pow(waypoint_a.x - waypoint_b.x, 2) + pow(waypoint_a.y - waypoint_b.y, 2) + pow(waypoint_a.z - waypoint_b.z, 2));
     }
 
-    void findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_position, gauss_msgs::WaypointList &flight_plan, int &a_index, int &b_index, double &distance_to_segment, double &distance_to_point_a, double &distance_to_point_b) {
-        int first_index = 0;
-        int second_index = 0;
-        distance_to_segment = std::numeric_limits<double>::max();
-        double distance_to_waypoint_a = std::numeric_limits<double>::max();
-        bool flag_distance_to_waypoint_a = false;
-        bool flag_distance_to_waypoint_b = false;
-
+    void findSegmentIndices(gauss_msgs::Waypoint &_current_position, gauss_msgs::WaypointList &flight_plan, int &a_index, int &b_index) {
+        double dist_a, dist_b, dist_ab;
+        double min = std::numeric_limits<int>::max();
         for (int i = 0; i < flight_plan.waypoints.size() - 1; i++) {
-            gauss_msgs::Waypoint &waypoint_a = flight_plan.waypoints[i];
-            gauss_msgs::Waypoint &waypoint_b = flight_plan.waypoints[i + 1];
-
-            Eigen::Vector3d vector_u;
-            flag_distance_to_waypoint_a = false;
-            flag_distance_to_waypoint_b = false;
-            vector_u.x() = waypoint_b.x - waypoint_a.x;
-            vector_u.y() = waypoint_b.y - waypoint_a.y;
-            vector_u.z() = waypoint_b.z - waypoint_a.z;
-
-            Eigen::Matrix4d A;
-            Eigen::Vector4d b;
-            Eigen::Vector4d x;
-
-            A = Eigen::Matrix4d::Identity();
-            A(3, 3) = 0;
-            A(0, 3) = vector_u.x();
-            A(1, 3) = vector_u.y();
-            A(2, 3) = vector_u.z();
-            A(3, 0) = vector_u.x();
-            A(3, 1) = vector_u.y();
-            A(3, 2) = vector_u.z();
-
-            x.x() = current_position.x - waypoint_a.x;
-            x.y() = current_position.y - waypoint_a.y;
-            x.z() = current_position.z - waypoint_a.z;
-
-            b = A.inverse() * x;
-
-            double distance;
-            if (b[3] >= 0 && b[3] <= 1) {
-                distance = sqrt(b[0] * b[0] + b[1] * b[1] + b[2] * b[2]);
-            } else {
-                double distance_to_waypoint_a = distanceBetweenWaypoints(current_position, waypoint_a);
-                double distance_to_waypoint_b = distanceBetweenWaypoints(current_position, waypoint_b);
-
-                if (distance_to_waypoint_a < distance_to_waypoint_b) {
-                    distance = distance_to_waypoint_a;
-                    flag_distance_to_waypoint_a = true;
-                } else {
-                    distance = distance_to_waypoint_b;
-                    flag_distance_to_waypoint_b = true;
-                }
-            }
-
-            if (distance <= distance_to_segment) {
-                distance_to_segment = distance;
-                if (flag_distance_to_waypoint_a) {
-                    first_index = i;
-                    second_index = i;
-                } else if (flag_distance_to_waypoint_b) {
-                    first_index = i + 1;
-                    second_index = i + 1;
-                } else {
-                    first_index = i;
-                    second_index = i + 1;
-                }
+            dist_a = distanceBetweenWaypoints(flight_plan.waypoints.at(i), _current_position);
+            dist_b = distanceBetweenWaypoints(flight_plan.waypoints.at(i + 1), _current_position);
+            dist_ab = distanceBetweenWaypoints(flight_plan.waypoints.at(i), flight_plan.waypoints.at(i + 1));
+            if ((dist_a + dist_b) == dist_ab && min > dist_ab) {
+                min = dist_ab;
+                a_index = i;
+                b_index = i + 1;
             }
         }
-
-        a_index = first_index;
-        b_index = second_index;
-
-        gauss_msgs::Waypoint &waypoint_a = flight_plan.waypoints[first_index];
-        gauss_msgs::Waypoint &waypoint_b = flight_plan.waypoints[second_index];
-
-        distance_to_point_a = distanceBetweenWaypoints(waypoint_a, current_position);
-        distance_to_point_b = distanceBetweenWaypoints(waypoint_b, current_position);
     }
 
-    gauss_msgs::Waypoint nextWaypoint(gauss_msgs::Waypoint &_current_position, gauss_msgs::WaypointList &_flight_plan) {
+    gauss_msgs::Waypoint nextWaypoint(gauss_msgs::Waypoint &_current_position, gauss_msgs::WaypointList &_flight_plan, float &_groundspeed, float dT = 1.0) {
         gauss_msgs::Waypoint out_wp;
         int a_waypoint_index = 0;
         int b_waypoint_index = 0;
-        double distance_to_segment = 0;
-        double distance_to_point_a = 0;
-        double distance_to_point_b = 0;
-        findSegmentWaypointsIndices(_current_position, _flight_plan, a_waypoint_index, b_waypoint_index, distance_to_segment, distance_to_point_a, distance_to_point_b);
-        // Trick results of findSegmentWaypointsIndices
-        if (a_waypoint_index == b_waypoint_index) {
-            b_waypoint_index++;
-            // std::cout << "b + 1: " << b_waypoint_index << "\n";
-        }
-        // Trick results of findSegmentWaypointsIndices
-        if (b_waypoint_index != 0 && a_waypoint_index < _flight_plan.waypoints.size() - 1 && b_waypoint_index < _flight_plan.waypoints.size()) {
+        findSegmentIndices(_current_position, _flight_plan, a_waypoint_index, b_waypoint_index);
+        if (b_waypoint_index != 0 && b_waypoint_index < _flight_plan.waypoints.size()) {
             // Get unit vector between wpa and wpb
             Eigen::Vector3f wpa = Eigen::Vector3f(_flight_plan.waypoints.at(a_waypoint_index).x, _flight_plan.waypoints.at(a_waypoint_index).y, _flight_plan.waypoints.at(a_waypoint_index).z);
             Eigen::Vector3f wpb = Eigen::Vector3f(_flight_plan.waypoints.at(b_waypoint_index).x, _flight_plan.waypoints.at(b_waypoint_index).y, _flight_plan.waypoints.at(b_waypoint_index).z);
@@ -274,8 +202,8 @@ class LightSim {
             unit_vec = unit_vec / unit_vec.norm();
             // Get speed to go from A to B
             double time_between_wps = (_flight_plan.waypoints.at(b_waypoint_index).stamp - _flight_plan.waypoints.at(a_waypoint_index).stamp).toSec();
-            double speed = (wpb - wpa).norm() / time_between_wps;  // m/s
-            Eigen::Vector3f sum_vec = unit_vec * speed;
+            _groundspeed = (wpb - wpa).norm() / time_between_wps;  // m/s
+            Eigen::Vector3f sum_vec = unit_vec * _groundspeed;
             // Create next waypoint using the speed and the unit vector
             out_wp.x = _current_position.x + sum_vec(0);
             out_wp.y = _current_position.y + sum_vec(1);
@@ -293,12 +221,14 @@ class LightSim {
                 double next_time_between_wps = (_flight_plan.waypoints.at(b_waypoint_index + 1).stamp - _flight_plan.waypoints.at(b_waypoint_index).stamp).toSec();
                 double next_speed = (wpc - wpb).norm() / next_time_between_wps;  // m/s
                 // Rule of three. BO was calculated with previous speed, get new speed and calculate new BO distance.
-                double dist_bo_next_speed = next_speed * dist_bo / speed;
+                double dist_bo_next_speed = next_speed * dist_bo / _groundspeed;
                 sum_vec = unit_vec * dist_bo_next_speed;
                 // Create next waypoint using the speed and the unit vector
                 out_wp.x = _flight_plan.waypoints.at(b_waypoint_index).x + sum_vec(0);
                 out_wp.y = _flight_plan.waypoints.at(b_waypoint_index).y + sum_vec(1);
                 out_wp.z = _flight_plan.waypoints.at(b_waypoint_index).z + sum_vec(2);
+                // Groundspeed will be used outside
+                _groundspeed = next_speed;
             }  // A ----- O -- B
             // Do not go underground
             if (out_wp.z < 0) out_wp.z = 0;
@@ -306,7 +236,7 @@ class LightSim {
             out_wp = _current_position;
         }
         // Assuming the node is publishing RPAStateInfo every second.
-        out_wp.stamp = ros::Time(_current_position.stamp.toSec() + 1.0);
+        out_wp.stamp = ros::Time(_current_position.stamp.toSec() + dT);
 
         return out_wp;
     }
@@ -315,6 +245,7 @@ class LightSim {
     std::map<std::string, ros::Time> icao_to_time_zero_map;
     std::map<std::string, std::vector<gauss_msgs::Operation>> icao_to_operations_map;  // TODO: more than one operation is possible?
     std::map<std::string, RPAStateInfoWrapper> icao_to_state_info_map;
+    std::map<std::string, gauss_msgs::Waypoint> icao_to_current_position_map;
 
     ros::NodeHandle n;
     ros::Timer timer;
@@ -351,7 +282,7 @@ int main(int argc, char **argv) {
     gauss_msgs::ReadOperation read_operation;
     read_operation.request.uav_ids = read_icao.response.uav_id;
     if (operation_client.call(read_operation)) {
-        std::cout << read_operation.response << '\n';
+        // std::cout << read_operation.response << '\n';
     } else {
         ROS_ERROR("Failed to call service: [%s]", read_operation_srv_url);
         return 1;

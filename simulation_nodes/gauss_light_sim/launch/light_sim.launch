@@ -1,6 +1,6 @@
 <launch>
     <!-- Arguments -->
-    <arg name="operations_json" default="test_operations"/>
+    <arg name="operations_json" default="loss_operations"/>
     <arg name="geofences_json"  default="loss_geofences"/>
 
     <!-- RVIZ -->
@@ -18,6 +18,6 @@
     <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>
     <node pkg="gauss_light_sim" type="gauss_light_sim_node" name="gauss_light_sim_node" output="screen" required="true"/>
     <!-- Wait 30 seconds before launching monitoring -->
-    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen"/>
+    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen"/> -->
 
 </launch>
