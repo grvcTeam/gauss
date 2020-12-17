@@ -135,7 +135,7 @@ Tracking::Tracking()
     // Publish
 
     // Subscribe
-    pos_report_sub_= nh_.subscribe<gauss_msgs::PositionReport>("/gauss/position_report",1,&Tracking::positionReportCB,this);
+    pos_report_sub_= nh_.subscribe<gauss_msgs::PositionReport>("/gauss/position_report",10,&Tracking::positionReportCB,this);
 
     // Server
     update_fligh_plan_server_ = nh_.advertiseService("/gauss/update_flight_plans", &Tracking::updateFlightPlansCB, this);

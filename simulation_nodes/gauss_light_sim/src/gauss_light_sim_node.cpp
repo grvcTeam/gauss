@@ -318,6 +318,7 @@ class LightSim {
         for (auto operation : operations) {
             // There should be one operation for each icao_address
             icao_to_operation_map[operation.icao_address] = operation;
+            icao_to_current_position_map[operation.icao_address] = operation.flight_plan.waypoints.front();
         }
     }
 
