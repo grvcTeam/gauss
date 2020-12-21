@@ -194,6 +194,7 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
                 threat_list_id_++;
             }
         }
+        // TODO: Check if this is working properly
         // Delete non-updated threats from threat_list_
         for (auto saved_threat = threat_list_.begin(); saved_threat != threat_list_.end();){
             std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 

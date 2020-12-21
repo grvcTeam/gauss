@@ -66,7 +66,10 @@ private:
     // TODO: Think how to implement this
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
 
-    bool sendThreats(std::vector<int8_t> uav_ids, std::vector<gauss_msgs::Threat> threats);
+    // Auxiliary methods
+    bool checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat);
+    gauss_msgs::Threats manageThreatList(const bool &_flag_new_threat, gauss_msgs::Threat &_in_threat);
+
     bool initializeICAOIDMap();
     bool initializeIDOperationMap();
 
@@ -88,6 +91,8 @@ private:
 
     std::map<uint8_t, std::vector<ThreatFlightPlan>> id_threat_flight_plan_map_;
 
+    std::vector<gauss_msgs::Threat> threat_list_;
+
     // Timer
     //ros::Timer timer_sub_;
 
@@ -101,7 +106,6 @@ private:
     ros::ServiceServer notification_server_;
 
     // Clients
-    //ros::ServiceClient alert_client_;
     ros::ServiceClient read_operation_client_;
     ros::ServiceClient write_operation_client_;
     ros::ServiceClient threats_client_;
@@ -145,12 +149,10 @@ proj_(lat0_, lon0_, 0, earth_)
     adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
     flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 10, &USPManager::RPSFlightPlanAcceptCB, this);
     flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/flight_status", 10, &USPManager::RPSChangeFlightStatusCB, this);
-
     // Server 
     notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
 
     // Client
-    // alert_client_ = nh_.serviceClient<gauss_msgs::Alert>("/gauss/alert");
     write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/write_operation");
     threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
@@ -281,6 +283,10 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     auto it = icao_id_map_.find(msg->icao);
     if (it != icao_id_map_.end())
     {
+        gauss_msgs::Threat temp_threat;
+        bool flag_new_threat = checkRPAHealth(msg, temp_threat);
+        gauss_msgs::Threats new_threats_msgs = manageThreatList(flag_new_threat, temp_threat);
+        if (flag_new_threat) threats_client_.call(new_threats_msgs);
         position_report_msg.uav_id = (*it).second;
         position_report_msg.confidence = msg->covariance_h + msg->covariance_v; // TODO: Find a proper method for calculating confidence
         position_report_msg.source = position_report_msg.SOURCE_RPA;
@@ -362,6 +368,89 @@ void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightS
     change_flight_status_client_.call(change_flight_status_msg);
 }
 
+bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat){
+    bool result = false;
+    // Define threshold
+    static double threshold_jamming = 0.5;
+    static double threshold_spoofing = 0.5;
+    // TODO: Complete checks with all necessary fields
+    auto it = icao_id_map_.find(rpa_state->icao);
+    threat.uav_ids.push_back(it->second);
+    threat.times.push_back(ros::Time::now());
+    if (rpa_state->jamming >= threshold_jamming) {
+        threat.threat_type = gauss_msgs::Threat::JAMMING_ATTACK;
+        result = true;
+    }
+    if (rpa_state->spoofing >= threshold_spoofing) {
+        threat.threat_type = gauss_msgs::Threat::SPOOFING_ATTACK;
+        result = true;
+    }
+
+    return result;
+}
+
+gauss_msgs::Threats USPManager::manageThreatList(const bool &_flag_new_threat, gauss_msgs::Threat &_in_threat){
+    gauss_msgs::Threats out_threats;
+    static int threat_list_id_ = 0;
+    if (_flag_new_threat){
+        if (threat_list_.size() == 0) {
+            _in_threat.times.front() = ros::Time::now();
+            threat_list_.push_back(_in_threat);
+            threat_list_.front().threat_id = threat_list_id_;
+            out_threats.request.threats.push_back(threat_list_.front());
+            out_threats.request.uav_ids.push_back(threat_list_.front().uav_ids.front());
+            threat_list_id_++;
+        }
+        if (threat_list_.size() > 0){
+            bool save_threat = false;
+            // Using lambda, check if threat_type of in_threat is in threat_list
+            std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
+                                                                        [_in_threat](gauss_msgs::Threat threat){return (threat.threat_type == _in_threat.threat_type);});
+            if (it != threat_list_.end()){
+                // Type found!
+                if (_in_threat.uav_ids.front() != it->uav_ids.front()){
+                        save_threat = true;
+                } else {
+                    // ID Found! Update time
+                    it->times.front() = ros::Time::now();
+                }
+            } else {
+                // Type not found!
+                save_threat = true;
+            }
+            if (save_threat){
+                _in_threat.threat_id = threat_list_id_;
+                _in_threat.times.front() = ros::Time::now();
+                threat_list_.push_back(_in_threat);
+                out_threats.request.threats.push_back(_in_threat);
+                out_threats.request.uav_ids.push_back(_in_threat.uav_ids.front());
+                threat_list_id_++;
+            }
+        } 
+    }
+    // Delete non-updated threats from threat_list
+    for (auto saved_threat = threat_list_.begin(); saved_threat != threat_list_.end();){
+        std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
+                                                                    [](gauss_msgs::Threat threat){
+                                                                        double time_to_delete = 2.0;
+                                                                        return (ros::Time::now().toSec() - threat.times.front().toSec()) >= time_to_delete;
+                                                                        });
+        if (it != threat_list_.end()){
+            // Time difference too big, the threat should be deleted. 
+            saved_threat = threat_list_.erase(saved_threat);
+        } else {
+            // Threat should not be deleted, it has been updated 
+            saved_threat++;
+        }
+    }
+
+    std::string cout_threats;
+    for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
+                                                              ", " + std::to_string(i.threat_type) + "]";
+    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[USPM] New threats detected: (id, type) " + cout_threats);
+
+    return out_threats;
+}
 /*
 // Timer Callback
 void USPManager::timerCallback(const ros::TimerEvent &)
@@ -418,25 +507,6 @@ bool USPManager::initializeIDOperationMap()
     }
 
     return result;
-}
-
-bool USPManager::sendThreats(std::vector<int8_t> uav_ids, std::vector<gauss_msgs::Threat> threats)
-{
-    gauss_msgs::Threats threats_msg;
-
-    gauss_msgs::Threat::ALERT_WARNING;
-    gauss_msgs::Threat::TECHNICAL_FAILURE;
-    gauss_msgs::Threat::COMMUNICATION_FAILURE;
-    gauss_msgs::Threat::LACK_OF_BATTERY;
-    gauss_msgs::Threat::JAMMING_ATTACK;
-    gauss_msgs::Threat::SPOOFING_ATTACK;
-    gauss_msgs::Threat::GNSS_DEGRADATION;
-
-    threats_msg.request.uav_ids = uav_ids;
-    threats_msg.request.threats = threats;
-
-    bool result = threats_client_.call(threats_msg);
-    return (result && threats_msg.response.success);
 }
 
 // MAIN function

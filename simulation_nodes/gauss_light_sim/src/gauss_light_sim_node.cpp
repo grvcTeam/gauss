@@ -142,9 +142,11 @@ class RPAStateInfoWrapper {
             if (elapsed.toSec() > change.stamp.toSec()) {
                 try {
                     YAML::Node yaml_change = YAML::Load(change.yaml);
+                    auto icao = operation.icao_address.c_str();
                     if (!applyChange(yaml_change)) {
-                        auto icao = operation.icao_address.c_str();
-                        ROS_ERROR("RPA[%s] colud not apply: %s", icao, change.yaml.c_str());
+                        ROS_ERROR("RPA[%s] apply: %s", icao, change.yaml.c_str());
+                    } else {
+                        ROS_INFO("RPA[%s] apply: %s", icao, change.yaml.c_str());
                     }
 
                 } catch (const std::runtime_error &error) {

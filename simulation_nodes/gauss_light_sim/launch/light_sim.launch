@@ -13,12 +13,12 @@
     </node>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" required="true"/>
     <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" required="true"/>
-    <node pkg="tracking" type="tracking" name="tracking" output="screen" required="true"/>
+    <node pkg="tracking" type="tracking" name="tracking" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
     <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
     <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>
     <node pkg="gauss_light_sim" type="gauss_light_sim_node" name="gauss_light_sim_node" output="screen" required="true"/>
     <!-- Wait 30 seconds before launching monitoring -->
-    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen"/>
+    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen"/> -->
 
 </launch>
