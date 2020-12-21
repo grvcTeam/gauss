@@ -58,15 +58,15 @@ class ConflictSolver {
 // TacticalDeconfliction Constructor
 ConflictSolver::ConflictSolver() {
     // Read parameters
-    nh_.param("/gauss/safetyDistance", minDist_, 10.0);
-    nh_.param("/gauss/minX", minX_, -200.0);
-    nh_.param("/gauss/minY", minY_, -200.0);
-    nh_.param("/gauss/minZ", minZ_, 0.0);
-    nh_.param("/gauss/maxX", maxX_, 200.0);
-    nh_.param("/gauss/maxY", maxY_, 200.0);
-    nh_.param("/gauss/maxZ", maxZ_, 30.0);
+    nh_.param("/tactical_deconfliction/safetyDistance", minDist_, 10.0);
+    nh_.param("/tactical_deconfliction/monitoring_rate", rate_, 0.2);
+    nh_.param("/tactical_deconfliction/minX", minX_, -200.0);
+    nh_.param("/tactical_deconfliction/minY", minY_, -200.0);
+    nh_.param("/tactical_deconfliction/minZ", minZ_, 0.0);
+    nh_.param("/tactical_deconfliction/maxX", maxX_, 200.0);
+    nh_.param("/tactical_deconfliction/maxY", maxY_, 200.0);
+    nh_.param("/tactical_deconfliction/maxZ", maxZ_, 30.0);
 
-    nh_.param("/gauss/monitoring_rate", rate_, 0.2);
 
     // Initialization
     dT_ = 1.0 / rate_;

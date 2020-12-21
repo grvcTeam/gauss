@@ -3,6 +3,12 @@
     <arg name="operations_json" default="arenosillo_operations"/>
     <arg name="geofences_json"  default="loss_geofences"/>
     <arg name="rviz_name"  default="arenosillo"/>
+    <arg name="minX" default="-400"/>
+    <arg name="minY" default="0"/>
+    <arg name="minZ" default="0"/>
+    <arg name="maxX" default="0"/>
+    <arg name="maxY" default="400"/>
+    <arg name="maxZ" default="300"/>
 
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/$(arg rviz_name).rviz" required="true"/>
@@ -11,14 +17,27 @@
         <param name="operations_json" value="$(arg operations_json)"/>
         <param name="geofences_json" value= "$(arg geofences_json)"/>
     </node>
-    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" required="true"/>
-    <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" required="true"/>
+    <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/>
     <node pkg="tracking" type="tracking" name="tracking" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
     <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
     <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>
     <node pkg="gauss_light_sim" type="gauss_light_sim_node" name="gauss_light_sim_node" output="screen" required="true"/>
-    <!-- Wait 30 seconds before launching monitoring -->
-    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen"/> -->
+    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true">
+        <param name="minX" value="$(arg minX)"/>
+        <param name="minY" value="$(arg minY)"/>
+        <param name="minZ" value="$(arg minZ)"/>
+        <param name="maxX" value="$(arg maxX)"/>
+        <param name="maxY" value="$(arg maxY)"/>
+        <param name="maxZ" value="$(arg maxZ)"/>
+    </node>
+    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen">
+        <param name="minX" value="$(arg minX)"/>
+        <param name="minY" value="$(arg minY)"/>
+        <param name="minZ" value="$(arg minZ)"/>
+        <param name="maxX" value="$(arg maxX)"/>
+        <param name="maxY" value="$(arg maxY)"/>
+        <param name="maxZ" value="$(arg maxZ)"/>
+    </node>
 
 </launch>

@@ -79,18 +79,18 @@ private:
 Monitoring::Monitoring()
 {
     // Read
-    nh_.param("/gauss/monitoring_rate",rate,0.2);
-    nh_.param("/gauss/minX",minX,-200.0);
-    nh_.param("/gauss/minY",minY,-200.0);
-    nh_.param("/gauss/minZ",minZ,0.0);
-    nh_.param("/gauss/maxX",maxX,200.0);
-    nh_.param("/gauss/maxY",maxY,200.0);
-    nh_.param("/gauss/maxZ",maxZ,30.0);
-    nh_.param("/gauss/time_horizon",maxT,90.0);
-    nh_.param("/gauss/deltaX",dX,10.0);
-    nh_.param("/gauss/deltaY",dY,10.0);
-    nh_.param("/gauss/deltaZ",dZ,10.0);
-    nh_.param("/gauss/safetyDistance",minDist,10.0);
+    nh_.param("/monitoring/monitoring_rate",rate,0.2);
+    nh_.param("/monitoring/safetyDistance",minDist,10.0);
+    nh_.param("/monitoring/minX",minX,-200.0);
+    nh_.param("/monitoring/minY",minY,-200.0);
+    nh_.param("/monitoring/minZ",minZ,0.0);
+    nh_.param("/monitoring/maxX",maxX,200.0);
+    nh_.param("/monitoring/maxY",maxY,200.0);
+    nh_.param("/monitoring/maxZ",maxZ,30.0);
+    nh_.param("/monitoring/time_horizon",maxT,90.0);
+    nh_.param("/monitoring/deltaX",dX,10.0);
+    nh_.param("/monitoring/deltaY",dY,10.0);
+    nh_.param("/monitoring/deltaZ",dZ,10.0);
 
 
     // Initialization    
