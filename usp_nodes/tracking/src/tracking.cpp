@@ -297,7 +297,7 @@ bool Tracking::updateFlightPlansCB(gauss_msgs::WritePlans::Request &req, gauss_m
     updated_flight_plans_mutex_.lock();
     for(int i=0; i<req.uav_ids.size(); i++)
     {
-        uav_id_update_flight_plan_map_[i] = req.flight_plans[i];
+        uav_id_update_flight_plan_map_[req.uav_ids.at(i)] = req.flight_plans[i];
     }
     updated_flight_plans_mutex_.unlock();
 

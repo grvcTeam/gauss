@@ -84,7 +84,7 @@ Visualization Manager:
         11259137/landing_spots: true
         11259137/operation_info: true
         11259137/track: true
-        11259137/volumes/flight_geometry: false
+        11259137/volumes/flight_geometry: true
         11259137/volumes/operational_volume: false
         11259138/estimated_trajectory: true
         11259138/flight_plan: true
@@ -92,7 +92,7 @@ Visualization Manager:
         11259138/landing_spots: true
         11259138/operation_info: true
         11259138/track: true
-        11259138/volumes/flight_geometry: false
+        11259138/volumes/flight_geometry: true
         11259138/volumes/operational_volume: false
       Queue Size: 100
       Value: true
