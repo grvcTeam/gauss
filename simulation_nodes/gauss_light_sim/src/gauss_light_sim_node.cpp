@@ -3,6 +3,7 @@
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs_mqtt/RPAStateInfo.h>
 #include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
+#include <gauss_msgs_mqtt/UTMAlternativeFlightPlan.h>
 #include <ros/ros.h>
 #include <yaml-cpp/yaml.h>
 
@@ -299,7 +300,11 @@ class RPAStateInfoWrapper {
 
 class LightSim {
    public:
-    LightSim(ros::NodeHandle &n, const std::vector<std::string> &icao_addresses) : n(n) {
+    LightSim(ros::NodeHandle &n, const std::vector<std::string> &icao_addresses) : n(n),                                 
+                                                                                   origin_latitude_(REFERENCE_LATITUDE),
+                                                                                   origin_longitude_(REFERENCE_LONGITUDE),
+                                                                                   earth_(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f()),
+                                                                                   proj_(origin_latitude_, origin_longitude_, 0, earth_){
         for (auto icao : icao_addresses) {
             icao_to_is_started_map[icao] = false;
             icao_to_time_zero_map[icao] = ros::Time(0);
@@ -308,6 +313,7 @@ class LightSim {
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
+        alternative_plan_sub = n.subscribe("/gauss/alternative_flight_plan", 1, &LightSim::altPlanCallback, this);
         status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("flight_status", 10);
         rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state", 10);
     }
@@ -334,6 +340,21 @@ class LightSim {
         ROS_INFO("RPA[%s] at t = %lf will change: %s", req.icao_address.c_str(), req.stamp.toSec(), req.yaml.c_str());
         icao_to_state_info_map[req.icao_address].addChangeParamRequest(req);
         return true;
+    }
+
+    void altPlanCallback(const gauss_msgs_mqtt::UTMAlternativeFlightPlan::ConstPtr &msg) {
+        icao_to_operation_map[std::to_string(msg->icao)].flight_plan.waypoints.clear();
+        for (auto geo_wp : msg->new_flight_plan){
+            gauss_msgs::Waypoint temp_wp;
+            double longitude, latitude, altitude;
+            longitude = geo_wp.waypoint_elements[0];
+            latitude = geo_wp.waypoint_elements[1];
+            altitude = geo_wp.waypoint_elements[2];
+            temp_wp.stamp = ros::Time(geo_wp.waypoint_elements[3]);
+            proj_.Forward(latitude, longitude, altitude, temp_wp.x, temp_wp.y, temp_wp.z);
+            std::cout << msg->icao << ":" << temp_wp.x << " " << temp_wp.y << " " << temp_wp.z << " " << temp_wp.stamp.toNSec() << "\n";
+            icao_to_operation_map[std::to_string(msg->icao)].flight_plan.waypoints.push_back(temp_wp);
+        }
     }
 
     void flightStatusCallback(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr &msg) {
@@ -365,14 +386,15 @@ class LightSim {
                 ros::Duration elapsed = time.current_real - icao_to_time_zero_map[icao];
                 auto operation = icao_to_operation_map[icao];
                 if (!icao_to_state_info_map[icao].update(elapsed, operation)) {
-                    // Operation is finished
-                    ROS_INFO("RPA[%s] finished operation", icao.c_str());
-                    icao_to_is_started_map[icao] = false;
-                    // TODO: Check tracking, it stop instantly the update of the operation instead of wait for the next service call (writeTracking)
-                    gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
-                    status_msg.icao = std::stoi(icao);
-                    status_msg.status = "stop";
-                    status_pub.publish(status_msg);
+                    // TODO: Check why it stops after receiving a new flight plan <-----------------
+                    // // Operation is finished
+                    // ROS_INFO("RPA[%s] finished operation", icao.c_str());
+                    // icao_to_is_started_map[icao] = false;
+                    // // TODO: Check tracking, it stop instantly the update of the operation instead of wait for the next service call (writeTracking)
+                    // gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
+                    // status_msg.icao = std::stoi(icao);
+                    // status_msg.status = "stop";
+                    // status_pub.publish(status_msg);
                 }
                 rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
                 // rpa_state_info_pub.publish(createRPAStateInfoMsg(icao));  // TODO: Test both!
@@ -382,16 +404,11 @@ class LightSim {
 
     gauss_msgs_mqtt::RPAStateInfo createRPAStateInfoMsg(std::string icao) {
         gauss_msgs_mqtt::RPAStateInfo out_msg;
-        // Auxiliary variables for cartesian to geographic conversion
-        static double origin_latitude(REFERENCE_LATITUDE);
-        static double origin_longitude(REFERENCE_LONGITUDE);
-        static GeographicLib::Geocentric earth(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
-        static GeographicLib::LocalCartesian proj(origin_latitude, origin_longitude, 0, earth);
         double latitude, longitude, altitude;
         // Calculate next waypoint
         icao_to_current_position_map[icao] = nextWaypoint(icao_to_current_position_map[icao], icao_to_operation_map[icao].flight_plan, out_msg.groundspeed);
         // Cartesian to geographic conversion
-        proj.Reverse(icao_to_current_position_map[icao].x, icao_to_current_position_map[icao].y, icao_to_current_position_map[icao].z, latitude, longitude, altitude);
+        proj_.Reverse(icao_to_current_position_map[icao].x, icao_to_current_position_map[icao].y, icao_to_current_position_map[icao].z, latitude, longitude, altitude);
         out_msg.altitude = altitude;
         out_msg.latitude = latitude;
         out_msg.longitude = longitude;
@@ -478,9 +495,14 @@ class LightSim {
     std::map<std::string, RPAStateInfoWrapper> icao_to_state_info_map;
     std::map<std::string, gauss_msgs::Waypoint> icao_to_current_position_map;
 
+    // Auxiliary variables for cartesian to geographic conversion
+    double origin_latitude_, origin_longitude_;
+    GeographicLib::Geocentric earth_;
+    GeographicLib::LocalCartesian proj_;
+
     ros::NodeHandle n;
     ros::Timer timer;
-    ros::Subscriber status_sub;
+    ros::Subscriber status_sub, alternative_plan_sub;
     ros::Publisher rpa_state_info_pub, status_pub;
     ros::ServiceServer change_param_service;
 };
