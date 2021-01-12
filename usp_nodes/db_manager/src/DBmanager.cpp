@@ -145,10 +145,6 @@ bool DataBase::operationsFromJson(std::string _file_name) {
                 }
                 operation.flight_plan = wp_list;
             }
-            // Fill estimated trajectory with at most 18 waypoints from flight plan
-            for (int index_1 = 0; index_1 < std::min((int)operation.flight_plan.waypoints.size(), 18); index_1++) {
-                operation.estimated_trajectory.waypoints.push_back(operation.flight_plan.waypoints.at(index_1));
-            }
             operation.track.waypoints.push_back(operation.flight_plan.waypoints.front());
             wp_list.waypoints.clear();
 
@@ -296,26 +292,21 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
 
 bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res) {
     for (int i = 0; i < req.uav_ids.size(); i++) {
-        if (saved_operations.empty()) {
-            req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
-            saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
-        } else {
-            map<int, gauss_msgs::Operation>::iterator it = saved_operations.find(req.uav_ids[i]);
-            if (it != saved_operations.end()) {
-                if (checkNewFlightPlan(it->second.flight_plan, req.operation[i].flight_plan)) {
-                    req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
-                }
-                it->second = req.operation[i];
-            } else {
+        map<int, gauss_msgs::Operation>::iterator it = saved_operations.find(req.uav_ids[i]);
+        if (it != saved_operations.end()) {
+            if (checkNewFlightPlan(it->second.flight_plan, req.operation[i].flight_plan)) {
                 req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
-                if (req.operation[i].current_wp == 0) req.operation[i].current_wp = 1;
-                if (req.operation[i].track.waypoints.size() == 0) req.operation[i].track.waypoints.push_back(req.operation[i].flight_plan.waypoints.front());
-                if (req.operation[i].flight_geometry < req.operation[i].operational_volume) req.operation[i].operational_volume = req.operation[i].flight_geometry * 0.8;
-                for (int j = 0; j < std::min((int)req.operation[i].flight_plan.waypoints.size(), 18); j++) req.operation[i].estimated_trajectory.waypoints.push_back(req.operation[i].flight_plan.waypoints.at(j));
-                saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
-                if (req.operation[i].flight_plan.waypoints.size() == 0) ROS_WARN("Operation %d has empty flight plan!", (int)req.operation[i].uav_id);
-                if (req.operation[i].landing_spots.waypoints.size() == 0) ROS_WARN("Operation %d has empty landing spot!", (int)req.operation[i].uav_id);
             }
+            it->second = req.operation[i];
+        } else {
+            req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
+            if (req.operation[i].current_wp == 0) req.operation[i].current_wp = 1;
+            if (req.operation[i].track.waypoints.size() == 0) req.operation[i].track.waypoints.push_back(req.operation[i].flight_plan.waypoints.front());
+            if (req.operation[i].flight_geometry < req.operation[i].operational_volume) req.operation[i].operational_volume = req.operation[i].flight_geometry * 0.8;
+            for (int j = 0; j < std::min((int)req.operation[i].flight_plan.waypoints.size(), 18); j++) req.operation[i].estimated_trajectory.waypoints.push_back(req.operation[i].flight_plan.waypoints.at(j));
+            saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
+            if (req.operation[i].flight_plan.waypoints.size() == 0) ROS_WARN("Operation %d has empty flight plan!", (int)req.operation[i].uav_id);
+            if (req.operation[i].landing_spots.waypoints.size() == 0) ROS_WARN("Operation %d has empty landing spot!", (int)req.operation[i].uav_id);
         }
     }
     res.success = true;
