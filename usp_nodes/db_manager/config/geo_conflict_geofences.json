@@ -7,7 +7,7 @@
 			"min_altitude": 0,
 			"max_altitude": 10,
 			"start_time": 0,
-			"end_time": 900,
+			"end_time": 1810712722,
 			"circle": {
 				"x_center": 0,
 				"y_center": 0,
@@ -18,10 +18,6 @@
 					{
 						"x": 55,
 						"y": -10
-					},
-					{
-						"x": 65,
-						"y": -20
 					},
 					{
 						"x": 75,
