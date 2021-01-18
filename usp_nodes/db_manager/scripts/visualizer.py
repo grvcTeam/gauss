@@ -588,7 +588,8 @@ def main():
         for geofence in read_geofences_response.geofences:
             ns = 'geofence_' + str(geofence.id)
             color = palette.get_color('red')  # TODO: Force red?
-            marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
+            if geofence.start_time.secs < rospy.get_rostime().secs and rospy.get_rostime().secs < geofence.end_time.secs: 
+                marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
 
         visualization_pub.publish(marker_array)
 
