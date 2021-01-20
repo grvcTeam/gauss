@@ -38,6 +38,7 @@ class DataBase {
     // Auxilary variables
     int size_plans;
     int size_geofences;
+    ros::Time init_time_;
     // Auxilary methods
     bool jsonExists(std::string _file_name);
     bool operationsFromJson(std::string _file_name);
@@ -73,6 +74,7 @@ DataBase::DataBase() : nh_(), pnh_("~") {
     if (ok_json_geofences && ok_json_operations) {
         // Initialization
         size_plans = size_geofences = 0;
+        init_time_ = ros::Time::now();
         // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
         ROS_WARN_STREAM(file_path + operations_name + ".json");
         ROS_WARN_STREAM(file_path + geofences_name + ".json");
@@ -139,7 +141,7 @@ bool DataBase::operationsFromJson(std::string _file_name) {
                     wp.x = it.value()["x"].get<double>();
                     wp.y = it.value()["y"].get<double>();
                     wp.z = it.value()["z"].get<double>();
-                    wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+                    wp.stamp = ros::Time(init_time_.toSec() + it.value()["stamp"].get<double>());
                     wp.mandatory = it.value()["mandatory"].get<double>();
                     wp_list.waypoints.push_back(wp);
                 }

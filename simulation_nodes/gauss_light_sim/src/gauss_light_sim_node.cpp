@@ -383,7 +383,8 @@ class LightSim {
             bool is_started = element.second;
             if (is_started) {
                 // TODO: Fix base-time issues!
-                ros::Duration elapsed = time.current_real - icao_to_time_zero_map[icao];
+                // ros::Duration elapsed = time.current_real - icao_to_time_zero_map[icao];
+                ros::Duration elapsed = time.current_real - ros::Time(0);
                 auto operation = icao_to_operation_map[icao];
                 if (!icao_to_state_info_map[icao].update(elapsed, operation)) {
                     // TODO: Check why it stops after receiving a new flight plan <-----------------
