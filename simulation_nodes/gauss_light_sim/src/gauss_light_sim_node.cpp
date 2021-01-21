@@ -310,6 +310,7 @@ class LightSim {
             icao_to_time_zero_map[icao] = ros::Time(0);
             icao_to_operation_map[icao] = gauss_msgs::Operation();
             icao_to_state_info_map[icao] = RPAStateInfoWrapper();
+            ROS_INFO("Ready to simulate icao [%s]", icao.c_str());
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
@@ -319,6 +320,7 @@ class LightSim {
     }
 
     void start() {
+        ROS_INFO("Starting simulation at t = [%lf]s", ros::Time::now().toSec());
         timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);
     }
 
@@ -327,6 +329,23 @@ class LightSim {
             // There should be one operation for each icao_address
             icao_to_operation_map[operation.icao_address] = operation;
             icao_to_current_position_map[operation.icao_address] = operation.flight_plan.waypoints.front();
+            ROS_INFO("Loaded operation for icao [%s]", operation.icao_address.c_str());
+        }
+    }
+
+    void setAutoStart(const std::map<std::string, ros::Time> &icao_to_start_time_map) {
+        auto now = ros::Time::now();  // So it is the same for all operations
+        for (auto const& auto_start : icao_to_start_time_map) {
+            auto icao = auto_start.first;
+            auto countdown = auto_start.second - now;
+            ROS_INFO("Operation icao [%s] auto starting in [%lf] seconds", icao.c_str(), countdown.toSec());
+
+            auto callback = [icao, countdown, this](const ros::TimerEvent& event) {
+                ROS_INFO("t = [%lf]s: Operation icao [%s] auto starting after [%lf] seconds", 
+                    event.current_real.toSec(), icao.c_str(), countdown.toSec());
+                this->startOperation(icao);
+            };
+            auto_start_timers.push_back(n.createTimer(countdown, callback, true));
         }
     }
 
@@ -365,13 +384,30 @@ class LightSim {
             return;
         }
 
-        bool started = icao_to_is_started_map[icao_address];
         // TODO: Magic word for start?
-        if ((msg->status == "start") && !started) {
+        if (msg->status == "start") {
+            startOperation(icao_address);
+        } else if (msg->status == "stop") {
+            stopOperation(icao_address);
+        }
+    }
+
+    void startOperation(const std::string& icao_address) {
+        bool started = icao_to_is_started_map[icao_address];
+        if (started) {
+            ROS_WARN("Operation icao [%s] already started", icao_address.c_str());
+        } else {
             icao_to_time_zero_map[icao_address] = ros::Time::now();
             icao_to_is_started_map[icao_address] = true;
             ROS_INFO("RPA[%s] starting (t = %lf)", icao_address.c_str(), icao_to_time_zero_map[icao_address].toSec());
-        } else if ((msg->status == "stop") && started) {
+        }
+    }
+
+    void stopOperation(const std::string& icao_address) {
+        bool started = icao_to_is_started_map[icao_address];
+        if (!started) {
+            ROS_WARN("Operation icao [%s] not started yet", icao_address.c_str());
+        } else {
             icao_to_is_started_map[icao_address] = false;
             ROS_INFO("RPA[%s] stopping (t = %lf)", icao_address.c_str(), ros::Time::now().toSec());
         }
@@ -503,6 +539,7 @@ class LightSim {
 
     ros::NodeHandle n;
     ros::Timer timer;
+    std::vector<ros::Timer> auto_start_timers;
     ros::Subscriber status_sub, alternative_plan_sub;
     ros::Publisher rpa_state_info_pub, status_pub;
     ros::ServiceServer change_param_service;
@@ -546,6 +583,14 @@ int main(int argc, char **argv) {
 
     LightSim sim(n, read_icao.response.icao_address);
     sim.setOperations(read_operation.response.operation);
+
+    // TODO: Load auto_start_map from config?
+    std::map<std::string, ros::Time> auto_start_map;
+    auto now = ros::Time::now();  // So it is the same for all
+    auto_start_map["11259137"] = now + ros::Duration(10);
+    auto_start_map["11259138"] = now + ros::Duration(20);
+    sim.setAutoStart(auto_start_map);
+
     sim.start();
     ros::spin();
     return 0;
