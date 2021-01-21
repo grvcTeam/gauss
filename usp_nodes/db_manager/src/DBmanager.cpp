@@ -63,8 +63,10 @@ class DataBase {
 // DataBase Constructor
 DataBase::DataBase() : nh_(), pnh_("~") {
     // Read parameters
+    double time_param = 0.0;
     std::string operations_name = "loss_operations";
     std::string geofences_name = "loss_geofences";
+    pnh_.getParam("init_time", time_param);
     pnh_.getParam("operations_json", operations_name);
     pnh_.getParam("geofences_json", geofences_name);
     std::string pkg_path = ros::package::getPath("db_manager");
@@ -74,7 +76,11 @@ DataBase::DataBase() : nh_(), pnh_("~") {
     if (ok_json_geofences && ok_json_operations) {
         // Initialization
         size_plans = size_geofences = 0;
-        init_time_ = ros::Time::now();
+        if (time_param == 0.0){
+            init_time_ = ros::Time::now();
+        } else {
+            init_time_ = ros::Time(time_param);
+        }
         // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
         ROS_WARN_STREAM(file_path + operations_name + ".json");
         ROS_WARN_STREAM(file_path + geofences_name + ".json");
@@ -195,8 +201,8 @@ bool DataBase::geofencesFromJson(std::string _file_name) {
             geofence.cylinder_shape = item.value()["cylinder_shape"].get<bool>();
             geofence.min_altitude = item.value()["min_altitude"].get<double>();
             geofence.max_altitude = item.value()["max_altitude"].get<double>();
-            geofence.start_time = ros::Time(item.value()["start_time"].get<double>());
-            geofence.end_time = ros::Time(item.value()["end_time"].get<double>());
+            geofence.start_time = ros::Time(init_time_.toSec() + item.value()["start_time"].get<double>());
+            geofence.end_time = ros::Time(init_time_.toSec() + item.value()["end_time"].get<double>());
             geofence.circle.x_center = item.value()["circle"]["x_center"].get<double>();
             geofence.circle.y_center = item.value()["circle"]["y_center"].get<double>();
             geofence.circle.radius = item.value()["circle"]["radius"].get<double>();
