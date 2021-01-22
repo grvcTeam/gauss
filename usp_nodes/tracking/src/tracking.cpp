@@ -150,7 +150,6 @@ Tracking::Tracking()
     // Modified Operation publisher TODO: Only for debugging purposes
     new_operation_pub_ = nh_.advertise<gauss_msgs::Operation>("gauss_test/updated_operation", 5);
 
-
     // Params
     nh_.param<bool>("use_position_report", use_position_report_, true);
     nh_.param<bool>("use_adsb_", use_adsb_, true);
@@ -310,16 +309,24 @@ bool Tracking::changeFlightStatusCB(gauss_msgs::ChangeFlightStatus::Request &req
 {
     bool result = true;
     uint8_t uav_id = icao_address_uav_id_map_[std::to_string(req.icao)];
+    std::cout << "Change flight status request received for ICAO address: " << req.icao << "\n";
+    std::cout << "UAV ID associated with this ICAO: " << (int)uav_id << "\n"; 
 
     switch (uav_id_flight_status_map_[uav_id])
     {
     case FlightStatus::NOT_STARTED:
         if(req.is_started == true)
+        {
             uav_id_flight_status_map_[uav_id] = FlightStatus::STARTED;
+            std::cout << "Flight started\n";
+        }
         break;
     case FlightStatus::STARTED:
         if(req.is_started == false)
+        {
             uav_id_flight_status_map_[uav_id] = FlightStatus::ENDED;
+            std::cout << "Flight ended\n";
+        }
         break;
     case FlightStatus::ENDED:
         // Nothing
@@ -347,10 +354,10 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     
     if (msg->header.stamp != ros::Time(0))
     {
-        bool create_candidate = false;
-        if (use_position_report_ && msg->source == msg->SOURCE_RPA)
+        if(uav_id_flight_status_map_[msg->uav_id] == FlightStatus::STARTED)
         {
-            if(uav_id_flight_status_map_[msg->uav_id] == FlightStatus::STARTED)
+            bool create_candidate = false;
+            if (use_position_report_ && msg->source == msg->SOURCE_RPA)
             {
                 // Reduce the rate at which the candidates are produced
                 if (uav_id_last_time_position_update_map_.find(msg->uav_id) == uav_id_last_time_position_update_map_.end())
@@ -367,114 +374,114 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
                         uav_id_last_time_position_update_map_[msg->uav_id] = msg->header.stamp;
                     }
                 }
-            }
-            if (create_candidate)
-            {
-                Candidate *candidate_aux_ptr = new Candidate;
-                candidate_aux_ptr->uav_id = msg->uav_id;
-                candidate_aux_ptr->icao_address = msg->icao_address;
-                candidate_aux_ptr->location(0) = msg->position.x;
-                candidate_aux_ptr->location(1) = msg->position.y;
-                candidate_aux_ptr->location(2) = msg->position.z;
-                // TODO: Fill covariances properly
-                candidate_aux_ptr->location_covariance(0,0) = 1.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(0,1) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(0,2) = 0.0;//msg->confidence;       	        
-                candidate_aux_ptr->location_covariance(1,0) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(1,1) = 1.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(1,2) = 0.0;//msg->confidence;      	        
-                candidate_aux_ptr->location_covariance(2,0) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(2,1) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(2,2) = 1.0;//msg->confidence;
-	            candidate_aux_ptr->speed_covariance(0,0) = VAR_SPEED;//msg->confidence;
-                candidate_aux_ptr->speed_covariance(0,1) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(0,2) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(1,0) = COV_SPEED_XY;
-	            candidate_aux_ptr->speed_covariance(1,1) = VAR_SPEED;//msg->confidence;
-                candidate_aux_ptr->speed_covariance(1,2) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(2,0) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
-	            candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
-                candidate_aux_ptr->source = Candidate::POSITIONREPORT;
-                candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
-                // TODO: Fill those speed values with real info from uav
-                candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
-                candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
-                candidate_aux_ptr->speed(2) = 0.0;
-                candidate_aux_ptr->timestamp = msg->header.stamp;
-
-                candidate_aux_ptr->source = candidate_aux_ptr->POSITIONREPORT;
-                candidates_list_mutex_.lock(); // Necessary because callbacks are going to be executed in separate threads concurrently
-                candidates_.push_back(candidate_aux_ptr);
-                candidates_list_mutex_.unlock();
-            }
-        }
-        if (use_adsb_ && msg->source == msg->SOURCE_ADSB)
-        {
-            // Reduce the rate at which the candidates are produced
-            if (icao_last_time_position_update_map_.find(msg->icao_address) == icao_last_time_position_update_map_.end())
-            {
-                icao_last_time_position_update_map_.insert(std::make_pair(msg->icao_address, msg->header.stamp));
-                create_candidate = true;
-            }
-            else
-            {
-                ros::Duration time_delta = msg->header.stamp - icao_last_time_position_update_map_[msg->icao_address];
-                if (time_delta.toSec() > 0.2)
+                if (create_candidate)
                 {
-                    create_candidate = true;
-                    icao_last_time_position_update_map_[msg->icao_address] = msg->header.stamp;
+                    Candidate *candidate_aux_ptr = new Candidate;
+                    candidate_aux_ptr->uav_id = msg->uav_id;
+                    candidate_aux_ptr->icao_address = msg->icao_address;
+                    candidate_aux_ptr->location(0) = msg->position.x;
+                    candidate_aux_ptr->location(1) = msg->position.y;
+                    candidate_aux_ptr->location(2) = msg->position.z;
+                    // TODO: Fill covariances properly
+                    candidate_aux_ptr->location_covariance(0,0) = 1.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(0,1) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(0,2) = 0.0;//msg->confidence;       	        
+                    candidate_aux_ptr->location_covariance(1,0) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(1,1) = 1.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(1,2) = 0.0;//msg->confidence;      	        
+                    candidate_aux_ptr->location_covariance(2,0) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(2,1) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(2,2) = 1.0;//msg->confidence;
+	                candidate_aux_ptr->speed_covariance(0,0) = VAR_SPEED;//msg->confidence;
+                    candidate_aux_ptr->speed_covariance(0,1) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(0,2) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(1,0) = COV_SPEED_XY;
+	                candidate_aux_ptr->speed_covariance(1,1) = VAR_SPEED;//msg->confidence;
+                    candidate_aux_ptr->speed_covariance(1,2) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(2,0) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
+	                candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
+                    candidate_aux_ptr->source = Candidate::POSITIONREPORT;
+                    candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
+                    // TODO: Fill those speed values with real info from uav
+                    candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
+                    candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
+                    candidate_aux_ptr->speed(2) = 0.0;
+                    candidate_aux_ptr->timestamp = msg->header.stamp;
+
+                    candidate_aux_ptr->source = candidate_aux_ptr->POSITIONREPORT;
+                    candidates_list_mutex_.lock(); // Necessary because callbacks are going to be executed in separate threads concurrently
+                    candidates_.push_back(candidate_aux_ptr);
+                    candidates_list_mutex_.unlock();
                 }
             }
-            if (create_candidate)
+            if (use_adsb_ && msg->source == msg->SOURCE_ADSB)
             {
-                Candidate *candidate_aux_ptr = new Candidate;
-                // Try to find the associated uav_id of the received icao_address
-                auto it = icao_address_uav_id_map_.find(msg->icao_address);
-                if (it != icao_address_uav_id_map_.end()) 
+                // Reduce the rate at which the candidates are produced
+                if (icao_last_time_position_update_map_.find(msg->icao_address) == icao_last_time_position_update_map_.end())
                 {
-                    candidate_aux_ptr->uav_id = (*it).second; // The uav_id is known
+                    icao_last_time_position_update_map_.insert(std::make_pair(msg->icao_address, msg->header.stamp));
+                    create_candidate = true;
                 }
                 else
                 {
-                    ROS_INFO("Received position report from UNKNOWN ICAO address");
-                    candidate_aux_ptr->uav_id = std::numeric_limits<uint8_t>::max(); // The uav_id is not known, could be a non cooperative one
+                    ros::Duration time_delta = msg->header.stamp - icao_last_time_position_update_map_[msg->icao_address];
+                    if (time_delta.toSec() > 0.2)
+                    {
+                        create_candidate = true;
+                        icao_last_time_position_update_map_[msg->icao_address] = msg->header.stamp;
+                    }
                 }
-                candidate_aux_ptr->icao_address = msg->icao_address;
-                candidate_aux_ptr->location(0) = msg->position.x;
-                candidate_aux_ptr->location(1) = msg->position.y;
-                candidate_aux_ptr->location(2) = msg->position.z;
-                // TODO: Fill covariances properly
-                candidate_aux_ptr->location_covariance(0,0) = 1.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(0,1) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(0,2) = 0.0;//msg->confidence;       	        
-                candidate_aux_ptr->location_covariance(1,0) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(1,1) = 1.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(1,2) = 0.0;//msg->confidence;      	        
-                candidate_aux_ptr->location_covariance(2,0) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(2,1) = 0.0;//msg->confidence;
-	            candidate_aux_ptr->location_covariance(2,2) = 1.0;//msg->confidence;
-	            candidate_aux_ptr->speed_covariance(0,0) = VAR_SPEED;//msg->confidence;
-                candidate_aux_ptr->speed_covariance(0,1) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(0,2) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(1,0) = COV_SPEED_XY;
-	            candidate_aux_ptr->speed_covariance(1,1) = VAR_SPEED;//msg->confidence;
-                candidate_aux_ptr->speed_covariance(1,2) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(2,0) = COV_SPEED_XY;
-                candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
-	            candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
-                candidate_aux_ptr->source = Candidate::POSITIONREPORT;
-                candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
-                // TODO: Fill those speed values with real info from uav
-                candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
-                candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
-                candidate_aux_ptr->speed(2) = 0.0;
-                candidate_aux_ptr->timestamp = msg->header.stamp;
+                if (create_candidate)
+                {
+                    Candidate *candidate_aux_ptr = new Candidate;
+                    // Try to find the associated uav_id of the received icao_address
+                    auto it = icao_address_uav_id_map_.find(msg->icao_address);
+                    if (it != icao_address_uav_id_map_.end()) 
+                    {
+                        candidate_aux_ptr->uav_id = (*it).second; // The uav_id is known
+                    }
+                    else
+                    {
+                        ROS_INFO("Received position report from UNKNOWN ICAO address");
+                        candidate_aux_ptr->uav_id = std::numeric_limits<uint8_t>::max(); // The uav_id is not known, could be a non cooperative one
+                    }
+                    candidate_aux_ptr->icao_address = msg->icao_address;
+                    candidate_aux_ptr->location(0) = msg->position.x;
+                    candidate_aux_ptr->location(1) = msg->position.y;
+                    candidate_aux_ptr->location(2) = msg->position.z;
+                    // TODO: Fill covariances properly
+                    candidate_aux_ptr->location_covariance(0,0) = 1.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(0,1) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(0,2) = 0.0;//msg->confidence;       	        
+                    candidate_aux_ptr->location_covariance(1,0) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(1,1) = 1.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(1,2) = 0.0;//msg->confidence;      	        
+                    candidate_aux_ptr->location_covariance(2,0) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(2,1) = 0.0;//msg->confidence;
+	                candidate_aux_ptr->location_covariance(2,2) = 1.0;//msg->confidence;
+	                candidate_aux_ptr->speed_covariance(0,0) = VAR_SPEED;//msg->confidence;
+                    candidate_aux_ptr->speed_covariance(0,1) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(0,2) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(1,0) = COV_SPEED_XY;
+	                candidate_aux_ptr->speed_covariance(1,1) = VAR_SPEED;//msg->confidence;
+                    candidate_aux_ptr->speed_covariance(1,2) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(2,0) = COV_SPEED_XY;
+                    candidate_aux_ptr->speed_covariance(2,1) = COV_SPEED_XY;
+	                candidate_aux_ptr->speed_covariance(2,2) = VAR_SPEED;//msg->confidence;
+                    candidate_aux_ptr->source = Candidate::POSITIONREPORT;
+                    candidate_aux_ptr->speed_available = use_speed_info_; // TODO:
+                    // TODO: Fill those speed values with real info from uav
+                    candidate_aux_ptr->speed(0) = msg->speed * cos(M_PI_2-(msg->heading)*M_PI/180);
+                    candidate_aux_ptr->speed(1) = msg->speed * sin(M_PI_2-(msg->heading)*M_PI/180);
+                    candidate_aux_ptr->speed(2) = 0.0;
+                    candidate_aux_ptr->timestamp = msg->header.stamp;
 
-                candidate_aux_ptr->source = candidate_aux_ptr->ADSB;
-                candidates_list_mutex_.lock(); // Necessary because callbacks are going to be executed in separate threads concurrently
-                candidates_.push_back(candidate_aux_ptr);
-                candidates_list_mutex_.unlock();
+                    candidate_aux_ptr->source = candidate_aux_ptr->ADSB;
+                    candidates_list_mutex_.lock(); // Necessary because callbacks are going to be executed in separate threads concurrently
+                    candidates_.push_back(candidate_aux_ptr);
+                    candidates_list_mutex_.unlock();
+                }
             }
         }
     }
@@ -482,7 +489,6 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     {
         ROS_ERROR("PositionReport timestamp == 0");
     }
-    
 }
 
 bool Tracking::checkTargetAlreadyExist(std::string icao_address)
@@ -548,10 +554,12 @@ bool Tracking::writeTrackingInfoToDatabase()
                 write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
                 write_tracking_msg_.request.is_started.push_back(true);
                 it->second.is_started = true;
-                //std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
-                //std::cout << "First waypoint of estimated trajectory\n";
-                //std::cout << it->second.estimated_trajectory.waypoints[0] << "\n";
-
+                std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
+                for(int i = 0; i<it->second.estimated_trajectory.waypoints.size(); i++)
+                {
+                    std::cout << "WP " << i << "\n";
+                    std::cout << it->second.estimated_trajectory.waypoints[i] << "\n";
+                }
                 /*
                 if(it->first == 0)
                 {
@@ -742,7 +750,7 @@ void Tracking::estimateTrajectory()
             gauss_msgs::WaypointList &flight_plan_updated = operation_aux.flight_plan_updated;
             gauss_msgs::WaypointList &estimated_trajectory = operation_aux.estimated_trajectory;
             int flight_plan_waypoint_count = flight_plan_ref.waypoints.size();
-            // TODO: An efficiency improvent will be to not clear completely the estimated trajectory, but remove
+            // TODO: An efficiency improvement will be to not clear completely the estimated trajectory, but remove
             // some elements and add others. That will require additional state control mechanism.
             estimated_trajectory.waypoints.clear();
             flight_plan_updated.waypoints.clear();
@@ -772,7 +780,7 @@ void Tracking::estimateTrajectory()
             std::cout << "a_waypoint_index: " << a_waypoint_index << "\n";
             std::cout << "b_waypoint_index: " << b_waypoint_index << "\n";
             std::cout << "n_wp: " << number_estimated_wps << "\n";
-            std::cout << "Current position: " << current_position.x << "," << current_position.y << "," << current_position.z << "\n";
+            std::cout << "Current position: " << current_position.x << "," << current_position.y << "," << current_position.z << current_position.stamp << "\n";
             std::cout << "Flight plan current waypoint index: " << b_waypoint_index << "\n";
             std::cout << "Flight plan waypoint: " << flight_plan_ref.waypoints[b_waypoint_index].x << ",";
             std::cout << flight_plan_ref.waypoints[b_waypoint_index].y << ",";
@@ -825,7 +833,9 @@ void Tracking::estimateTrajectory()
                 }
                 time_to_next_waypoint = distance_from_current_pos_to_next_wp/distance_between_waypoints * time_between_waypoints;
 
-                //std::cout << "Time to next waypoint " << time_to_next_waypoint << "\n";
+                #ifdef DEBUG
+                std::cout << "Time to next waypoint " << time_to_next_waypoint << "\n";
+                #endif
 
                 if(time_to_next_waypoint > dt)
                 {
@@ -836,7 +846,12 @@ void Tracking::estimateTrajectory()
                     speed_vector.y() = (flight_plan_ref.waypoints[b_waypoint_index].y - current_position.y)/time_to_next_waypoint;
                     speed_vector.z() = (flight_plan_ref.waypoints[b_waypoint_index].z - current_position.z)/time_to_next_waypoint;
 
-                    double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
+                    //double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
+                    double epsilon = time_to_next_waypoint - dt*floor(time_to_next_waypoint/dt);
+
+                    #ifdef DEBUG
+                    std::cout << "epsilon " << epsilon << "\n";
+                    #endif
 
                     if (epsilon > 0)
                     {
@@ -848,9 +863,12 @@ void Tracking::estimateTrajectory()
                         estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
+                        #ifdef DEBUG
+                        std::cout << "epsilon waypoint \n" << wp_aux << "\n"; 
+                        #endif
                     }
 
-                    wp_count_aux = time_to_next_waypoint/dt;
+                    wp_count_aux = floor(time_to_next_waypoint/dt);
                     
                     #ifdef DEBUG
                     std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
@@ -866,6 +884,10 @@ void Tracking::estimateTrajectory()
                         estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
+                        #ifdef DEBUG
+                        std::cout << "intermediate waypoint " << index_1 << "\n";
+                        std::cout << wp_aux << "\n";
+                        #endif
                     }
                 }
                 else if(time_to_next_waypoint <= dt)
@@ -888,13 +910,61 @@ void Tracking::estimateTrajectory()
                     estimated_trajectory.waypoints.push_back(wp_aux);
                     flight_plan_updated.waypoints.push_back(wp_aux);
                     estimated_wp_count++;
+                    #ifdef DEBUG
+                    std::cout << "flight plan waypoint " << b_waypoint_index << "\n";
+                    std::cout << wp_aux << "\n";
+                    #endif
                 }
 
                 int flight_plan_wp_index = flight_plan_current_wp_index + 1;
 
                 while(estimated_wp_count < number_estimated_wps && flight_plan_wp_index < flight_plan_ref.waypoints.size())
                 {
-                    int aux_index = 0;
+                    time_to_next_waypoint = (flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp).toSec();
+
+                    speed_vector.x() = (flight_plan_ref.waypoints[flight_plan_wp_index].x - flight_plan_ref.waypoints[flight_plan_wp_index-1].x)/time_to_next_waypoint;
+                    speed_vector.y() = (flight_plan_ref.waypoints[flight_plan_wp_index].y - flight_plan_ref.waypoints[flight_plan_wp_index-1].y)/time_to_next_waypoint;
+                    speed_vector.z() = (flight_plan_ref.waypoints[flight_plan_wp_index].z - flight_plan_ref.waypoints[flight_plan_wp_index-1].z)/time_to_next_waypoint;
+
+                    //double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
+                    double epsilon = time_to_next_waypoint - dt*floor(time_to_next_waypoint/dt);
+
+                    if (epsilon > 0)
+                    {
+                        wp_aux.x = wp_aux.x + speed_vector.x()*epsilon;
+                        wp_aux.y = wp_aux.y + speed_vector.y()*epsilon;
+                        wp_aux.z = wp_aux.z + speed_vector.z()*epsilon;
+                        last_stamp = last_stamp + ros::Duration(epsilon);
+                        wp_aux.stamp = last_stamp;
+                        estimated_trajectory.waypoints.push_back(wp_aux);
+                        flight_plan_updated.waypoints.push_back(wp_aux);
+                        estimated_wp_count++;
+                        #ifdef DEBUG
+                        std::cout << "epsilon waypoint \n" << wp_aux << "\n";
+                        #endif
+                    }
+
+                    wp_count_aux = floor(time_to_next_waypoint/dt);
+                    
+                    #ifdef DEBUG
+                    std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
+                    std::cout << "Number of points to estimate: " << (wp_count_aux-1) << std::endl;
+                    #endif
+                    for(int index_1 = 0; (index_1 < (wp_count_aux - 1)) && (estimated_wp_count < number_estimated_wps); index_1++)
+                    {
+                        wp_aux.x = wp_aux.x + speed_vector.x()*dt;
+                        wp_aux.y = wp_aux.y + speed_vector.y()*dt;
+                        wp_aux.z = wp_aux.z + speed_vector.z()*dt;
+                        last_stamp = last_stamp + ros::Duration(dt);
+                        wp_aux.stamp = last_stamp;
+                        estimated_trajectory.waypoints.push_back(wp_aux);
+                        flight_plan_updated.waypoints.push_back(wp_aux);
+                        estimated_wp_count++;
+                        #ifdef DEBUG
+                        std::cout << "intermediate waypoint " << index_1 << "\n";
+                        std::cout << wp_aux << "\n";
+                        #endif                        
+                    }
 
                     if(estimated_wp_count < number_estimated_wps)
                     {
@@ -902,19 +972,27 @@ void Tracking::estimateTrajectory()
                         std::cout << "Adding flight plan second segment waypoint to estimated trajectory" << std::endl;
                         #endif
                         wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
+                        //ros::Duration delta_time = flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp;
                         last_stamp = last_stamp + ros::Duration(dt);
+                        //last_stamp += delta_time;
                         wp_aux.stamp = last_stamp;
                         estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
                         flight_plan_wp_index++;
+                        #ifdef DEBUG
+                        std::cout << "flight plan waypoint " << b_waypoint_index << "\n";
+                        std::cout << wp_aux << "\n";
+                        #endif
                     }
                 }
 
                 while(flight_plan_wp_index < flight_plan_ref.waypoints.size())
                 {
                     wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
-                    last_stamp = last_stamp + ros::Duration(dt);
+                    ros::Duration delta_time = flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp;
+                    //last_stamp = last_stamp + ros::Duration(dt);
+                    last_stamp += delta_time;
                     wp_aux.stamp = last_stamp;
                     flight_plan_updated.waypoints.push_back(wp_aux);
                     flight_plan_wp_index++;
