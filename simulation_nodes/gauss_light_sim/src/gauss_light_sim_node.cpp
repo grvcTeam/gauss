@@ -548,6 +548,10 @@ class LightSim {
 int main(int argc, char **argv) {
     ros::init(argc, argv, "gauss_light_sim_node");
     ros::NodeHandle n;
+    ros::NodeHandle np("~");
+
+    double time_param = 0.0;
+    np.getParam("init_time", time_param);
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
@@ -586,9 +590,14 @@ int main(int argc, char **argv) {
 
     // TODO: Load auto_start_map from config?
     std::map<std::string, ros::Time> auto_start_map;
-    auto now = ros::Time::now();  // So it is the same for all
-    auto_start_map["11259137"] = now + ros::Duration(10);
-    auto_start_map["11259138"] = now + ros::Duration(20);
+    ros::Time init_time;  // So it is the same for all
+    if (time_param == 0.0){
+        init_time = ros::Time::now();
+    } else {
+        init_time = ros::Time(time_param);
+    }
+    auto_start_map["11259137"] = init_time + ros::Duration(10);
+    auto_start_map["11259138"] = init_time + ros::Duration(20);
     sim.setAutoStart(auto_start_map);
 
     sim.start();
