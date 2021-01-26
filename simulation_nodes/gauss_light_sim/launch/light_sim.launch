@@ -20,7 +20,7 @@
         <param name="init_time" value= "$(arg init_time)"/>
     </node>
     <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" required="true"/>
-    <node pkg="tracking" type="tracking" name="tracking" required="true" output="screen"/>
+    <node pkg="tracking" type="tracking" name="tracking" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
     <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
     <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>

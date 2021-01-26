@@ -446,7 +446,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
 
     if (mutex_lock_.try_lock())
     {
-        for (int i=0; i<req.deconflicted_wp.size(); i++)
+        for (int i=0; i<req.deconflicted_wp.size() - 1; i++)
         {
             int posx = floor((req.deconflicted_wp.at(i).x-minX)/dX);
             int posy = floor((req.deconflicted_wp.at(i).y-minY)/dY);
@@ -608,7 +608,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                 threats_msg.request.threats.push_back(threat);
             }
 
-            for (int j=0; j<trajectory.waypoints.size(); j++)
+            for (int j=0; j<trajectory.waypoints.size() - 1; j++)
             {
                 // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
                 if (msg_ids.response.geofence_id.size()>0){
