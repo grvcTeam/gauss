@@ -15,6 +15,10 @@
 
 using namespace std;
 
+inline bool indexIsInRange(int index, int size) {
+    return (index >= 0) && (index < size);
+}
+
 struct cell {
   list<int> traj;
   list<int> wp;
@@ -41,6 +45,7 @@ private:
     int checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, gauss_msgs::Waypoint position4D, double safety_distance);
     gauss_msgs::Threats manageThreatList(const gauss_msgs::Threats &_in_threats);
     gauss_msgs::Threats fillConflictiveFields(gauss_msgs::Threats &_in_threats, const gauss_msgs::ReadOperation &_msg_op, const gauss_msgs::ReadGeofences &_msg_geofence);
+    bool posIndicesAreInRange(int x, int y, int z, int t);
 
     // Auxilary variables
     double rate;
@@ -635,6 +640,8 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
 
                 current_stamp=trajectory.waypoints.at(0).stamp;
 
+                if (!posIndicesAreInRange(posx, posy, posz, post)) { return; }
+
                 grid[posx][posy][posz][post].traj.push_back(i);
                 grid[posx][posy][posz][post].wp.push_back(j);
 
@@ -708,6 +715,25 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     }
 }
 
+bool Monitoring::posIndicesAreInRange(int x, int y, int z, int t) {
+    if (!indexIsInRange(x, X)) {
+        ROS_ERROR("Index x is out of range: %d out of [0, %d)", x, X);
+        return false;
+    }
+    if (!indexIsInRange(y, Y)) {
+        ROS_ERROR("Index y is out of range: %d out of [0, %d)", y, Y);
+        return false;
+    }
+    if (!indexIsInRange(z, Z)) {
+        ROS_ERROR("Index z is out of range: %d out of [0, %d)", z, Z);
+        return false;
+    }
+    if (!indexIsInRange(t, T)) {
+        ROS_ERROR("Index t is out of range: %d out of [0, %d)", t, T);
+        return false;
+    }
+    return true;
+}
 
 
 // MAIN function
