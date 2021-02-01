@@ -399,6 +399,10 @@ class LightSim {
         } else {
             icao_to_time_zero_map[icao_address] = ros::Time::now();
             icao_to_is_started_map[icao_address] = true;
+            gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
+            status_msg.icao = std::stoi(icao_address);
+            status_msg.status = "start";
+            status_pub.publish(status_msg);
             ROS_INFO("RPA[%s] starting (t = %lf)", icao_address.c_str(), icao_to_time_zero_map[icao_address].toSec());
         }
     }
@@ -596,8 +600,8 @@ int main(int argc, char **argv) {
     } else {
         init_time = ros::Time(time_param);
     }
-    auto_start_map["11259137"] = init_time + ros::Duration(10);
-    auto_start_map["11259138"] = init_time + ros::Duration(20);
+    auto_start_map["11259137"] = init_time + ros::Duration(8);
+    auto_start_map["11259138"] = init_time + ros::Duration(8);
     sim.setAutoStart(auto_start_map);
 
     sim.start();
