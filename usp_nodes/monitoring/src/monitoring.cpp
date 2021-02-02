@@ -43,6 +43,7 @@ private:
 
     // Auxilary methods
     int checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, gauss_msgs::Waypoint position4D, double safety_distance);
+    void cleanThreatList(const std::vector<gauss_msgs::Threat> &_in_threats);
     gauss_msgs::Threats manageThreatList(const gauss_msgs::Threats &_in_threats);
     gauss_msgs::Threats fillConflictiveFields(gauss_msgs::Threats &_in_threats, const gauss_msgs::ReadOperation &_msg_op, const gauss_msgs::ReadGeofences &_msg_geofence);
     bool posIndicesAreInRange(int x, int y, int z, int t);
@@ -86,12 +87,12 @@ Monitoring::Monitoring()
     // Read
     nh_.param("/monitoring/monitoring_rate",rate,0.2);
     nh_.param("/monitoring/safetyDistance",minDist,10.0);
-    nh_.param("/monitoring/minX",minX,-200.0);
-    nh_.param("/monitoring/minY",minY,-200.0);
+    nh_.param("/monitoring/minX",minX,-400.0);
+    nh_.param("/monitoring/minY",minY,0.0);
     nh_.param("/monitoring/minZ",minZ,0.0);
-    nh_.param("/monitoring/maxX",maxX,200.0);
-    nh_.param("/monitoring/maxY",maxY,200.0);
-    nh_.param("/monitoring/maxZ",maxZ,30.0);
+    nh_.param("/monitoring/maxX",maxX,0.0);
+    nh_.param("/monitoring/maxY",maxY,400.0);
+    nh_.param("/monitoring/maxZ",maxZ,300.0);
     nh_.param("/monitoring/time_horizon",maxT,90.0);
     nh_.param("/monitoring/deltaX",dX,10.0);
     nh_.param("/monitoring/deltaY",dY,10.0);
@@ -145,6 +146,10 @@ Monitoring::Monitoring()
 
 // Auxilary methods
 gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_threats){
+    // std::cout << "------ Monitoring ------\n";
+    // for (auto t : _in_threats.request.threats) std::cout << t << "\n";
+    // std::cout << "------------------------\n";
+    
     gauss_msgs::Threats out_threats;
     std::vector<int> threat_list_ids_updated;
     if (threat_list_.size() == 0) {
@@ -168,10 +173,30 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
                 // If loss of separation, check 2 uav ids else check 1 uav id. If a geofence is involved, check geofence id.
                 if (in_threat.threat_type == in_threat.LOSS_OF_SEPARATION){
                     // TODO: Check all uav ids
-                    if (in_threat.uav_ids.front() != it->uav_ids.front() ||
-                        in_threat.uav_ids.back() != it->uav_ids.back()){
-                            save_threat = true;
-                    }
+                    // ROS_WARN("1");
+                    // if (in_threat.uav_ids.front() != it->uav_ids.front() ||
+                    //     in_threat.uav_ids.back() != it->uav_ids.back()){
+                    //         ROS_WARN("2");
+                    //         save_threat = true;
+                    // }
+
+                    // std::cout << "-----------------------------------------------------------\n";
+                    // std::cout << it->times.front() << " " << it->times.back() << "\n";
+                    // for (auto t : in_threat.times) std::cout << t << " ";
+                    // std::cout << "\n";
+                    // if (std::find(in_threat.times.begin(), in_threat.times.end(), it->times.front()) == in_threat.times.end() || 
+                    //     std::find(in_threat.times.begin(), in_threat.times.end(), it->times.back()) == in_threat.times.end()){ // time not found!
+                    //     save_threat = true;
+                    //     std::cout << "save loss of separation\n";
+                    // }
+                    // ROS_WARN("1");
+                    if ((in_threat.uav_ids.front() != it->uav_ids.front() && in_threat.uav_ids.back() != it->uav_ids.back())) { // ||
+                        // (abs(in_threat.times.front().toSec() - it->times.front().toSec()) > 15.0 ||
+                        //  abs(in_threat.times.back().toSec() -  it->times.back().toSec()) > 15.0)){
+                        //      std::cout << (int)in_threat.uav_ids.front() << " != " << (int)it->uav_ids.front() << " && " << (int)in_threat.uav_ids.back() << " != " << (int)it->uav_ids.back() << " || "
+                        //                << (double)in_threat.times.front().toSec() << " - " << (double)it->times.front().toSec() << " (" << abs(in_threat.times.front().toSec() - it->times.front().toSec()) << ") > 5.0 || " << (double)in_threat.times.back().toSec() << " - " << (double)it->times.back().toSec() << " (" << abs(in_threat.times.back().toSec() -  it->times.back().toSec()) << ") > 5.0\n";
+                             save_threat = true;
+                         }
                 } else if (in_threat.threat_type == in_threat.GEOFENCE_CONFLICT ||
                            in_threat.threat_type == in_threat.GEOFENCE_INTRUSION){
                                if (in_threat.uav_ids.front() != it->uav_ids.front() ||
@@ -197,19 +222,6 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
                     out_threats.request.uav_ids.push_back(in_threat.uav_ids.back());
                 }
                 threat_list_id_++;
-            }
-        }
-        // TODO: Check if this is working properly
-        // Delete non-updated threats from threat_list_
-        for (auto saved_threat = threat_list_.begin(); saved_threat != threat_list_.end();){
-            std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
-                                                                        [saved_threat](gauss_msgs::Threat threat){return (threat.threat_id == saved_threat->threat_id);});
-            if (it != threat_list_.end()){
-                // ID found!
-                saved_threat++;
-            } else {
-                // ID not found!
-                saved_threat = threat_list_.erase(saved_threat);
             }
         }
     } 
@@ -250,6 +262,59 @@ gauss_msgs::Threats Monitoring::fillConflictiveFields(gauss_msgs::Threats &_in_t
     }
 
     return _in_threats;
+}
+
+void Monitoring::cleanThreatList(const std::vector<gauss_msgs::Threat> &_in_threats){
+    // std::cout << "--------------------------\n";
+    // for (auto t : _in_threats) std::cout << t << "\n";
+    // std::cout << "--------------------------\n";
+    // for (auto t : threat_list_) std::cout << t << "\n";
+    // TODO: Check if this is working properly
+    // Delete non-updated threats from threat_list_
+    for (auto saved_threat = threat_list_.begin(); saved_threat != threat_list_.end();){
+        std::vector<gauss_msgs::Threat>::const_iterator it = std::find_if(_in_threats.begin(), _in_threats.end(), 
+                                                                    [saved_threat](gauss_msgs::Threat threat){
+                                                                        bool condition;
+                                                                        if (threat.threat_type == saved_threat->threat_type){
+                                                                            if (threat.threat_type == threat.LOSS_OF_SEPARATION){
+                                                                                condition = (threat.uav_ids.front() == saved_threat->uav_ids.front() &&
+                                                                                                threat.uav_ids.back() == saved_threat->uav_ids.back() &&
+                                                                                                (abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) <= 5.0 &&
+                                                                                                abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) <= 5.0));
+                                                                                if (condition) {
+                                                                                    std::cout << condition << " [ " 
+                                                                                                << (int)threat.uav_ids.front() << " == " << (int)saved_threat->uav_ids.front() << " && "
+                                                                                                << (int)threat.uav_ids.back() << " == " << (int)saved_threat->uav_ids.back() << " && "
+                                                                                                << (float)threat.times.front().toSec() << " - " << (float)saved_threat->times.front().toSec() << " (" << abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) << ") <= 1 && "
+                                                                                                << (float)threat.times.back().toSec() << " - " << (float)saved_threat->times.back().toSec() <<   " (" << abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) << ") <= 1 ]\n";
+                                                                                } else {
+                                                                                    std::cout << condition << " [ "
+                                                                                              << (int)threat.uav_ids.front() << " == " << (int)saved_threat->uav_ids.front() << " && "
+                                                                                              << (int)threat.uav_ids.back() << " == " << (int)saved_threat->uav_ids.back() << " && "
+                                                                                              << (float)threat.times.front().toSec() << " - " << (float)saved_threat->times.front().toSec() << " (" << abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) << ") <= 1 && "
+                                                                                              << (float)threat.times.back().toSec() << " - " << (float)saved_threat->times.back().toSec() <<   " (" << abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) << ") <= 1 ]\n";
+                                                                                } 
+                                                                                                            
+                                                                            } else {
+                                                                                condition = (threat.uav_ids.front() == saved_threat->uav_ids.front());
+                                                                            }
+                                                                        }
+                                                                        return condition;});
+
+        if (it != _in_threats.end()){
+            // ID found!
+            saved_threat++;
+        } else {
+            // ID not found!
+            std::cout << "XXXXXXXXX Delete Threat XXXXXXXXXXX\n";
+            std::cout << "Size: " << threat_list_.size() << "\n";
+            std::cout << *saved_threat << "\n";
+            std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
+            saved_threat = threat_list_.erase(saved_threat);
+            if (_in_threats.size() == 0) saved_threat = threat_list_.end();
+            std::cout << "Size: " << threat_list_.size() << "\n";
+        }
+    }
 }
 
 int Monitoring::checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, gauss_msgs::Waypoint position4D, double safety_distance)
@@ -699,6 +764,10 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     // LLamar al servicio alerta
     if (threats_msg.request.threats.size() > 0)
     {
+        // std::cout << "---- Monitoring ----\n";
+        // for (auto threat : threats_msg.request.threats)
+        //     std::cout << threat << "\n";
+        // std::cout << "---- Monitoring ----\n";
         // Manage threat list
         gauss_msgs::Threats new_threats_msgs = manageThreatList(threats_msg);
         // Fill conflictive operations
@@ -711,7 +780,8 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                 return;
             }
         }
-
+        // Delete old saved threats
+        if(threat_list_.size() > 0) cleanThreatList(threats_msg.request.threats);
     }
 }
 

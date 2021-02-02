@@ -60,12 +60,12 @@ ConflictSolver::ConflictSolver() {
     // Read parameters
     nh_.param("/tactical_deconfliction/safetyDistance", minDist_, 10.0);
     nh_.param("/tactical_deconfliction/monitoring_rate", rate_, 0.2);
-    nh_.param("/tactical_deconfliction/minX", minX_, -200.0);
-    nh_.param("/tactical_deconfliction/minY", minY_, -200.0);
+    nh_.param("/tactical_deconfliction/minX", minX_, -400.0);
+    nh_.param("/tactical_deconfliction/minY", minY_, 0.0);
     nh_.param("/tactical_deconfliction/minZ", minZ_, 0.0);
-    nh_.param("/tactical_deconfliction/maxX", maxX_, 200.0);
-    nh_.param("/tactical_deconfliction/maxY", maxY_, 200.0);
-    nh_.param("/tactical_deconfliction/maxZ", maxZ_, 30.0);
+    nh_.param("/tactical_deconfliction/maxX", maxX_, 0.0);
+    nh_.param("/tactical_deconfliction/maxY", maxY_, 400.0);
+    nh_.param("/tactical_deconfliction/maxZ", maxZ_, 300.0);
 
 
     // Initialization
@@ -462,13 +462,17 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             while (abs(traj2.waypoints.at(k).stamp.toSec() - conflict.times.at(1).toSec()) >= dT_ / 2)
                 k++;
             wp2 = traj2.waypoints.at(k);
-
+            // if (j == traj1.waypoints.size()-1) std::cout << traj1.waypoints.at(j).stamp.toSec() << " - " << conflict.times.at(0).toSec() << " = " << abs(traj1.waypoints.at(j).stamp.toSec() - conflict.times.at(0).toSec()) << " >= " << dT_/2;
+            // if (k == traj2.waypoints.size()-1) std::cout << traj2.waypoints.at(k).stamp.toSec() << " - " << conflict.times.at(1).toSec() << " = " << abs(traj2.waypoints.at(k).stamp.toSec() - conflict.times.at(1).toSec()) << " >= " << dT_/2;
+            ROS_WARN("size1: %zd | j: %zd | size2: %zd | k: %zd", traj1.waypoints.size(), j, traj2.waypoints.size(), k);
             double minDistAux = max(minDist_, conflictive_operations.at(0).operational_volume + conflictive_operations.at(1).operational_volume);
 
             double dist_vert = abs(wp2.z - wp1.z);
             double dist_hor = sqrt(pow(wp2.x - wp1.x, 2) + pow(wp2.y - wp1.y, 2));
             double sep_vert = sqrt(pow(minDistAux, 2) - pow(dist_hor, 2));
             double sep_hor = sqrt(pow(minDistAux, 2) - pow(dist_vert, 2));
+            // std::cout << "·················\n" << traj2.waypoints.at(k) << "\n·················\n" << traj1.waypoints.at(j) << "\n·················\n";
+            // std::cout << "dv: " << dist_vert << ", dh: " << dist_hor << ", sv: " << sep_vert << ", sh: " << sep_hor << "\n\n";
             gauss_msgs::DeconflictionPlan newplan;
             gauss_msgs::Waypoint newwp;
             newplan.maneuver_type = 8;  // defined in https://docs.google.com/document/d/1R5jWSw4pyPyplHwwrQCDprIUkMimVz-yR8u_t19ooOA/edit

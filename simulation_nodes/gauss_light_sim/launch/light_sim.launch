@@ -34,6 +34,7 @@
         <param name="maxX" value="$(arg maxX)"/>
         <param name="maxY" value="$(arg maxY)"/>
         <param name="maxZ" value="$(arg maxZ)"/>
+        <param name="safetyDistance" value="20"/>
     </node>
     <node pkg="monitoring" type="monitoring" name="monitoring" required="true" output="screen">
         <param name="minX" value="$(arg minX)"/>
@@ -42,6 +43,7 @@
         <param name="maxX" value="$(arg maxX)"/>
         <param name="maxY" value="$(arg maxY)"/>
         <param name="maxZ" value="$(arg maxZ)"/>
+        <param name="safetyDistance" value="20"/>
     </node>
 
 </launch>
