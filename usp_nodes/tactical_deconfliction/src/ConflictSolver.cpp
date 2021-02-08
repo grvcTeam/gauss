@@ -492,7 +492,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 // std::cout << traj1.waypoints.at(j).stamp.toSec() << " - " << conflict.times.at(0).toSec() << " = " << abs(traj1.waypoints.at(j).stamp.toSec() - conflict.times.at(0).toSec()) << " >= " << dT_/2;
             // } 
             // if (k == traj2.waypoints.size()-1) std::cout << traj2.waypoints.at(k).stamp.toSec() << " - " << conflict.times.at(1).toSec() << " = " << abs(traj2.waypoints.at(k).stamp.toSec() - conflict.times.at(1).toSec()) << " >= " << dT_/2;
-            // ROS_WARN("size1: %zd | j: %zd | size2: %zd | k: %zd", traj1.waypoints.size(), j, traj2.waypoints.size(), k);
+            ROS_WARN("size1: %zd | j: %zd | size2: %zd | k: %zd", traj1.waypoints.size(), j, traj2.waypoints.size(), k);
             double minDistAux = max(minDist_, conflictive_operations.at(0).operational_volume + conflictive_operations.at(1).operational_volume);
 
             double dist_vert = abs(wp2.z - wp1.z);
