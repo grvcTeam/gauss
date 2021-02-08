@@ -146,10 +146,6 @@ Monitoring::Monitoring()
 
 // Auxilary methods
 gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_threats){
-    // std::cout << "------ Monitoring ------\n";
-    // for (auto t : _in_threats.request.threats) std::cout << t << "\n";
-    // std::cout << "------------------------\n";
-    
     gauss_msgs::Threats out_threats;
     std::vector<int> threat_list_ids_updated;
     if (threat_list_.size() == 0) {
@@ -265,10 +261,6 @@ gauss_msgs::Threats Monitoring::fillConflictiveFields(gauss_msgs::Threats &_in_t
 }
 
 void Monitoring::cleanThreatList(const std::vector<gauss_msgs::Threat> &_in_threats){
-    // std::cout << "--------------------------\n";
-    // for (auto t : _in_threats) std::cout << t << "\n";
-    // std::cout << "--------------------------\n";
-    // for (auto t : threat_list_) std::cout << t << "\n";
     // TODO: Check if this is working properly
     // Delete non-updated threats from threat_list_
     for (auto saved_threat = threat_list_.begin(); saved_threat != threat_list_.end();){
@@ -279,20 +271,20 @@ void Monitoring::cleanThreatList(const std::vector<gauss_msgs::Threat> &_in_thre
                                                                             if (threat.threat_type == threat.LOSS_OF_SEPARATION){
                                                                                 condition = (threat.uav_ids.front() == saved_threat->uav_ids.front() &&
                                                                                                 threat.uav_ids.back() == saved_threat->uav_ids.back() &&
-                                                                                                (abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) <= 5.0 &&
-                                                                                                abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) <= 5.0));
+                                                                                                (abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) <= 2.5 && // 2.5 = dT / 2
+                                                                                                abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) <= 2.5));
                                                                                 if (condition) {
-                                                                                    std::cout << condition << " [ " 
-                                                                                                << (int)threat.uav_ids.front() << " == " << (int)saved_threat->uav_ids.front() << " && "
-                                                                                                << (int)threat.uav_ids.back() << " == " << (int)saved_threat->uav_ids.back() << " && "
-                                                                                                << (float)threat.times.front().toSec() << " - " << (float)saved_threat->times.front().toSec() << " (" << abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) << ") <= 1 && "
-                                                                                                << (float)threat.times.back().toSec() << " - " << (float)saved_threat->times.back().toSec() <<   " (" << abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) << ") <= 1 ]\n";
+                                                                                    // std::cout << condition << " [ " 
+                                                                                                // << (int)threat.uav_ids.front() << " == " << (int)saved_threat->uav_ids.front() << " && "
+                                                                                                // << (int)threat.uav_ids.back() << " == " << (int)saved_threat->uav_ids.back() << " && "
+                                                                                                // << (float)threat.times.front().toSec() << " - " << (float)saved_threat->times.front().toSec() << " (" << abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) << ") <= 1 && "
+                                                                                                // << (float)threat.times.back().toSec() << " - " << (float)saved_threat->times.back().toSec() <<   " (" << abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) << ") <= 1 ]\n";
                                                                                 } else {
-                                                                                    std::cout << condition << " [ "
-                                                                                              << (int)threat.uav_ids.front() << " == " << (int)saved_threat->uav_ids.front() << " && "
-                                                                                              << (int)threat.uav_ids.back() << " == " << (int)saved_threat->uav_ids.back() << " && "
-                                                                                              << (float)threat.times.front().toSec() << " - " << (float)saved_threat->times.front().toSec() << " (" << abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) << ") <= 1 && "
-                                                                                              << (float)threat.times.back().toSec() << " - " << (float)saved_threat->times.back().toSec() <<   " (" << abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) << ") <= 1 ]\n";
+                                                                                    // std::cout << condition << " [ "
+                                                                                    //           << (int)threat.uav_ids.front() << " == " << (int)saved_threat->uav_ids.front() << " && "
+                                                                                    //           << (int)threat.uav_ids.back() << " == " << (int)saved_threat->uav_ids.back() << " && "
+                                                                                    //           << (float)threat.times.front().toSec() << " - " << (float)saved_threat->times.front().toSec() << " (" << abs(threat.times.front().toSec() - saved_threat->times.front().toSec()) << ") <= 1 && "
+                                                                                    //           << (float)threat.times.back().toSec() << " - " << (float)saved_threat->times.back().toSec() <<   " (" << abs(threat.times.back().toSec() - saved_threat->times.back().toSec()) << ") <= 1 ]\n";
                                                                                 } 
                                                                                                             
                                                                             } else {
@@ -306,13 +298,11 @@ void Monitoring::cleanThreatList(const std::vector<gauss_msgs::Threat> &_in_thre
             saved_threat++;
         } else {
             // ID not found!
-            std::cout << "XXXXXXXXX Delete Threat XXXXXXXXXXX\n";
-            std::cout << "Size: " << threat_list_.size() << "\n";
-            std::cout << *saved_threat << "\n";
-            std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
+            // std::cout << "XXXXXXXXX Delete Threat XXXXXXXXXXX\n";
+            // std::cout << *saved_threat << "\n";
+            // std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
             saved_threat = threat_list_.erase(saved_threat);
             if (_in_threats.size() == 0) saved_threat = threat_list_.end();
-            std::cout << "Size: " << threat_list_.size() << "\n";
         }
     }
 }
@@ -479,7 +469,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
     }
 
     gauss_msgs::ReadOperation msg_op;
-    msg_op.request.uav_ids.push_back(req.uav_id);
+    for (int i = 0; i < msg_ids.response.uav_id.size(); i++) msg_op.request.uav_ids.push_back(i);
     if(!(read_operation_client_.call(msg_op)) || !(msg_op.response.success))
     {
         ROS_ERROR("Failed to read a trajectory");
@@ -487,83 +477,59 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
     }
 
     gauss_msgs::ReadGeofences msg_geofence;
-    for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(i);
     if (msg_ids.response.geofence_id.size() > 0){
+        for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(i);
         if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
         {
             ROS_ERROR("Failed to read a geofence");
             return false;
         }
     }
-
-
-    for (int i=0;i<req.deconflicted_wp.size();i++)
+    // Rellena grid con waypoints de las missiones
+    for (int i=0; i<msg_ids.response.uav_id.size(); i++)
     {
-        int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, req.deconflicted_wp.at(i),max(minDist,msg_op.response.operation.at(0).operational_volume));
-        if (geofence_intrusion>=0)
-        {
-            gauss_msgs::Threat threat;
-            threat.header.stamp=ros::Time::now();
-            threat.uav_ids.push_back(req.uav_id);
-            threat.geofence_ids.push_back(geofence_intrusion);
-            threat.times.push_back(req.deconflicted_wp.at(i).stamp);
-            threat.threat_type=threat.GEOFENCE_CONFLICT;
-            res.threats.push_back(threat);
+        if (msg_op.response.operation[i].current_wp != 0 && msg_op.response.operation[i].is_started){
+            for (int j=0; j<msg_op.response.operation[i].estimated_trajectory.waypoints.size() - 1; j++)
+            {
+                // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
+                if (msg_ids.response.geofence_id.size()>0){
+                    int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, msg_op.response.operation[i].estimated_trajectory.waypoints.at(j),max(minDist,msg_op.response.operation[i].operational_volume));
+                    if (geofence_intrusion>=0)
+                    {
+                        gauss_msgs::Threat threat;
+                        threat.header.stamp=ros::Time::now();
+                        threat.uav_ids.push_back(i);
+                        threat.geofence_ids.push_back(geofence_intrusion);
+                        threat.times.push_back(msg_op.response.operation[i].estimated_trajectory.waypoints.at(j).stamp);
+                        if (j==0)
+                            threat.threat_type=threat.GEOFENCE_INTRUSION;
+                        else
+                            threat.threat_type=threat.GEOFENCE_CONFLICT;
+                        res.threats.push_back(threat);
+                    }
+                }
+                // TODO: Try to get the best value for minDistAux
+                double minDistAux = msg_op.response.operation.at(i).operational_volume;
+
+                for (auto traj2_wp : req.deconflicted_wp){
+                    if (sqrt(pow(msg_op.response.operation[i].estimated_trajectory.waypoints.at(j).x-traj2_wp.x,2)+
+                             pow(msg_op.response.operation[i].estimated_trajectory.waypoints.at(j).y-traj2_wp.y,2)+
+                             pow(msg_op.response.operation[i].estimated_trajectory.waypoints.at(j).z-traj2_wp.z,2))<minDistAux &&
+                             abs(msg_op.response.operation[i].estimated_trajectory.waypoints.at(j).stamp.toSec()-traj2_wp.stamp.toSec())<dT)
+                    {
+                        gauss_msgs::Threat threat;
+                        threat.header.stamp=ros::Time::now();
+                        threat.uav_ids.push_back(i);
+                        threat.uav_ids.push_back(req.uav_id);
+                        threat.times.push_back(msg_op.response.operation[i].estimated_trajectory.waypoints.at(j).stamp);
+                        threat.times.push_back(traj2_wp.stamp);
+                        threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
+                        threat.threat_type=threat.LOSS_OF_SEPARATION;
+                        res.threats.push_back(threat);
+                    }
+                }
+            }
         }
-        else if (geofence_intrusion==-2)
-            return false;
-    }
-
-    if (mutex_lock_.try_lock())
-    {
-        for (int i=0; i<req.deconflicted_wp.size() - 1; i++)
-        {
-            int posx = floor((req.deconflicted_wp.at(i).x-minX)/dX);
-            int posy = floor((req.deconflicted_wp.at(i).y-minY)/dY);
-            int posz = floor((req.deconflicted_wp.at(i).z-minZ)/dZ);
-            int post = floor(req.deconflicted_wp.at(i).stamp.toSec()/dT-current_stamp.toSec()/dT);
-
-            for (int m=max(0,posx-1); m<min(X,posx+2); m++)
-                for (int n=max(0,posy-1); n<min(Y,posy+2); n++)
-                    for (int p=max(0,posz-1); p<min(Z,posz+2); p++)
-                        for (int t=max(0,post-1); t<min(T,post+2); t++)
-                        {
-                            if (grid[m][n][p][t].traj.size()>0)
-                            {
-
-                                list<int>::iterator it = grid[m][n][p][t].traj.begin();
-                                list<int>::iterator it_wp = grid[m][n][p][t].wp.begin();
-                                while (it != grid[m][n][p][t].traj.end())
-                                {
-                                    if (*it != req.uav_id)
-                                    {
-                                        gauss_msgs::WaypointList trajectory2 = msg_op.response.operation.at(*it).track;
-
-                                        if (sqrt(pow(req.deconflicted_wp.at(i).x-trajectory2.waypoints.at(*it_wp).x,2)+
-                                                 pow(req.deconflicted_wp.at(i).y-trajectory2.waypoints.at(*it_wp).y,2)+
-                                                 pow(req.deconflicted_wp.at(i).z-trajectory2.waypoints.at(*it_wp).z,2))<minDist &&
-                                                abs(req.deconflicted_wp.at(i).stamp.toSec()-trajectory2.waypoints.at(*it_wp).stamp.toSec())<dT)
-                                        {
-                                            gauss_msgs::Threat threat;
-                                            threat.header.stamp=ros::Time::now();
-                                            threat.threat_type = threat.LOSS_OF_SEPARATION;
-                                            threat.uav_ids.push_back(req.uav_id);
-                                            threat.uav_ids.push_back(*it);
-                                            threat.times.push_back(req.deconflicted_wp.at(i).stamp);
-                                            threat.times.push_back(trajectory2.waypoints.at(*it_wp).stamp);
-                                            threat.priority_ops.push_back(msg_op.response.operation.at(i).priority);
-                                            threat.priority_ops.push_back(msg_op.response.operation.at(*it).priority);
-                                            res.threats.push_back(threat);
-                                        }
-                                    }
-                                    it++;
-                                    it_wp++;
-                                }
-                            }
-                        }
-
-        }
-        mutex_lock_.unlock();
     }
 
     res.success=true;
@@ -715,7 +681,6 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                         for (int p=max(0,posz-1); p<min(Z,posz+2); p++)
                             for (int t=max(0,post-1); t<min(T,post+2); t++)
                             {
-
                                 if (grid[m][n][p][t].traj.size()>0)
                                 {
                                     list<int>::iterator it = grid[m][n][p][t].traj.begin();

@@ -371,7 +371,7 @@ class LightSim {
             altitude = geo_wp.waypoint_elements[2];
             temp_wp.stamp = ros::Time(geo_wp.waypoint_elements[3]);
             proj_.Forward(latitude, longitude, altitude, temp_wp.x, temp_wp.y, temp_wp.z);
-            std::cout << msg->icao << ":" << temp_wp.x << " " << temp_wp.y << " " << temp_wp.z << " " << temp_wp.stamp.toNSec() << "\n";
+            // std::cout << msg->icao << ":" << temp_wp.x << " " << temp_wp.y << " " << temp_wp.z << " " << temp_wp.stamp.toNSec() << "\n";
             icao_to_operation_map[std::to_string(msg->icao)].flight_plan.waypoints.push_back(temp_wp);
         }
     }
@@ -600,8 +600,10 @@ int main(int argc, char **argv) {
     } else {
         init_time = ros::Time(time_param);
     }
-    auto_start_map["11259137"] = init_time + ros::Duration(8);
-    auto_start_map["11259138"] = init_time + ros::Duration(8);
+    for (auto i : read_icao.response.icao_address){
+        auto_start_map[i] = init_time + ros::Duration(8);
+    }
+    // auto_start_map["11259138"] = init_time + ros::Duration(8);
     sim.setAutoStart(auto_start_map);
 
     sim.start();

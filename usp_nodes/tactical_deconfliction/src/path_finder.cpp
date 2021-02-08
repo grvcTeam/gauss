@@ -99,11 +99,12 @@ std::vector<double> PathFinder::linealInterp1(std::vector<double> &_x, std::vect
 }
 
 nav_msgs::Path PathFinder::generatePath(nav_msgs::Path &_init_path, int _generator_mode, double _d_between_wps) {
-    std::vector<double> list_pose_x, list_pose_y, list_pose_z;
+    std::vector<double> list_pose_x, list_pose_y, list_pose_z, list_pose_t;
     for (int i = 0; i < _init_path.poses.size(); i++) {
         list_pose_x.push_back(_init_path.poses.at(i).pose.position.x);
         list_pose_y.push_back(_init_path.poses.at(i).pose.position.y);
         list_pose_z.push_back(_init_path.poses.at(i).pose.position.z);
+        list_pose_t.push_back(_init_path.poses.at(i).header.stamp.toSec());
     }
     int total_distance = 0;
 
@@ -115,10 +116,11 @@ nav_msgs::Path PathFinder::generatePath(nav_msgs::Path &_init_path, int _generat
     }
     int interp1_final_size_ = total_distance / _d_between_wps;
     // CreatePathInterp1
-    std::vector<double> interp1_list_x, interp1_list_y, interp1_list_z;
+    std::vector<double> interp1_list_x, interp1_list_y, interp1_list_z, interp1_list_t;
     interp1_list_x = interpWaypointList(list_pose_x, interp1_final_size_);
     interp1_list_y = interpWaypointList(list_pose_y, interp1_final_size_);
     interp1_list_z = interpWaypointList(list_pose_z, interp1_final_size_);
+    interp1_list_t = interpWaypointList(list_pose_t, interp1_final_size_);
     nav_msgs::Path out_path_;
     std::vector<geometry_msgs::PoseStamped> poses(interp1_final_size_);
     for (int i = 0; i < interp1_list_x.size(); i++) {
@@ -129,6 +131,7 @@ nav_msgs::Path PathFinder::generatePath(nav_msgs::Path &_init_path, int _generat
         poses.at(i).pose.orientation.y = 0;
         poses.at(i).pose.orientation.z = 0;
         poses.at(i).pose.orientation.w = 1;
+        poses.at(i).header.stamp.fromSec(interp1_list_t[i]);
     }
     out_path_.poses = poses;
 
