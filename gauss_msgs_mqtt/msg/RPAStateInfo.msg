@@ -18,5 +18,6 @@ float32 jamming
 float32 spoofing
 bool anomalous_clock_drift
 bool anomalous_pos_drift
+bool integrity_alarm
 float32 signal_noise_ratio
 float32 received_power
