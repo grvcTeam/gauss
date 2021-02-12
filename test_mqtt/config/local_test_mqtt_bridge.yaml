@@ -48,3 +48,8 @@ bridge:
     msg_type: gauss_msgs_mqtt.msg:UTMAlert
     topic_from: /gauss/alert
     topic_to: utmalert
+
+  - factory: mqtt_bridge.bridge:MqttToRosBridge
+    msg_type: gauss_msgs_mqtt.msg:AirspaceUpdate
+    topic_from: airspace_update
+    topic_to: /gauss/airspace_update

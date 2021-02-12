@@ -63,6 +63,7 @@ find_package(catkin REQUIRED COMPONENTS
    Operation.msg
    Geofence.msg
    Threat.msg
+   AirspaceUpdate.msg
 #   Message1.msg
 #   Message2.msg
  )
