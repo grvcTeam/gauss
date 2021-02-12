@@ -161,6 +161,10 @@ add_executable(flight_plan_kml_to_db_json src/flight_plan_kml_to_db_json.cpp)
 add_dependencies(flight_plan_kml_to_db_json ${catkin_EXPORTED_TARGETS})
 target_link_libraries(flight_plan_kml_to_db_json ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES} /usr/lib/x86_64-linux-gnu/libpugixml.so)
 
+add_executable(multiple_flight_plans_kml_to_db_json src/multiple_flight_plans_kml_to_db_json.cpp)
+add_dependencies(multiple_flight_plans_kml_to_db_json ${catkin_EXPORTED_TARGETS})
+target_link_libraries(multiple_flight_plans_kml_to_db_json ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES} /usr/lib/x86_64-linux-gnu/libpugixml.so)
+
 #############
 ## Install ##
 #############
