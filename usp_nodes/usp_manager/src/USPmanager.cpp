@@ -253,7 +253,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
         }
         else
         {
-            ROS_INFO_STREAM(write_plans_msg.response.message);
+            // ROS_INFO_STREAM(write_plans_msg.response.message);
         }
     }
     // Send PilotAnswer to Emergency Management

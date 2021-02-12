@@ -454,7 +454,6 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res) {
     ROS_INFO("[Deconfliction] New conflict received! [%d %d]", req.threat.threat_id, req.threat.threat_type);
-    // std::cout << req.threat << "\n";
     //Deconfliction
     if (req.tactical) {
         gauss_msgs::Threat conflict;
@@ -480,27 +479,14 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             while (abs(traj2.waypoints.at(k).stamp.toSec() - conflict.times.at(1).toSec()) >= dT_ / 2)
                 k++;
             wp2 = traj2.waypoints.at(k);
-            // if (j == traj1.waypoints.size()-1){
-                // std::cout << "-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x\n";
-                // for (int x = 0; x < traj1.waypoints.size(); x++){
-                //     std::cout << traj1.waypoints.at(x).stamp.toSec() - conflict.times.at(0).toSec() << "\n";
-                // }
-                // std::cout << "----\n";
-                // for (int x = 0; x < traj2.waypoints.size(); x++){
-                //     std::cout << traj2.waypoints.at(x).stamp.toSec() - conflict.times.at(1).toSec() << "\n";
-                // }
-                // std::cout << traj1.waypoints.at(j).stamp.toSec() << " - " << conflict.times.at(0).toSec() << " = " << abs(traj1.waypoints.at(j).stamp.toSec() - conflict.times.at(0).toSec()) << " >= " << dT_/2;
-            // } 
-            // if (k == traj2.waypoints.size()-1) std::cout << traj2.waypoints.at(k).stamp.toSec() << " - " << conflict.times.at(1).toSec() << " = " << abs(traj2.waypoints.at(k).stamp.toSec() - conflict.times.at(1).toSec()) << " >= " << dT_/2;
-            ROS_WARN("size1: %zd | j: %zd | size2: %zd | k: %zd", traj1.waypoints.size(), j, traj2.waypoints.size(), k);
+            
             double minDistAux = max(minDist_, conflictive_operations.at(0).operational_volume + conflictive_operations.at(1).operational_volume);
 
             double dist_vert = abs(wp2.z - wp1.z);
             double dist_hor = sqrt(pow(wp2.x - wp1.x, 2) + pow(wp2.y - wp1.y, 2));
             double sep_vert = sqrt(pow(minDistAux, 2) - pow(dist_hor, 2));
             double sep_hor = sqrt(pow(minDistAux, 2) - pow(dist_vert, 2));
-            // std::cout << "·················\n" << traj2.waypoints.at(k) << "\n·················\n" << traj1.waypoints.at(j) << "\n·················\n";
-            // std::cout << "dv: " << dist_vert << ", dh: " << dist_hor << ", sv: " << sep_vert << ", sh: " << sep_hor << "\n\n";
+
             gauss_msgs::DeconflictionPlan newplan;
             gauss_msgs::Waypoint newwp;
             newplan.maneuver_type = 8;  // defined in https://docs.google.com/document/d/1R5jWSw4pyPyplHwwrQCDprIUkMimVz-yR8u_t19ooOA/edit
@@ -514,10 +500,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newwp.z = traj1.waypoints.at(j).z + sep_vert;
                 if (newwp.z <= maxZ_ && newwp.z >= minZ_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (k < traj2.waypoints.size() && k != traj2.waypoints.size() - 1){
+                    if (k < traj2.waypoints.size()){
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj2.waypoints.at(k));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -531,10 +515,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newwp.z = traj1.waypoints.at(j).z - sep_vert;
                 if (newwp.z <= maxZ_ && newwp.z >= minZ_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (k < traj2.waypoints.size() && k != traj2.waypoints.size() - 1){
+                    if (k < traj2.waypoints.size()){
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj2.waypoints.at(k));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -554,10 +536,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 }
                 if (newwp.x <= maxX_ && newwp.x >= minX_ && newwp.y <= maxY_ && newwp.y >= minY_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (k < traj2.waypoints.size() && k != traj2.waypoints.size() - 1){
+                    if (k < traj2.waypoints.size()){
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj2.waypoints.at(k));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -577,10 +557,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 }
                 if (newwp.x <= maxX_ && newwp.x >= minX_ && newwp.y <= maxY_ && newwp.y >= minY_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (k < traj2.waypoints.size() && k != traj2.waypoints.size() - 1){
+                    if (k < traj2.waypoints.size()){
                         newplan.waypoint_list.push_back(traj2.waypoints.at(k + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj2.waypoints.at(k));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -597,10 +575,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newwp.z = traj2.waypoints.at(k).z + sep_vert;
                 if (newwp.z <= maxZ_ && newwp.z >= minZ_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (j < traj1.waypoints.size() && j != traj1.waypoints.size() - 1){
+                    if (j < traj1.waypoints.size()){
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj1.waypoints.at(j));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -614,10 +590,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newwp.z = traj2.waypoints.at(k).z - sep_vert;
                 if (newwp.z <= maxZ_ && newwp.z >= minZ_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (j < traj1.waypoints.size() && j != traj1.waypoints.size() - 1){
+                    if (j < traj1.waypoints.size()){
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj1.waypoints.at(j));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -637,10 +611,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 }
                 if (newwp.x <= maxX_ && newwp.x >= minX_ && newwp.y <= maxY_ && newwp.y >= minY_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (j < traj1.waypoints.size() && j != traj1.waypoints.size() - 1){
+                    if (j < traj1.waypoints.size()){
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj1.waypoints.at(j));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -660,10 +632,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 }
                 if (newwp.x <= maxX_ && newwp.x >= minX_ && newwp.y <= maxY_ && newwp.y >= minY_) {
                     newplan.waypoint_list.push_back(newwp);
-                    if (j < traj1.waypoints.size() && j != traj1.waypoints.size() - 1){
+                    if (j < traj1.waypoints.size()){
                         newplan.waypoint_list.push_back(traj1.waypoints.at(j + 1));
-                    } else {
-                        newplan.waypoint_list.push_back(traj1.waypoints.at(j));
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
@@ -674,7 +644,6 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             for (auto plan : res.deconfliction_plans){
                 nav_msgs::Path wpl;
                 wpl.header.frame_id = "map";
-                // std::cout << "Riskiness: " << plan.riskiness << "\n";
                 for (int w = 0; w < plan.waypoint_list.size(); w++){
                     geometry_msgs::PoseStamped temp_wp;
                     temp_wp.pose.position.x = plan.waypoint_list.at(w).x;
