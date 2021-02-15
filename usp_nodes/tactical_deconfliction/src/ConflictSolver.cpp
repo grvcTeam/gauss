@@ -640,46 +640,46 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     res.deconfliction_plans.push_back(newplan);
                 }
             }
-            int cont = 1;
-            for (auto plan : res.deconfliction_plans){
-                nav_msgs::Path wpl;
-                wpl.header.frame_id = "map";
-                for (int w = 0; w < plan.waypoint_list.size(); w++){
-                    geometry_msgs::PoseStamped temp_wp;
-                    temp_wp.pose.position.x = plan.waypoint_list.at(w).x;
-                    temp_wp.pose.position.y = plan.waypoint_list.at(w).y;
-                    temp_wp.pose.position.z = plan.waypoint_list.at(w).z;
-                    wpl.poses.push_back(temp_wp);
-                }
-                switch (cont)
-                {
-                case 1:
-                    pub_sol_1_.publish(wpl);
-                    break;
-                case 2:
-                    pub_sol_2_.publish(wpl);
-                    break;
-                case 3:
-                    pub_sol_3_.publish(wpl);
-                    break;
-                case 4:
-                    pub_sol_4_.publish(wpl);
-                    break;
-                case 5:
-                    pub_sol_5_.publish(wpl);
-                    break;
-                case 6:
-                    pub_sol_6_.publish(wpl);
-                    break;
-                case 7:
-                    pub_sol_7_.publish(wpl);
-                    break;
-                case 8:
-                    pub_sol_8_.publish(wpl);
-                    break;
-                }
-                cont++;
-            }
+            // int cont = 1;
+            // for (auto plan : res.deconfliction_plans){
+            //     nav_msgs::Path wpl;
+            //     wpl.header.frame_id = "map";
+            //     for (int w = 0; w < plan.waypoint_list.size(); w++){
+            //         geometry_msgs::PoseStamped temp_wp;
+            //         temp_wp.pose.position.x = plan.waypoint_list.at(w).x;
+            //         temp_wp.pose.position.y = plan.waypoint_list.at(w).y;
+            //         temp_wp.pose.position.z = plan.waypoint_list.at(w).z;
+            //         wpl.poses.push_back(temp_wp);
+            //     }
+            //     switch (cont)
+            //     {
+            //     case 1:
+            //         pub_sol_1_.publish(wpl);
+            //         break;
+            //     case 2:
+            //         pub_sol_2_.publish(wpl);
+            //         break;
+            //     case 3:
+            //         pub_sol_3_.publish(wpl);
+            //         break;
+            //     case 4:
+            //         pub_sol_4_.publish(wpl);
+            //         break;
+            //     case 5:
+            //         pub_sol_5_.publish(wpl);
+            //         break;
+            //     case 6:
+            //         pub_sol_6_.publish(wpl);
+            //         break;
+            //     case 7:
+            //         pub_sol_7_.publish(wpl);
+            //         break;
+            //     case 8:
+            //         pub_sol_8_.publish(wpl);
+            //         break;
+            //     }
+            //     cont++;
+            // }
             res.message = "Conflict solved";
             res.success = true;
         } else if (req.threat.threat_type == req.threat.GEOFENCE_CONFLICT) {
