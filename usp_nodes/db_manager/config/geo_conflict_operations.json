@@ -20,49 +20,49 @@
 						"x": 0,
 						"y": 0,
 						"z": 5,
-						"stamp": 2.0,
+						"stamp": 10.0,
 						"mandatory": 0
 					},
 					{
 						"x": 20,
 						"y": 0,
 						"z": 5,
-						"stamp": 7.5,
+						"stamp": 20.0,
 						"mandatory": 0
 					},
 					{
 						"x": 40,
 						"y": 0,
 						"z": 5,
-						"stamp": 15.0,
+						"stamp": 30.0,
 						"mandatory": 0
 					},
 					{
 						"x": 60,
 						"y": 0,
 						"z": 5,
-						"stamp": 22.5,
+						"stamp": 40.0,
 						"mandatory": 0
 					},
 					{
 						"x": 80,
 						"y": 0,
 						"z": 5,
-						"stamp": 30.0,
+						"stamp": 50.0,
 						"mandatory": 0
 					},
 					{
 						"x": 100,
 						"y": 0,
 						"z": 5,
-						"stamp": 37.5,
+						"stamp": 60.0,
 						"mandatory": 0
 					},
 					{
 						"x": 100,
 						"y": 0,
 						"z": 1,
-						"stamp": 40.0,
+						"stamp": 70.0,
 						"mandatory": 0
 					}
 				]

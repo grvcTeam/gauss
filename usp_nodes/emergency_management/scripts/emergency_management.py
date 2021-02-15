@@ -508,6 +508,7 @@ class EmergencyManagement():
         for i in range(num):
             threat = EmergencyManagement.Threat2Solve(rospy.Time.now(), 'TODO', req.threats[i])
             self._threats_list.append(threat)
+        self._conflictive_operations = []
         for i in range(len(req.operations)):
             self._conflictive_operations.append(req.operations[i])
         for i in range(len(req.geofences)):
