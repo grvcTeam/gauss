@@ -23,7 +23,10 @@
     <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" required="true"/>
     <node pkg="tracking" type="tracking" name="tracking" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
-    <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
+    <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true">
+        <param name="origin_latitude" value= "40.65974645776713"/>
+        <param name="origin_longitude" value= "-3.59689676974471"/>
+    </node>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true">
         <param name="minX" value="$(arg minX)"/>
         <param name="minY" value="$(arg minY)"/>
