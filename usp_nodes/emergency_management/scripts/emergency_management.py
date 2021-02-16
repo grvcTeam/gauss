@@ -426,7 +426,7 @@ class EmergencyManagement():
             if threat_type == Threat.JAMMING_ATTACK: 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
-                notification.description = 'Land within the geofence created around the UAV.'
+                notification.description = 'Attention: Jamming attack. Land now'
                 notification.uav_id = uav_threatened
                 self._notifications_list.append(notification) 
                 
@@ -435,10 +435,11 @@ class EmergencyManagement():
                 alarm_center = threat.location
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
+                geofence_base.radius = 80
                 geofence = Geofence()
                 geofence.id = 3
                 geofence.min_altitude = 0.0
-                geofence.max_altitude = 100.0
+                geofence.max_altitude = 700.0
                 geofence.circle = geofence_base
     
                 # We write a geofence.
@@ -508,7 +509,6 @@ class EmergencyManagement():
         for i in range(num):
             threat = EmergencyManagement.Threat2Solve(rospy.Time.now(), 'TODO', req.threats[i])
             self._threats_list.append(threat)
-        self._conflictive_operations = []
         for i in range(len(req.operations)):
             self._conflictive_operations.append(req.operations[i])
         for i in range(len(req.geofences)):
