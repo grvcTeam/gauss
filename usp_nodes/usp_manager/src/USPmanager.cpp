@@ -53,7 +53,7 @@ struct ThreatFlightPlan {
 class USPManager
 {
 public:
-    USPManager();
+    USPManager(double origin_latitude, double origin_longitude);
 
 private:
     // Topic Callbacks
@@ -79,7 +79,6 @@ private:
     */
 
     // Auxilary variables
-    double rate;
     ros::NodeHandle nh_;
 
     std::map<uint8_t, uint32_t> id_icao_map_;
@@ -128,15 +127,12 @@ private:
 };
 
 // USPManager Constructor
-USPManager::USPManager():
-lat0_(REFERENCE_LATITUDE),
-lon0_(REFERENCE_LONGITUDE),
+USPManager::USPManager(double origin_latitude, double origin_longitude):
+lat0_(origin_latitude),
+lon0_(origin_longitude),
 earth_(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f()),
 proj_(lat0_, lon0_, 0, earth_)
 {
-    // Read parameters
-    nh_.param("/gauss/monitoring_rate",rate,0.5);
-
     // Initialization
 
     // Publish
@@ -158,14 +154,11 @@ proj_(lat0_, lon0_, 0, earth_)
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
     send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/pilotanswer");
-    // send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/send_pilot_answer");
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
     change_flight_status_client_ = nh_.serviceClient<gauss_msgs::ChangeFlightStatus>("/gauss/change_flight_status");
 
-    // Timer
-    //timer_sub_=nh_.createTimer(ros::Duration(1.0/rate),&USPManager::timerCallback,this);
-
     ROS_INFO("[USPM] Started USPManager node!");
+    ROS_INFO_STREAM("Origin (Latitude, Longitude): (" << lat0_ << "," << lon0_ << ")");
 
     this->initializeICAOIDMap();
 }
@@ -513,9 +506,13 @@ bool USPManager::initializeIDOperationMap()
 int main(int argc, char *argv[])
 {
     ros::init(argc,argv,"USPManager");
+    ros::NodeHandle pnh("~");
+    double origin_latitude, origin_longitude;
 
+    origin_latitude = pnh.param<double>("origin_latitude", ARENOSILLO_LATITUDE);
+    origin_longitude = pnh.param<double>("origin_longitude", ARENOSILLO_LONGITUDE);
     // Create a USPManager object
-    USPManager *usp_manager = new USPManager();
+    USPManager *usp_manager = new USPManager(origin_latitude, origin_longitude);
 
     ros::spin();
 }
