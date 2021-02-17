@@ -26,7 +26,7 @@ bridge:
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPSFlightPlanAccept
-    topic_from: flightacceptance
+    topic_from: flightacceptance/+
     topic_to: /gauss/flightacceptance
 
   - factory: mqtt_bridge.bridge:RosToMqttBridge
