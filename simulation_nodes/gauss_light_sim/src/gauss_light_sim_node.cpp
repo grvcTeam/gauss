@@ -316,7 +316,7 @@ class LightSim {
         status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
         alternative_plan_sub = n.subscribe("/gauss/alternative_flight_plan", 1, &LightSim::altPlanCallback, this);
         status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("flight_status", 10);
-        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state", 10);
+        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo", 10);
     }
 
     void start() {
