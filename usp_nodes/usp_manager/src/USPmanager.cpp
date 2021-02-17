@@ -37,9 +37,15 @@
 
 #define ARENOSILLO_LATITUDE 37.094784
 #define ARENOSILLO_LONGITUDE -6.735478
+#define ARENOSILLO_ELLIPSOIDAL_HEIGHT 0 // TODO: MEASURE IT 
+
+#define LORING_LATITUDE 40.65974645776713
+#define LORING_LONGITUDE -3.59689676974471
+#define LORING_ELLIPSOIDAL_HEIGHT 675
 
 #define REFERENCE_LATITUDE ARENOSILLO_LATITUDE
 #define REFERENCE_LONGITUDE ARENOSILLO_LONGITUDE
+#define REFERENCE_ELLIPSOIDAL_HEIGHT ARENOSILLO_ELLIPSOIDAL_HEIGHT
 
 #define YES std::string("yes")
 #define NO std::string("no")
@@ -53,7 +59,7 @@ struct ThreatFlightPlan {
 class USPManager
 {
 public:
-    USPManager(double origin_latitude, double origin_longitude);
+    USPManager(double origin_latitude, double origin_longitude, double origin_ellipsoidal_height);
 
 private:
     // Topic Callbacks
@@ -121,17 +127,18 @@ private:
 
 
     // Variables for geographic to cartesian conversion
-    double lat0_, lon0_;
+    double lat0_, lon0_, ellipsoidal_height_;
     GeographicLib::Geocentric earth_;
     GeographicLib::LocalCartesian proj_;
 };
 
 // USPManager Constructor
-USPManager::USPManager(double origin_latitude, double origin_longitude):
+USPManager::USPManager(double origin_latitude, double origin_longitude, double origin_ellipsoidal_height):
 lat0_(origin_latitude),
 lon0_(origin_longitude),
+ellipsoidal_height_(origin_ellipsoidal_height),
 earth_(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f()),
-proj_(lat0_, lon0_, 0, earth_)
+proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
 {
     // Initialization
 
@@ -141,7 +148,7 @@ proj_(lat0_, lon0_, 0, earth_)
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
 
-    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state",10,&USPManager::RPAStateCB,this);
+    rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo",10,&USPManager::RPAStateCB,this);
     adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
     flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 10, &USPManager::RPSFlightPlanAcceptCB, this);
     flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/flight_status", 10, &USPManager::RPSChangeFlightStatusCB, this);
@@ -305,6 +312,10 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
         position_report_msg.heading = msg->yaw;
         position_report_msg.speed = msg->groundspeed;
 
+        std::cout << "Position report icao: " << msg->icao << "\n";
+        std::cout << "x: " << position_report_msg.position.x << "\n";  
+        std::cout << "y: " << position_report_msg.position.y << "\n";
+        std::cout << "z: " << position_report_msg.position.z << "\n";
         position_report_pub_.publish(position_report_msg);
     }
     else
@@ -507,12 +518,13 @@ int main(int argc, char *argv[])
 {
     ros::init(argc,argv,"USPManager");
     ros::NodeHandle pnh("~");
-    double origin_latitude, origin_longitude;
+    double origin_latitude, origin_longitude, origin_ellipsoidal_height;
 
     origin_latitude = pnh.param<double>("origin_latitude", ARENOSILLO_LATITUDE);
     origin_longitude = pnh.param<double>("origin_longitude", ARENOSILLO_LONGITUDE);
+    origin_ellipsoidal_height = pnh.param<double>("origin_ellipsoidal_height", ARENOSILLO_ELLIPSOIDAL_HEIGHT);
     // Create a USPManager object
-    USPManager *usp_manager = new USPManager(origin_latitude, origin_longitude);
+    USPManager *usp_manager = new USPManager(origin_latitude, origin_longitude, origin_ellipsoidal_height);
 
     ros::spin();
 }
