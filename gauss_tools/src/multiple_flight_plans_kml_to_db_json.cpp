@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 {
     if(argc != 5)
     {
-        std::cout << "Usage: origin_latitude origin_longitude flight_plan_kml_to_db_json KML_INPUT_FILE JSON_OUTPUT_FILE_PREFIX \n"; 
+        std::cout << "Usage: multiple_flight_plans_kml_to_db_json origin_latitude origin_longitude KML_INPUT_FILE JSON_OUTPUT_FILE_PREFIX \n"; 
         return 1;
     }
     
