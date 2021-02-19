@@ -685,13 +685,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         } else if (req.threat.threat_type == req.threat.GEOFENCE_CONFLICT) {
             nav_msgs::Path res_path;
             std::vector<double> res_times;
-            for (int i = 0; i < conflictive_operations.front().flight_plan.waypoints.size(); i++) {
+            for (int i = 0; i < conflictive_operations.front().estimated_trajectory.waypoints.size(); i++) {
                 geometry_msgs::PoseStamped temp_pose;
-                temp_pose.pose.position.x = conflictive_operations.front().flight_plan.waypoints.at(i).x;
-                temp_pose.pose.position.y = conflictive_operations.front().flight_plan.waypoints.at(i).y;
-                temp_pose.pose.position.z = conflictive_operations.front().flight_plan.waypoints.at(i).z;
+                temp_pose.pose.position.x = conflictive_operations.front().estimated_trajectory.waypoints.at(i).x;
+                temp_pose.pose.position.y = conflictive_operations.front().estimated_trajectory.waypoints.at(i).y;
+                temp_pose.pose.position.z = conflictive_operations.front().estimated_trajectory.waypoints.at(i).z;
                 res_path.poses.push_back(temp_pose);
-                res_times.push_back(conflictive_operations.front().flight_plan.waypoints.at(i).stamp.toSec());
+                res_times.push_back(conflictive_operations.front().estimated_trajectory.waypoints.at(i).stamp.toSec());
             }
             std::vector<gauss_msgs::Geofence> geofences;
             for (int i = 0; i < req.threat.geofence_ids.size(); i++) {
@@ -722,7 +722,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume, polygon_test_output);
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*4, polygon_test_output); 
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }
@@ -777,13 +777,13 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         } else if (req.threat.threat_type == req.threat.GEOFENCE_INTRUSION) {
             nav_msgs::Path res_path;
             std::vector<double> res_times;
-            for (int i = 0; i < conflictive_operations.front().flight_plan.waypoints.size(); i++) {
+            for (int i = 0; i < conflictive_operations.front().estimated_trajectory.waypoints.size(); i++) {
                 geometry_msgs::PoseStamped temp_pose;
-                temp_pose.pose.position.x = conflictive_operations.front().flight_plan.waypoints.at(i).x;
-                temp_pose.pose.position.y = conflictive_operations.front().flight_plan.waypoints.at(i).y;
-                temp_pose.pose.position.z = conflictive_operations.front().flight_plan.waypoints.at(i).z;
+                temp_pose.pose.position.x = conflictive_operations.front().estimated_trajectory.waypoints.at(i).x;
+                temp_pose.pose.position.y = conflictive_operations.front().estimated_trajectory.waypoints.at(i).y;
+                temp_pose.pose.position.z = conflictive_operations.front().estimated_trajectory.waypoints.at(i).z;
                 res_path.poses.push_back(temp_pose);
-                res_times.push_back(conflictive_operations.front().flight_plan.waypoints.at(i).stamp.toSec());
+                res_times.push_back(conflictive_operations.front().estimated_trajectory.waypoints.at(i).stamp.toSec());
             }
             std::vector<gauss_msgs::Geofence> geofences;
             for (int i = 0; i < req.threat.geofence_ids.size(); i++) {

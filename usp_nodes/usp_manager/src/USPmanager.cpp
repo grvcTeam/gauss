@@ -312,10 +312,10 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
         position_report_msg.heading = msg->yaw;
         position_report_msg.speed = msg->groundspeed;
 
-        std::cout << "Position report icao: " << msg->icao << "\n";
-        std::cout << "x: " << position_report_msg.position.x << "\n";  
-        std::cout << "y: " << position_report_msg.position.y << "\n";
-        std::cout << "z: " << position_report_msg.position.z << "\n";
+        // std::cout << "Position report icao: " << msg->icao << "\n";
+        // std::cout << "x: " << position_report_msg.position.x << "\n";  
+        // std::cout << "y: " << position_report_msg.position.y << "\n";
+        // std::cout << "z: " << position_report_msg.position.z << "\n";
         position_report_pub_.publish(position_report_msg);
     }
     else
