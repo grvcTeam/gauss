@@ -5,12 +5,14 @@
     <arg name="rviz_name"  default="madrid"/>
     <arg name="init_time" default="0.0"/> <!-- https://time.is/Unix_time_now ||  -->
     <arg name="safetyDistance" default="350"/>
-    <arg name="minX" default="-50"/>
-    <arg name="minY" default="-100"/>
+    <arg name="minX" default="-300"/>
+    <arg name="minY" default="-400"/>
     <arg name="minZ" default="0"/>
-    <arg name="maxX" default="450"/>
-    <arg name="maxY" default="150"/>
-    <arg name="maxZ" default="450"/>
+    <arg name="maxX" default="900"/>
+    <arg name="maxY" default="900"/>
+    <arg name="maxZ" default="500"/>
+    <arg name="time_horizon" default="300"/>
+    <arg name="dT" default="15"/>
 
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/$(arg rviz_name).rviz" required="true"/>
@@ -35,6 +37,7 @@
         <param name="maxX" value="$(arg maxX)"/>
         <param name="maxY" value="$(arg maxY)"/>
         <param name="maxZ" value="$(arg maxZ)"/>
+        <param name="dT" value="$(arg dT)"/>
         <param name="safetyDistance" value="$(arg safetyDistance)"/>
     </node>
     <node pkg="monitoring" type="monitoring" name="monitoring" required="true" output="screen">
@@ -47,6 +50,8 @@
         <param name="deltaX" value="10.0"/>
         <param name="deltaY" value="10.0"/>
         <param name="deltaZ" value="400.0"/>
+        <param name="dT" value="$(arg dT)"/>
+        <param name="time_horizon" value="$(arg time_horizon)"/>
         <param name="safetyDistance" value="$(arg safetyDistance)"/>
     </node>
 

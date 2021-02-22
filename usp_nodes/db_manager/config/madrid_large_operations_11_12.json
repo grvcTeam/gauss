@@ -28,13 +28,13 @@
                     }
                 ]
             },
-            "dT": 5.0,
+            "dT": 15.0,
 			"time_tracked": 10,
 			"track": {
 				"waypoints": [
 				]
 			},
-			"time_horizon": 90,
+			"time_horizon": 300,
 			"estimated_trajectory": {
 				"waypoints": [
 				]
@@ -82,13 +82,13 @@
                     }
                 ]
             },
-            "dT": 5.0,
+            "dT": 15.0,
 			"time_tracked": 10,
 			"track": {
 				"waypoints": [
 				]
 			},
-			"time_horizon": 90,
+			"time_horizon": 300,
 			"estimated_trajectory": {
 				"waypoints": [
 				]

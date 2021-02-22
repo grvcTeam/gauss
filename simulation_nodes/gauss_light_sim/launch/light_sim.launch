@@ -10,6 +10,8 @@
     <arg name="maxX" default="0"/>
     <arg name="maxY" default="400"/>
     <arg name="maxZ" default="300"/>
+    <arg name="time_horizon" default="90"/>
+    <arg name="dT" default="5"/>
 
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/$(arg rviz_name).rviz" required="true"/>
@@ -34,6 +36,7 @@
         <param name="maxX" value="$(arg maxX)"/>
         <param name="maxY" value="$(arg maxY)"/>
         <param name="maxZ" value="$(arg maxZ)"/>
+        <param name="dT" value="$(arg dT)"/>
         <param name="safetyDistance" value="20"/>
     </node>
     <node pkg="monitoring" type="monitoring" name="monitoring" required="true" output="screen">
@@ -43,6 +46,8 @@
         <param name="maxX" value="$(arg maxX)"/>
         <param name="maxY" value="$(arg maxY)"/>
         <param name="maxZ" value="$(arg maxZ)"/>
+        <param name="dT" value="$(arg dT)"/>
+        <param name="time_horizon" value="$(arg time_horizon)"/>
         <param name="safetyDistance" value="20"/>
     </node>
 
