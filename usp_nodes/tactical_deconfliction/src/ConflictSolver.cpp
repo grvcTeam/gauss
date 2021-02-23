@@ -67,7 +67,7 @@ class ConflictSolver {
 ConflictSolver::ConflictSolver() {
     // Read parameters
     nh_.param("/tactical_deconfliction/safetyDistance", minDist_, 10.0);
-    nh_.param("/tactical_deconfliction/monitoring_rate", rate_, 0.2);
+    nh_.param("/tactical_deconfliction/dT", dT_, 15.0);
     nh_.param("/tactical_deconfliction/minX", minX_, -400.0);
     nh_.param("/tactical_deconfliction/minY", minY_, 0.0);
     nh_.param("/tactical_deconfliction/minZ", minZ_, 0.0);
@@ -77,7 +77,7 @@ ConflictSolver::ConflictSolver() {
 
 
     // Initialization
-    dT_ = 1.0 / rate_;
+    // dT_ = 1.0 / rate_;
 
     // Publish
     pub_sol_1_ = nh_.advertise<nav_msgs::Path>("/sol1", 1);

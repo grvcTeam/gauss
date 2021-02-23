@@ -85,7 +85,7 @@ private:
 Monitoring::Monitoring()
 {
     // Read
-    nh_.param("/monitoring/monitoring_rate",rate,0.2);
+    nh_.param("/monitoring/monitoring_rate",rate,5.0);
     nh_.param("/monitoring/safetyDistance",minDist,10.0);
     nh_.param("/monitoring/minX",minX,-400.0);
     nh_.param("/monitoring/minY",minY,0.0);
@@ -93,14 +93,15 @@ Monitoring::Monitoring()
     nh_.param("/monitoring/maxX",maxX,0.0);
     nh_.param("/monitoring/maxY",maxY,400.0);
     nh_.param("/monitoring/maxZ",maxZ,300.0);
-    nh_.param("/monitoring/time_horizon",maxT,90.0);
+    nh_.param("/monitoring/time_horizon",maxT,300.0);
+    nh_.param("/monitoring/dT",dT,15.0);
     nh_.param("/monitoring/deltaX",dX,10.0);
     nh_.param("/monitoring/deltaY",dY,10.0);
     nh_.param("/monitoring/deltaZ",dZ,10.0);
 
 
     // Initialization    
-    dT=1.0/rate;
+    // dT=1.0/rate;
     X=ceil((maxX-minX)/dX);
     Y=ceil((maxY-minY)/dY);
     Z=ceil((maxZ-minZ)/dZ);
@@ -139,7 +140,7 @@ Monitoring::Monitoring()
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
 
     // Timer
-    timer_sub_=nh_.createTimer(ros::Duration(dT),&Monitoring::timerCallback,this);
+    timer_sub_=nh_.createTimer(ros::Duration(rate),&Monitoring::timerCallback,this);
 
     ROS_INFO("[Monitoring] Started Monitoring node!");
 }
