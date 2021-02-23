@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import math
+import json
+import os
 
 def calculate_intersection(p1, p2, q1, q2):
     """Return the 2D geometrical intersection of segments [p1, p2] and [q1, q2]
@@ -38,13 +40,31 @@ def calculate_delta_t(initial, final, speed):
     return distance / speed
 
 def main():
+
+    # print(os.path.dirname(__file__))
+    # json_name = input("Enter JSON name: ")
+    json_name = "test.json"
+    with open(json_name) as json_data:
+        data = json.load(json_data)
+
+    op_cont = 0
+    for op in data["operations"]:
+        wp_cont = 0
+        for wp in op["flight_plan"]["waypoints"]:
+            if wp_cont == 0 and op_cont == 0:
+                A1 = (wp["x"], wp["y"])
+            if wp_cont == 1 and op_cont == 0:
+                A2 = (wp["x"], wp["y"])
+            if wp_cont == 0 and op_cont == 1:
+                B1 = (wp["x"], wp["y"])
+            if wp_cont == 1 and op_cont == 1:
+                B2 = (wp["x"], wp["y"])
+            wp_cont += 1
+        op_cont += 1
+
     # TODO: input data from file?
-    A1 = ( 0,  0)  # [m]
-    A2 = (+4, +3)  # [m]
-    B1 = ( 0, +3)  # [m]
-    B2 = (+4,  0)  # [m]
-    vA = 5  # [m/s]
-    vB = 1  # [m/s]
+    vA = int(input("Enter A velocity [m/s] "))  # [m/s]
+    vB = int(input("Enter B velocity [m/s] "))  # [m/s]
 
     collision = calculate_intersection(A1, A2, B1, B2)
     print('Possible collision in coordinates {}m'.format(collision))

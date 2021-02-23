@@ -600,9 +600,11 @@ int main(int argc, char **argv) {
     } else {
         init_time = ros::Time(time_param);
     }
-    for (auto i : read_icao.response.icao_address){
-        auto_start_map[i] = init_time + ros::Duration(8);
-    }
+    // for (auto i : read_icao.response.icao_address){
+    //     auto_start_map[i] = init_time + ros::Duration(8);
+    // }
+    auto_start_map[read_icao.response.icao_address.front()] = init_time + ros::Duration(43);
+    auto_start_map[read_icao.response.icao_address.back()] = init_time + ros::Duration(8);
     // auto_start_map["11259138"] = init_time + ros::Duration(8);
     sim.setAutoStart(auto_start_map);
 

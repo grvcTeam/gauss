@@ -10,7 +10,7 @@
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
 
-#define NOMINAL_SPEED 2.0 // meters per second
+#define NOMINAL_SPEED 1.0 // meters per second
 
 inline double distanceBetweenWaypoints(double &x1, double &y1, double &z1, double &x2, double &y2, double &z2);
 
