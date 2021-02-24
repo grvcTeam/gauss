@@ -50,8 +50,8 @@
                     }
 				]
 			},
-			"flight_geometry": 4.0,
-			"operational_volume": 2.0,
+			"flight_geometry": 10.0,
+			"operational_volume": 8.0,
 			"conop": "Precision Agriculture"
         }
     ]

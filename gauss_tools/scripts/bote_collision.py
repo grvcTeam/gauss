@@ -63,8 +63,8 @@ def main():
         op_cont += 1
 
     # TODO: input data from file?
-    vA = int(input("Enter A velocity [m/s] "))  # [m/s]
-    vB = int(input("Enter B velocity [m/s] "))  # [m/s]
+    vA = float(input("Enter A velocity [m/s] "))  # [m/s]
+    vB = float(input("Enter B velocity [m/s] "))  # [m/s]
 
     collision = calculate_intersection(A1, A2, B1, B2)
     print('Possible collision in coordinates {}m'.format(collision))
