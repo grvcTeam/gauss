@@ -1,0 +1,58 @@
+{
+    "operations": [
+        {
+            "uav_id": 0,
+			"icao_address": "3434000",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 0,
+			"is_started": false,
+			"current_wp": 1,
+            "flight_plan" : 
+            {
+                "waypoints" : 
+                [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 0,
+                        "x" : 15.203739881354599,
+                        "y" : -23.573721735281353,
+                        "z" : 69.999938234351958
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 100.619785332460197,
+                        "x" : 259.0364716917685,
+                        "y" : 61.046930661350252,
+                        "z" : 69.994454527459908
+                    }
+                ]
+            },
+            "dT": 5.0,
+			"time_tracked": 10,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 90,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 0,
+                        "x" : -14.588147089974557,
+                        "y" : -22.691585716874354,
+                        "z" : 69.999942877249225
+                    }
+				]
+			},
+			"flight_geometry": 10.0,
+			"operational_volume": 8.0,
+			"conop": "Precision Agriculture"
+        }
+    ]
+}

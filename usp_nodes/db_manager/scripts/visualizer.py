@@ -333,6 +333,54 @@ class GeofenceViz(object):
 
         return markerarray
 
+
+class VolumeViz(object):
+    def __init__(self, frame_id, lifetime):
+        self.frame_id = frame_id
+        self.lifetime = lifetime
+
+    def get_markerarray(self, operation, ns, fg_color, ov_color):
+        marker_common = Marker()
+        marker_common.header.stamp = rospy.Time.now()
+        marker_common.header.frame_id = self.frame_id
+        marker_common.lifetime = self.lifetime
+        marker_common.type = Marker.ARROW
+        marker_common.action = Marker.ADD
+
+        flight_geometry_marker_array = MarkerArray()
+        operational_volume_marker_array = MarkerArray()
+
+        flight_geometry = operation.flight_geometry
+        operational_volume = operation.operational_volume
+        waypointlist = operation.flight_plan.waypoints
+        for i, (prev, current) in enumerate(zip(waypointlist, waypointlist[1:])):
+            prev_point    = Point(prev.x,    prev.y,    prev.z)
+            current_point = Point(current.x, current.y, current.z)
+
+            flight_geometry_marker = copy.deepcopy(marker_common)
+            flight_geometry_marker.ns = ns + '/flight_geometry'
+            flight_geometry_marker.id = i
+            flight_geometry_marker.color = fg_color
+            flight_geometry_marker.points.append(prev_point)
+            flight_geometry_marker.points.append(current_point)
+            flight_geometry_marker.scale = Vector3(flight_geometry, flight_geometry, 0.01)
+            flight_geometry_marker_array.markers.append(copy.deepcopy(flight_geometry_marker))
+
+            operational_volume_marker = copy.deepcopy(marker_common)
+            operational_volume_marker.ns = ns + '/operational_volume'
+            operational_volume_marker.id = i
+            operational_volume_marker.color = ov_color
+            operational_volume_marker.points.append(prev_point)
+            operational_volume_marker.points.append(current_point)
+            operational_volume_marker.scale = Vector3(operational_volume, operational_volume, 0.01)
+            operational_volume_marker_array.markers.append(copy.deepcopy(operational_volume_marker))
+
+        markerarray = MarkerArray()
+        markerarray.markers.extend(flight_geometry_marker_array.markers)
+        markerarray.markers.extend(operational_volume_marker_array.markers)
+
+        return markerarray
+
 def main():
     rospy.init_node('visualizer')
  
@@ -401,6 +449,7 @@ def main():
         track_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         landing_spots_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         landing_spots_viz.config_non_mandatory_wp(Marker.CUBE_LIST, Vector3(0.5, 0.5, 0))
+        volume_viz = VolumeViz(global_frame_id, rospy.Duration(1.0/update_rate))
 
         marker_array = MarkerArray()
         for operation in read_operation_response.operation:
@@ -528,11 +577,19 @@ def main():
             landing_spots = landing_spots_viz.get_markerarray(operation.landing_spots.waypoints, ns, color_scheme)
             marker_array.markers.extend(landing_spots.markers)
 
+            # Visualize volumes (flight geometry, operational volume)
+            ns = operation_ns + '/volumes'
+            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.5)
+            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.2)
+            volume = volume_viz.get_markerarray(operation, ns, fg_color, ov_color)
+            marker_array.markers.extend(volume.markers)
+
         geofence_viz = GeofenceViz(global_frame_id, rospy.Duration(1.0/update_rate))
         for geofence in read_geofences_response.geofences:
             ns = 'geofence_' + str(geofence.id)
             color = palette.get_color('red')  # TODO: Force red?
-            marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
+            if geofence.start_time.secs < rospy.get_rostime().secs and rospy.get_rostime().secs < geofence.end_time.secs: 
+                marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
 
         visualization_pub.publish(marker_array)
 

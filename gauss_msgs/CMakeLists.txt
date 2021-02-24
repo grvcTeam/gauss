@@ -63,6 +63,7 @@ find_package(catkin REQUIRED COMPONENTS
    Operation.msg
    Geofence.msg
    Threat.msg
+   AirspaceUpdate.msg
 #   Message1.msg
 #   Message2.msg
  )
@@ -84,7 +85,7 @@ find_package(catkin REQUIRED COMPONENTS
    WriteOperation.srv
    DB_size.srv
    CheckConflicts.srv
-
+   ChangeFlightStatus.srv
 #   Service2.srv
  )
 

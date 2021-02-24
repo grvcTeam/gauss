@@ -38,6 +38,7 @@ class DataBase {
     // Auxilary variables
     int size_plans;
     int size_geofences;
+    ros::Time init_time_;
     // Auxilary methods
     bool jsonExists(std::string _file_name);
     bool operationsFromJson(std::string _file_name);
@@ -62,8 +63,10 @@ class DataBase {
 // DataBase Constructor
 DataBase::DataBase() : nh_(), pnh_("~") {
     // Read parameters
+    double time_param = 0.0;
     std::string operations_name = "loss_operations";
     std::string geofences_name = "loss_geofences";
+    pnh_.getParam("init_time", time_param);
     pnh_.getParam("operations_json", operations_name);
     pnh_.getParam("geofences_json", geofences_name);
     std::string pkg_path = ros::package::getPath("db_manager");
@@ -73,6 +76,11 @@ DataBase::DataBase() : nh_(), pnh_("~") {
     if (ok_json_geofences && ok_json_operations) {
         // Initialization
         size_plans = size_geofences = 0;
+        if (time_param == 0.0){
+            init_time_ = ros::Time::now();
+        } else {
+            init_time_ = ros::Time(time_param);
+        }
         // Lee archivo de datos para inicializar databases y actualizar valor de size_plans y size_tracks
         ROS_WARN_STREAM(file_path + operations_name + ".json");
         ROS_WARN_STREAM(file_path + geofences_name + ".json");
@@ -91,7 +99,7 @@ DataBase::DataBase() : nh_(), pnh_("~") {
         if (!ok_json_geofences) ROS_ERROR("Geofences JSON does not exist!");
         if (!ok_json_operations) ROS_ERROR("Operations JSON does not exist!");
     }
-    ROS_INFO("Started DBManager node!");
+    ROS_INFO("[DB] Started DBManager node!");
 }
 
 bool DataBase::jsonExists(std::string _file_name) {
@@ -112,6 +120,7 @@ bool DataBase::operationsFromJson(std::string _file_name) {
             operation.uav_id = item.value()["uav_id"].get<double>();
             operation.autonomy = item.value()["autonomy"].get<double>();
             operation.conop = item.value()["conop"].get<std::string>();
+            operation.is_started = item.value()["is_started"].get<bool>();
             if (item.value()["current_wp"].get<double>() == 0) {
                 operation.current_wp = 1;
             } else {
@@ -138,15 +147,11 @@ bool DataBase::operationsFromJson(std::string _file_name) {
                     wp.x = it.value()["x"].get<double>();
                     wp.y = it.value()["y"].get<double>();
                     wp.z = it.value()["z"].get<double>();
-                    wp.stamp = ros::Time(it.value()["stamp"].get<double>());
+                    wp.stamp = ros::Time(init_time_.toSec() + it.value()["stamp"].get<double>());
                     wp.mandatory = it.value()["mandatory"].get<double>();
                     wp_list.waypoints.push_back(wp);
                 }
                 operation.flight_plan = wp_list;
-            }
-            // Fill estimated trajectory with at most 18 waypoints from flight plan
-            for (int index_1 = 0; index_1 < std::min((int)operation.flight_plan.waypoints.size(), 18); index_1++) {
-                operation.estimated_trajectory.waypoints.push_back(operation.flight_plan.waypoints.at(index_1));
             }
             operation.track.waypoints.push_back(operation.flight_plan.waypoints.front());
             wp_list.waypoints.clear();
@@ -196,8 +201,8 @@ bool DataBase::geofencesFromJson(std::string _file_name) {
             geofence.cylinder_shape = item.value()["cylinder_shape"].get<bool>();
             geofence.min_altitude = item.value()["min_altitude"].get<double>();
             geofence.max_altitude = item.value()["max_altitude"].get<double>();
-            geofence.start_time = ros::Time(item.value()["start_time"].get<double>());
-            geofence.end_time = ros::Time(item.value()["end_time"].get<double>());
+            geofence.start_time = ros::Time(init_time_.toSec() + item.value()["start_time"].get<double>());
+            geofence.end_time = ros::Time(init_time_.toSec() + item.value()["end_time"].get<double>());
             geofence.circle.x_center = item.value()["circle"]["x_center"].get<double>();
             geofence.circle.y_center = item.value()["circle"]["y_center"].get<double>();
             geofence.circle.radius = item.value()["circle"]["radius"].get<double>();
@@ -295,26 +300,21 @@ bool DataBase::readOperationCB(gauss_msgs::ReadOperation::Request &req, gauss_ms
 
 bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_msgs::WriteOperation::Response &res) {
     for (int i = 0; i < req.uav_ids.size(); i++) {
-        if (saved_operations.empty()) {
-            req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
-            saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
-        } else {
-            map<int, gauss_msgs::Operation>::iterator it = saved_operations.find(req.uav_ids[i]);
-            if (it != saved_operations.end()) {
-                if (checkNewFlightPlan(it->second.flight_plan, req.operation[i].flight_plan)) {
-                    req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
-                }
-                it->second = req.operation[i];
-            } else {
+        map<int, gauss_msgs::Operation>::iterator it = saved_operations.find(req.uav_ids[i]);
+        if (it != saved_operations.end()) {
+            if (checkNewFlightPlan(it->second.flight_plan, req.operation[i].flight_plan)) {
                 req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
-                if (req.operation[i].current_wp == 0) req.operation[i].current_wp = 1;
-                if (req.operation[i].track.waypoints.size() == 0) req.operation[i].track.waypoints.push_back(req.operation[i].flight_plan.waypoints.front());
-                if (req.operation[i].flight_geometry < req.operation[i].operational_volume) req.operation[i].operational_volume = req.operation[i].flight_geometry * 0.8;
-                for (int j = 0; j < std::min((int)req.operation[i].flight_plan.waypoints.size(), 18); j++) req.operation[i].estimated_trajectory.waypoints.push_back(req.operation[i].flight_plan.waypoints.at(j));
-                saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
-                if (req.operation[i].flight_plan.waypoints.size() == 0) ROS_WARN("Operation %d has empty flight plan!", (int)req.operation[i].uav_id);
-                if (req.operation[i].landing_spots.waypoints.size() == 0) ROS_WARN("Operation %d has empty landing spot!", (int)req.operation[i].uav_id);
             }
+            it->second = req.operation[i];
+        } else {
+            req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
+            if (req.operation[i].current_wp == 0) req.operation[i].current_wp = 1;
+            if (req.operation[i].track.waypoints.size() == 0) req.operation[i].track.waypoints.push_back(req.operation[i].flight_plan.waypoints.front());
+            if (req.operation[i].flight_geometry < req.operation[i].operational_volume) req.operation[i].operational_volume = req.operation[i].flight_geometry * 0.8;
+            for (int j = 0; j < std::min((int)req.operation[i].flight_plan.waypoints.size(), 18); j++) req.operation[i].estimated_trajectory.waypoints.push_back(req.operation[i].flight_plan.waypoints.at(j));
+            saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
+            if (req.operation[i].flight_plan.waypoints.size() == 0) ROS_WARN("Operation %d has empty flight plan!", (int)req.operation[i].uav_id);
+            if (req.operation[i].landing_spots.waypoints.size() == 0) ROS_WARN("Operation %d has empty landing spot!", (int)req.operation[i].uav_id);
         }
     }
     res.success = true;
@@ -384,6 +384,7 @@ bool DataBase::writeTrackingCB(gauss_msgs::WriteTracking::Request &req, gauss_ms
                 it->second.time_tracked = req.times_tracked[i];
                 it->second.estimated_trajectory = req.estimated_trajectories[i];
                 it->second.flight_plan_updated = req.flight_plans_updated[i];
+                it->second.is_started = req.is_started[i];
             } else {
                 not_found_ids.push_back(i);
             }

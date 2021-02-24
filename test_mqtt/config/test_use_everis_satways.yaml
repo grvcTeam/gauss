@@ -12,19 +12,44 @@ bridge:
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:GCSFlightPlan
     topic_from: gcsflightplan/+
-    topic_to: /gcsflightplan
+    topic_to: /gauss/gcsflightplan
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPSChangeFlightStatus
     topic_from: flight/+
-    topic_to: /flight
+    topic_to: /gauss/flight
 
   - factory: mqtt_bridge.bridge:AlternativeFlightPlanRosToMqttBridge
     msg_type: gauss_msgs_mqtt.msg:UTMAlternativeFlightPlan
-    topic_from: /utmflightplan 
+    topic_from: /gauss/alternative_flight_plan 
     topic_to: utmflightplan/
 
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPSFlightPlanAccept
-    topic_from: flightacceptance
-    topic_to: /flightacceptance
+    topic_from: flightacceptance/+
+    topic_to: /gauss/flightacceptance
+
+  - factory: mqtt_bridge.bridge:RosToMqttBridge
+    msg_type: gauss_msgs_mqtt.msg:UTMGeofenceCreation
+    topic_from: /gauss/geofence_creation
+    topic_to: geofence_creation
+
+  - factory: mqtt_bridge.bridge:MqttToRosBridge
+    msg_type: gauss_msgs_mqtt.msg:ADSBSurveillance
+    topic_from: adsb/+
+    topic_to: /gauss/adsb
+
+  - factory: mqtt_bridge.bridge:MqttToRosBridge
+    msg_type: gauss_msgs_mqtt.msg:RPAStateInfo
+    topic_from: rpastateinfo
+    topic_to: /gauss/rpastateinfo
+
+  - factory: mqtt_bridge.bridge:UTMAlertRosToMqttBridge
+    msg_type: gauss_msgs_mqtt.msg:UTMAlert
+    topic_from: /gauss/alert
+    topic_to: utmalert
+
+  - factory: mqtt_bridge.bridge:MqttToRosBridge
+    msg_type: gauss_msgs_mqtt.msg:AirspaceUpdate
+    topic_from: airspace_update
+    topic_to: /gauss/airspace_update
