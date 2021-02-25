@@ -682,17 +682,17 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*4, polygon_test_output); 
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*2, polygon_test_output); 
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }
             init_astar_point = findInitAStarPoint(polygon_test_output, res_path, init_astar_pos);
             goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
             std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
-            min_grid_point.x = grid_borders[0];
-            min_grid_point.y = grid_borders[1];
-            max_grid_point.x = grid_borders[2];
-            max_grid_point.y = grid_borders[3];
+            min_grid_point.x = minX_;
+            min_grid_point.y = minY_;
+            max_grid_point.x = maxX_;
+            max_grid_point.y = maxY_;
             PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             std::vector<double> interp_times, a_star_times_res;
@@ -810,10 +810,10 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             int init_astar_pos, goal_astar_pos;
             goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
             std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
-            min_grid_point.x = grid_borders[0];
-            min_grid_point.y = grid_borders[1];
-            max_grid_point.x = grid_borders[2];
-            max_grid_point.y = grid_borders[3];
+            min_grid_point.x = minX_;
+            min_grid_point.y = minY_;
+            max_grid_point.x = maxX_;
+            max_grid_point.y = maxY_;
             PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
             nav_msgs::Path a_star_path_res = path_finder.findNewPath();
             std::vector<double> interp_times, a_star_times_res;

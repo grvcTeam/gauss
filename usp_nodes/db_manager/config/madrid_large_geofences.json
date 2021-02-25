@@ -5,13 +5,13 @@
 			"static_geofence": false,
 			"cylinder_shape": true,
 			"min_altitude": 0,
-			"max_altitude": 100,
+			"max_altitude": 200,
 			"start_time": 0,
-			"end_time": 200,
+			"end_time": 500,
 			"circle": {
-				"x_center": 150.0,
-				"y_center": 0.0,
-				"radius": 40.0
+				"x_center": 200.0,
+				"y_center": -20.0,
+				"radius": 60.0
 			},
 			"polygon": {
 				"waypoints" : 
@@ -21,12 +21,12 @@
 						"y" : 36.802199734979581
 					},
 					{
-						"x" : 115.65780903221916,
-						"y" : -13.672186223978429
+						"x" : 135.65780903221916,
+						"y" : -53.672186223978429
 					},
 					{
 						"x" : 179.82619394312752,
-						"y" : 12.406181462879658
+						"y" : -42.406181462879658
 					},
 					{
 						"x" : 163.51409691763925,

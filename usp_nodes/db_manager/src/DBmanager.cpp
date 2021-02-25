@@ -127,11 +127,11 @@ bool DataBase::operationsFromJson(std::string _file_name) {
                 operation.current_wp = item.value()["current_wp"].get<double>();
             }
             operation.dT = item.value()["dT"].get<double>();
-            operation.flight_geometry = item.value()["flight_geometry"].get<double>();
-            if (item.value()["flight_geometry"].get<double>() < item.value()["operational_volume"].get<double>()) {
-                operation.operational_volume = item.value()["flight_geometry"].get<double>() * 0.8;
+            operation.operational_volume = item.value()["operational_volume"].get<double>();
+            if (item.value()["operational_volume"].get<double>() < item.value()["flight_geometry"].get<double>()) {
+                operation.flight_geometry = item.value()["operational_volume"].get<double>() * 0.8;
             } else {
-                operation.operational_volume = item.value()["operational_volume"].get<double>();
+                operation.flight_geometry = item.value()["flight_geometry"].get<double>();
             }
             operation.frame = operation.FRAME_ROTOR;  // Check this parameter
             operation.icao_address = item.value()["icao_address"].get<std::string>();
@@ -310,7 +310,7 @@ bool DataBase::writeOperationCB(gauss_msgs::WriteOperation::Request &req, gauss_
             req.operation[i].flight_plan_mod_t = ros::Time::now().toSec();
             if (req.operation[i].current_wp == 0) req.operation[i].current_wp = 1;
             if (req.operation[i].track.waypoints.size() == 0) req.operation[i].track.waypoints.push_back(req.operation[i].flight_plan.waypoints.front());
-            if (req.operation[i].flight_geometry < req.operation[i].operational_volume) req.operation[i].operational_volume = req.operation[i].flight_geometry * 0.8;
+            if (req.operation[i].operational_volume < req.operation[i].flight_geometry) req.operation[i].flight_geometry = req.operation[i].operational_volume * 0.8;
             for (int j = 0; j < std::min((int)req.operation[i].flight_plan.waypoints.size(), 18); j++) req.operation[i].estimated_trajectory.waypoints.push_back(req.operation[i].flight_plan.waypoints.at(j));
             saved_operations.insert(pair<int, gauss_msgs::Operation>(req.operation[i].uav_id, req.operation[i]));
             if (req.operation[i].flight_plan.waypoints.size() == 0) ROS_WARN("Operation %d has empty flight plan!", (int)req.operation[i].uav_id);

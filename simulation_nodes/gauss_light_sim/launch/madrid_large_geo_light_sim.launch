@@ -1,0 +1,58 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="operations_json" default="madrid_large_operations_geo_conflict"/>
+    <arg name="geofences_json"  default="madrid_large_geofences"/>
+    <arg name="rviz_name"  default="madrid"/>
+    <arg name="init_time" default="0.0"/> <!-- https://time.is/Unix_time_now -->
+    <arg name="safetyDistance" default="10"/>
+    <arg name="minX" default="-300"/>
+    <arg name="minY" default="-400"/>
+    <arg name="minZ" default="0"/>
+    <arg name="maxX" default="900"/>
+    <arg name="maxY" default="900"/>
+    <arg name="maxZ" default="500"/>
+    <arg name="time_horizon" default="320"/>
+    <arg name="dT" default="20"/>
+
+    <!-- RVIZ -->
+    <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/$(arg rviz_name).rviz" required="true"/>
+    <!-- GAUSS -->
+    <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
+        <param name="operations_json" value="$(arg operations_json)"/>
+        <param name="geofences_json" value= "$(arg geofences_json)"/>
+        <param name="init_time" value= "$(arg init_time)"/>
+    </node>
+    <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" required="true"/>
+    <node pkg="tracking" type="tracking" name="tracking" required="true"/>
+    <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
+    <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
+    <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>
+    <node pkg="gauss_light_sim" type="gauss_light_sim_node" name="gauss_light_sim_node" output="screen" required="true">
+        <param name="init_time" value="$(arg init_time)"/>
+    </node>
+    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true">
+        <param name="minX" value="$(arg minX)"/>
+        <param name="minY" value="$(arg minY)"/>
+        <param name="minZ" value="$(arg minZ)"/>
+        <param name="maxX" value="$(arg maxX)"/>
+        <param name="maxY" value="$(arg maxY)"/>
+        <param name="maxZ" value="$(arg maxZ)"/>
+        <param name="dT" value="$(arg dT)"/>
+        <param name="safetyDistance" value="$(arg safetyDistance)"/>
+    </node>
+    <node pkg="monitoring" type="monitoring" name="monitoring" required="true" output="screen">
+        <param name="minX" value="$(arg minX)"/>
+        <param name="minY" value="$(arg minY)"/>
+        <param name="minZ" value="$(arg minZ)"/>
+        <param name="maxX" value="$(arg maxX)"/>
+        <param name="maxY" value="$(arg maxY)"/>
+        <param name="maxZ" value="$(arg maxZ)"/>
+        <param name="deltaX" value="10.0"/>
+        <param name="deltaY" value="10.0"/>
+        <param name="deltaZ" value="10.0"/>
+        <param name="dT" value="$(arg dT)"/>
+        <param name="time_horizon" value="$(arg time_horizon)"/>
+        <param name="safetyDistance" value="$(arg safetyDistance)"/>
+    </node>
+
+</launch>
