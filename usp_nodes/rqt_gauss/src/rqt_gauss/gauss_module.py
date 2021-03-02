@@ -19,6 +19,7 @@ class GaussPlugin(Plugin):
         # Give QObjects reasonable names
         self.setObjectName('GaussPlugin')
         rp = rospkg.RosPack()
+        rospy.loginfo('[RQt] Started Gauss RQt node!')
 
         # Process standalone plugin command-line arguments
         from argparse import ArgumentParser
@@ -29,8 +30,8 @@ class GaussPlugin(Plugin):
                       help="Put plugin in silent mode")
         args, unknowns = parser.parse_known_args(context.argv())
         if not args.quiet:
-            print 'arguments: ', args
-            print 'unknowns: ', unknowns
+            print '[RQt] arguments: ', args
+            print '[RQt] unknowns: ', unknowns
 
         # Create QWidget
         self._widget = QWidget()
@@ -76,12 +77,12 @@ class GaussPlugin(Plugin):
                 self._widget.icao_list.addItem(icao)
 
         except rospy.ServiceException as e:
-            print("Service call failed: %s"%e)
+            print("[RQt] Service call failed: %s"%e)
 
     def change_flight_status(self, status):
         selected_icao = self._widget.icao_list.currentItem()
         if selected_icao is None:
-            rospy.logerr('Select an icao address')
+            rospy.logerr('[RQt] Select an icao address')
             return
         icao = selected_icao.text()
 
@@ -91,7 +92,7 @@ class GaussPlugin(Plugin):
         change_flight_msg.status = status
         # change_flight_msg.timestamp  # TODO
 
-        rospy.loginfo('RPA[{}]: mission {}'.format(icao, status))
+        rospy.loginfo('[RQt] RPA[{}]: mission {}'.format(icao, status))
         self.status_pub.publish(change_flight_msg)
 
     def handle_start_button_clicked(self):
@@ -103,10 +104,10 @@ class GaussPlugin(Plugin):
     def alternative_flight_plan_callback(self, data):
         if self.alternative_flight_plan is None:
             self.alternative_flight_plan = data
-            rospy.loginfo('Received: [{}]'.format(data))
+            rospy.loginfo('[RQt] Received: [{}]'.format(data))
             self.pop_up.emit()
         else:
-            rospy.loginfo('Waiting for pilot response...')
+            rospy.loginfo('[RQt] Waiting for pilot response...')
 
     def show_pop_up(self):
         msg = QMessageBox()
@@ -130,7 +131,7 @@ class GaussPlugin(Plugin):
                 light_sim_change_flight_plan = rospy.ServiceProxy('/gauss_light_sim/change_flight_plan', ChangeFlightPlan)
                 light_sim_change_flight_plan(ChangeFlightPlanRequest(alternative=copy.deepcopy(self.alternative_flight_plan)))
             except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
+                print("[RQt] Service call failed: %s"%e)
 
         if pop_up_response == QMessageBox.No:
             ros_response.accept = False

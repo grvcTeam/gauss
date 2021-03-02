@@ -24,10 +24,10 @@
 gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_msgs::Waypoint& to, const ros::Time& t) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
-        ROS_ERROR("from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
+        ROS_ERROR("[Sim] from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
         return from;
     } else if (from.stamp == to.stamp) {
-        ROS_WARN("from.stamp == to.stamp (%lf)", from.stamp.toSec());
+        ROS_WARN("[Sim] from.stamp == to.stamp (%lf)", from.stamp.toSec());
         return to;
     }
 
@@ -54,10 +54,10 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
 gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
-        ROS_ERROR("from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
+        ROS_ERROR("[Sim] from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
         return from;
     } else if (from.stamp == to.stamp) {
-        ROS_WARN("from.stamp == to.stamp (%lf)", from.stamp.toSec());
+        ROS_WARN("[Sim] from.stamp == to.stamp (%lf)", from.stamp.toSec());
         return to;
     }
 
@@ -87,10 +87,10 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_m
 float calculateMeanSpeed(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
-        ROS_ERROR("from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
+        ROS_ERROR("[Sim] from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
         return 0.0;
     } else if (from.stamp == to.stamp) {
-        // ROS_WARN("from.stamp == to.stamp (%lf)", from.stamp.toSec());
+        // ROS_WARN("[Sim] from.stamp == to.stamp (%lf)", from.stamp.toSec());
         return 0.0;
     }
 
@@ -147,14 +147,14 @@ class RPAStateInfoWrapper {
                     YAML::Node yaml_change = YAML::Load(change.yaml);
                     auto icao = operation.icao_address.c_str();
                     if (!applyChange(yaml_change)) {
-                        ROS_ERROR("RPA[%s] apply: %s", icao, change.yaml.c_str());
+                        ROS_ERROR("[Sim] RPA[%s] apply: %s", icao, change.yaml.c_str());
                     } else {
-                        ROS_INFO("RPA[%s] apply: %s", icao, change.yaml.c_str());
+                        ROS_INFO("[Sim] RPA[%s] apply: %s", icao, change.yaml.c_str());
                     }
 
                 } catch (const std::runtime_error &error) {
                     auto icao = operation.icao_address.c_str();
-                    ROS_ERROR("RPA[%s] could not apply [%s]: %s", icao, change.yaml.c_str(), error.what());
+                    ROS_ERROR("[Sim] RPA[%s] could not apply [%s]: %s", icao, change.yaml.c_str(), error.what());
                 }
                 // And erase this change, keepin valid it
                 it = change_param_request_list.erase(it);
@@ -178,7 +178,7 @@ class RPAStateInfoWrapper {
         double latitude, longitude, altitude;
 
         if (flight_plan.waypoints.size() == 0) {
-            ROS_ERROR("Flight plan is empty");
+            ROS_ERROR("[Sim] Flight plan is empty");
             return false;
 
         } else if (flight_plan.waypoints.size() == 1) {
@@ -226,19 +226,19 @@ class RPAStateInfoWrapper {
     bool applyChange(const YAML::Node &yaml_change) {
         // This function returns true if change is correctly applied
         if (!yaml_change.IsMap()) {
-            ROS_ERROR("A map {name: param_name, type: float|bool|string, value: param_value} is expected!");
+            ROS_ERROR("[Sim] A map {name: param_name, type: float|bool|string, value: param_value} is expected!");
             return false;
 
         } else if (!yaml_change["name"]) {
-            ROS_ERROR("Key [name] not found!");
+            ROS_ERROR("[Sim] Key [name] not found!");
             return false;
 
         } else if (!yaml_change["type"]) {
-            ROS_ERROR("Key [type] not found!");
+            ROS_ERROR("[Sim] Key [type] not found!");
             return false;
 
         } else if (!yaml_change["value"]) {
-            ROS_ERROR("Key [value] not found!");
+            ROS_ERROR("[Sim] Key [value] not found!");
             return false;
         }
 
@@ -285,7 +285,7 @@ class RPAStateInfoWrapper {
             data.received_power = yaml_change["value"].as<float>();
 
         } else {
-            ROS_ERROR("Unexpected param [%s] of type [%s]", param_name.c_str(), param_type.c_str());
+            ROS_ERROR("[Sim] Unexpected param [%s] of type [%s]", param_name.c_str(), param_type.c_str());
             return false;
         }
 
@@ -312,7 +312,7 @@ class LightSim {
             icao_to_time_zero_map[icao] = ros::Time(0);
             icao_to_operation_map[icao] = gauss_msgs::Operation();
             icao_to_state_info_map[icao] = RPAStateInfoWrapper();
-            ROS_INFO("Ready to simulate icao [%s]", icao.c_str());
+            ROS_INFO("[Sim] Ready to simulate icao [%s]", icao.c_str());
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         change_flight_plan_service = n.advertiseService("gauss_light_sim/change_flight_plan", &LightSim::changeFlightPlanCallback, this);
@@ -322,7 +322,7 @@ class LightSim {
     }
 
     void start() {
-        ROS_INFO("Starting simulation at t = [%lf]s", ros::Time::now().toSec());
+        ROS_INFO("[Sim] Starting simulation at t = [%lf]s", ros::Time::now().toSec());
         timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);
     }
 
@@ -331,7 +331,7 @@ class LightSim {
             // There should be one operation for each icao_address
             icao_to_operation_map[operation.icao_address] = operation;
             icao_to_current_position_map[operation.icao_address] = operation.flight_plan.waypoints.front();
-            ROS_INFO("Loaded operation for icao [%s]", operation.icao_address.c_str());
+            ROS_INFO("[Sim] Loaded operation for icao [%s]", operation.icao_address.c_str());
         }
     }
 
@@ -340,11 +340,10 @@ class LightSim {
         for (auto const& auto_start : icao_to_start_time_map) {
             auto icao = auto_start.first;
             auto countdown = auto_start.second - now;
-            ROS_INFO("Operation icao [%s] will auto start in [%lf] seconds", icao.c_str(), countdown.toSec());
+            ROS_INFO("[Sim] Operation icao [%s] will auto start in [%lf] seconds", icao.c_str(), countdown.toSec());
 
             auto callback = [icao, countdown, this](const ros::TimerEvent& event) {
-                ROS_INFO("t = [%lf]s: Operation icao [%s] auto starting after [%lf] seconds", 
-                    event.current_real.toSec(), icao.c_str(), countdown.toSec());
+                ROS_INFO("[Sim] Operation icao [%s] auto starting after [%lf] seconds", icao.c_str(), countdown.toSec());
                 this->startOperation(icao);
                 // TODO: Publish here status? status_pub.publish(status_msg);
             };
@@ -355,11 +354,11 @@ class LightSim {
    protected:
     bool changeParamCallback(gauss_light_sim::ChangeParam::Request &req, gauss_light_sim::ChangeParam::Response &res) {
         if (icao_to_state_info_map.count(req.icao_address) == 0) {
-            ROS_WARN("Discarding ChangeParam request for unknown RPA[%s]", req.icao_address.c_str());
+            ROS_WARN("[Sim] Discarding ChangeParam request for unknown RPA[%s]", req.icao_address.c_str());
             return false;
         }
 
-        ROS_INFO("RPA[%s] at t = %lf will change: %s", req.icao_address.c_str(), req.stamp.toSec(), req.yaml.c_str());
+        ROS_INFO("[Sim] RPA[%s] at t = %lf will change: %s", req.icao_address.c_str(), req.stamp.toSec(), req.yaml.c_str());
         icao_to_state_info_map[req.icao_address].addChangeParamRequest(req);
         return true;
     }
@@ -384,7 +383,7 @@ class LightSim {
         // TODO: Decide if icao is a string or a uint32
         std::string icao_address = std::to_string(msg->icao);
         if (icao_to_is_started_map.count(icao_address) == 0) {
-            ROS_WARN("Discarding RPSChangeFlightStatus for unknown RPA[%s]", icao_address.c_str());
+            ROS_WARN("[Sim] Discarding RPSChangeFlightStatus for unknown RPA[%s]", icao_address.c_str());
             return;
         }
 
@@ -399,7 +398,7 @@ class LightSim {
     void startOperation(const std::string& icao_address) {
         bool started = icao_to_is_started_map[icao_address];
         if (started) {
-            ROS_WARN("Operation icao [%s] already started", icao_address.c_str());
+            ROS_WARN("[Sim] Operation icao [%s] already started", icao_address.c_str());
         } else {
             icao_to_time_zero_map[icao_address] = ros::Time::now();
             icao_to_is_started_map[icao_address] = true;
@@ -407,17 +406,17 @@ class LightSim {
             status_msg.icao = std::stoi(icao_address);
             status_msg.status = "start";
             status_pub.publish(status_msg);  // TODO: Possible endless loop here: start->callback->start...
-            ROS_INFO("RPA[%s] starting (t = %lf)", icao_address.c_str(), icao_to_time_zero_map[icao_address].toSec());
+            ROS_INFO("[Sim] RPA[%s] starting (t = %lf)", icao_address.c_str(), icao_to_time_zero_map[icao_address].toSec());
         }
     }
 
     void stopOperation(const std::string& icao_address) {
         bool started = icao_to_is_started_map[icao_address];
         if (!started) {
-            ROS_WARN("Operation icao [%s] not started yet", icao_address.c_str());
+            ROS_WARN("[Sim] Operation icao [%s] not started yet", icao_address.c_str());
         } else {
             icao_to_is_started_map[icao_address] = false;
-            ROS_INFO("RPA[%s] stopping (t = %lf)", icao_address.c_str(), ros::Time::now().toSec());
+            ROS_INFO("[Sim] RPA[%s] stopping (t = %lf)", icao_address.c_str(), ros::Time::now().toSec());
         }
     }
 
@@ -442,7 +441,6 @@ class LightSim {
                     // status_pub.publish(status_msg);
                 }
                 rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
-                // rpa_state_info_pub.publish(createRPAStateInfoMsg(icao));  // TODO: Test both!
             }
         }
     }
@@ -471,6 +469,7 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "gauss_light_sim_node");
     ros::NodeHandle n;
     ros::NodeHandle np("~");
+    ROS_INFO("[Sim] Started gauss_light_sim_node!");
 
     double time_param = 0.0;
     np.getParam("init_time", time_param);
@@ -483,10 +482,10 @@ int main(int argc, char **argv) {
 
     gauss_msgs::ReadIcao read_icao;
     if (icao_client.call(read_icao)) {
-        ROS_INFO("Read icao addresses... ok");
+        ROS_INFO("[Sim] Read icao addresses... ok");
         // std::cout << read_icao.response << '\n';
     } else {
-        ROS_ERROR("Failed to call service: [%s]", read_icao_srv_url);
+        ROS_ERROR("[Sim] Failed to call service: [%s]", read_icao_srv_url);
         return 1;
     }
 
@@ -500,10 +499,10 @@ int main(int argc, char **argv) {
     gauss_msgs::ReadOperation read_operation;
     read_operation.request.uav_ids = read_icao.response.uav_id;
     if (operation_client.call(read_operation)) {
-        ROS_INFO("Read operations... ok");
+        ROS_INFO("[Sim] Read operations... ok");
         // std::cout << read_operation.response << '\n';
     } else {
-        ROS_ERROR("Failed to call service: [%s]", read_operation_srv_url);
+        ROS_ERROR("[Sim] Failed to call service: [%s]", read_operation_srv_url);
         return 1;
     }
 

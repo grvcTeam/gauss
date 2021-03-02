@@ -23,20 +23,20 @@ class ColorPalette(object):
             (r, g, b) = self.colors[label]
             return ColorRGBA(r/255.0, g/255.0, b/255.0, alpha)
         else:
-            rospy.logwarn('Color [{}] not found in palette, using black'.format(label))
+            rospy.logwarn('[Viz] Color [{}] not found in palette, using black'.format(label))
             return ColorRGBA(0, 0, 0, alpha)
 
     # def set_color_index(self, label, index):
     #     if label in self.colors:
     #         self.indexed_colors[index] = label            
     #     else:
-    #         rospy.logwarn('Color [{}] not found in palette, ignoring indexing'.format(label))
+    #         rospy.logwarn('[Viz] Color [{}] not found in palette, ignoring indexing'.format(label))
 
     # def get_indexed_color(self, index, alpha = 1.0):
     #     if index in self.indexed_colors:
     #         return self.get_color(self.indexed_colors[index], alpha)
     #     else:
-    #         rospy.logwarn('Index [{}] not found in palette, using black'.format(index))
+    #         rospy.logwarn('[Viz] Index [{}] not found in palette, using black'.format(index))
     #         return ColorRGBA(0, 0, 0, alpha)
 
 
@@ -255,11 +255,11 @@ class GeofenceViz(object):
             bottom_surface_marker.id = 6
 
             if len(geofence.polygon.x) != len(geofence.polygon.y):
-                rospy.logerr('Length mismatch at geofence polygon description: x[{}] != y[{}]'.format(len(geofence.polygon.x), len(geofence.polygon.y)))
+                rospy.logerr('[Viz] Length mismatch at geofence polygon description: x[{}] != y[{}]'.format(len(geofence.polygon.x), len(geofence.polygon.y)))
                 return
             point_count = len(geofence.polygon.x)
             if point_count <= 0:
-                rospy.logerr('Unexpected length at geofence polygon description: point_count = {}'.format(point_count))
+                rospy.logerr('[Viz] Unexpected length at geofence polygon description: point_count = {}'.format(point_count))
                 return
 
             x_sum = 0.0
@@ -383,6 +383,7 @@ class VolumeViz(object):
 
 def main():
     rospy.init_node('visualizer')
+    rospy.loginfo('[Viz] Started Visualizer node!')
  
     # TODO: From param
     update_rate = 1.0
@@ -403,30 +404,30 @@ def main():
     id_to_color[8] = 'brown'
     id_to_color[9] = 'light_gray'
 
-    rospy.loginfo('Waiting for service {}'.format(read_icao_srv_url))
+    rospy.loginfo('[Viz] Waiting for service {}'.format(read_icao_srv_url))
     rospy.wait_for_service(read_icao_srv_url)
     read_icao_service = rospy.ServiceProxy(read_icao_srv_url, ReadIcao)
-    rospy.loginfo('Successfully connected to service {}'.format(read_icao_srv_url))
+    rospy.loginfo('[Viz] Successfully connected to service {}'.format(read_icao_srv_url))
 
-    rospy.loginfo('Waiting for service {}'.format(read_operation_srv_url))
+    rospy.loginfo('[Viz] Waiting for service {}'.format(read_operation_srv_url))
     rospy.wait_for_service(read_operation_srv_url)
     read_operation_service = rospy.ServiceProxy(read_operation_srv_url, ReadOperation)
-    rospy.loginfo('Successfully connected to service {}'.format(read_operation_srv_url))
+    rospy.loginfo('[Viz] Successfully connected to service {}'.format(read_operation_srv_url))
 
-    rospy.loginfo('Waiting for service {}'.format(read_geofences_srv_url))
+    rospy.loginfo('[Viz] Waiting for service {}'.format(read_geofences_srv_url))
     rospy.wait_for_service(read_geofences_srv_url)
     read_geofences_service = rospy.ServiceProxy(read_geofences_srv_url, ReadGeofences)
-    rospy.loginfo('Successfully connected to service {}'.format(read_geofences_srv_url))
+    rospy.loginfo('[Viz] Successfully connected to service {}'.format(read_geofences_srv_url))
 
     visualization_pub = rospy.Publisher(visualization_topic, MarkerArray, queue_size=1)
 
-    rospy.loginfo('Started visualization node!')
+    rospy.loginfo('[Viz] Started visualization node!')
     rate = rospy.Rate(update_rate)
     while not rospy.is_shutdown():
 
         read_icao_response = read_icao_service.call(ReadIcaoRequest())  # TODO: try/catch
         if not read_icao_response.success:
-            rospy.logwarn('Read icao did not succeed')
+            rospy.logwarn('[Viz] Read icao did not succeed')
             rospy.logwarn(read_icao_response.message)
 
         read_operation_request = ReadOperationRequest()
@@ -434,7 +435,7 @@ def main():
         read_operation_response = read_operation_service.call(read_operation_request)
 
         if not read_operation_response.success:
-            rospy.logwarn('Read operation did not succeed')
+            rospy.logwarn('[Viz] Read operation did not succeed')
             rospy.logwarn(read_operation_response.message)
 
         read_geofences_request = ReadGeofencesRequest()
@@ -442,7 +443,7 @@ def main():
         read_geofences_response = read_geofences_service.call(read_geofences_request)
 
         if not read_geofences_response.success:
-            rospy.logwarn('Read geofences did not succeed')
+            rospy.logwarn('[Viz] Read geofences did not succeed')
             rospy.logwarn(read_geofences_response.message)
 
         flight_plan_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
@@ -513,7 +514,7 @@ def main():
                 elif operation.frame == Operation.FRAME_FIXEDWING:
                     frame_marker.mesh_resource = 'package://db_manager/config/fixedwing.dae'
                 else:
-                    rospy.logwarn('Unkwown frame type [{}]'.format(operation.frame))
+                    rospy.logwarn('[Viz] Unkwown frame type [{}]'.format(operation.frame))
                     frame_marker.mesh_resource = 'package://db_manager/config/arrow.dae'
 
                 marker_array.markers.append(frame_marker)
@@ -540,7 +541,7 @@ def main():
                     marker_array.markers.append(current_wp_marker)
 
             else:
-                rospy.logwarn('Tracking information from {} is empty!'.format(operation.icao_address))
+                rospy.logwarn('[Viz] Tracking information from {} is empty!'.format(operation.icao_address))
 
             # Visualize flight_plan
             ns = operation_ns + '/flight_plan'
