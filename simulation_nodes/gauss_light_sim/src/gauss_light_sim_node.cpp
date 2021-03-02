@@ -316,7 +316,7 @@ class LightSim {
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         change_flight_plan_service = n.advertiseService("gauss_light_sim/change_flight_plan", &LightSim::changeFlightPlanCallback, this);
-        status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
+        status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);
         status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("flight_status", 10);
         rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo", 10);
     }
@@ -344,8 +344,12 @@ class LightSim {
 
             auto callback = [icao, countdown, this](const ros::TimerEvent& event) {
                 ROS_INFO("[Sim] Operation icao [%s] auto starting after [%lf] seconds", icao.c_str(), countdown.toSec());
-                this->startOperation(icao);
-                // TODO: Publish here status? status_pub.publish(status_msg);
+                // this->startOperation(icao);  // Possible loop here: start->callback->start...
+                // ...publish status instead:
+                gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
+                status_msg.icao = std::stoi(icao);
+                status_msg.status = "start";
+                this->status_pub.publish(status_msg);
             };
             auto_start_timers.push_back(n.createTimer(countdown, callback, true));
         }
@@ -402,10 +406,10 @@ class LightSim {
         } else {
             icao_to_time_zero_map[icao_address] = ros::Time::now();
             icao_to_is_started_map[icao_address] = true;
-            gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
-            status_msg.icao = std::stoi(icao_address);
-            status_msg.status = "start";
-            status_pub.publish(status_msg);  // TODO: Possible endless loop here: start->callback->start...
+            // gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
+            // status_msg.icao = std::stoi(icao_address);
+            // status_msg.status = "start";
+            // status_pub.publish(status_msg);  // Possible loop here: start->callback->start...
             ROS_INFO("[Sim] RPA[%s] starting (t = %lf)", icao_address.c_str(), icao_to_time_zero_map[icao_address].toSec());
         }
     }
