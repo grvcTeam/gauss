@@ -480,6 +480,12 @@ int main(int argc, char **argv) {
     ros::ServiceClient icao_client = n.serviceClient<gauss_msgs::ReadIcao>(read_icao_srv_url);
     ros::ServiceClient operation_client = n.serviceClient<gauss_msgs::ReadOperation>(read_operation_srv_url);
 
+    ROS_INFO("[Sim] Waiting for required services...");
+    ros::service::waitForService(read_icao_srv_url, -1);
+    ROS_INFO("[Sim] %s: ok", read_icao_srv_url);
+    ros::service::waitForService(read_operation_srv_url, -1);
+    ROS_INFO("[Sim] %s: ok", read_operation_srv_url);
+
     gauss_msgs::ReadIcao read_icao;
     if (icao_client.call(read_icao)) {
         ROS_INFO("[Sim] Read icao addresses... ok");
