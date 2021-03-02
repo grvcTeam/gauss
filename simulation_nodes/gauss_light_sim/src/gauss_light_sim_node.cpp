@@ -1,4 +1,5 @@
 #include <gauss_light_sim/ChangeParam.h>
+#include <gauss_light_sim/ChangeFlightPlan.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs_mqtt/RPAStateInfo.h>
@@ -15,6 +16,7 @@
 #define ARENOSILLO_LATITUDE 37.094784
 #define ARENOSILLO_LONGITUDE -6.735478
 
+// TODO: Reference lat/lon as input paramaters?
 #define REFERENCE_LATITUDE ARENOSILLO_LATITUDE
 #define REFERENCE_LONGITUDE ARENOSILLO_LONGITUDE
 
@@ -313,8 +315,8 @@ class LightSim {
             ROS_INFO("Ready to simulate icao [%s]", icao.c_str());
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
+        change_flight_plan_service = n.advertiseService("gauss_light_sim/change_flight_plan", &LightSim::changeFlightPlanCallback, this);
         status_sub = n.subscribe("flight_status", 10, &LightSim::flightStatusCallback, this);  // TODO: Check topic url
-        alternative_plan_sub = n.subscribe("/gauss/alternative_flight_plan", 1, &LightSim::altPlanCallback, this);
         status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("flight_status", 10);
         rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo", 10);
     }
@@ -338,12 +340,13 @@ class LightSim {
         for (auto const& auto_start : icao_to_start_time_map) {
             auto icao = auto_start.first;
             auto countdown = auto_start.second - now;
-            ROS_INFO("Operation icao [%s] auto starting in [%lf] seconds", icao.c_str(), countdown.toSec());
+            ROS_INFO("Operation icao [%s] will auto start in [%lf] seconds", icao.c_str(), countdown.toSec());
 
             auto callback = [icao, countdown, this](const ros::TimerEvent& event) {
                 ROS_INFO("t = [%lf]s: Operation icao [%s] auto starting after [%lf] seconds", 
                     event.current_real.toSec(), icao.c_str(), countdown.toSec());
                 this->startOperation(icao);
+                // TODO: Publish here status? status_pub.publish(status_msg);
             };
             auto_start_timers.push_back(n.createTimer(countdown, callback, true));
         }
@@ -361,9 +364,9 @@ class LightSim {
         return true;
     }
 
-    void altPlanCallback(const gauss_msgs_mqtt::UTMAlternativeFlightPlan::ConstPtr &msg) {
-        icao_to_operation_map[std::to_string(msg->icao)].flight_plan.waypoints.clear();
-        for (auto geo_wp : msg->new_flight_plan){
+    bool changeFlightPlanCallback(gauss_light_sim::ChangeFlightPlan::Request &req, gauss_light_sim::ChangeFlightPlan::Response &res) {
+        icao_to_operation_map[std::to_string(req.alternative.icao)].flight_plan.waypoints.clear();
+        for (auto geo_wp : req.alternative.new_flight_plan){
             gauss_msgs::Waypoint temp_wp;
             double longitude, latitude, altitude;
             longitude = geo_wp.waypoint_elements[0];
@@ -371,9 +374,10 @@ class LightSim {
             altitude = geo_wp.waypoint_elements[2];
             temp_wp.stamp = ros::Time(geo_wp.waypoint_elements[3]);
             proj_.Forward(latitude, longitude, altitude, temp_wp.x, temp_wp.y, temp_wp.z);
-            // std::cout << msg->icao << ":" << temp_wp.x << " " << temp_wp.y << " " << temp_wp.z << " " << temp_wp.stamp.toNSec() << "\n";
-            icao_to_operation_map[std::to_string(msg->icao)].flight_plan.waypoints.push_back(temp_wp);
+            // std::cout << req.alternative.icao << ":" << temp_wp.x << " " << temp_wp.y << " " << temp_wp.z << " " << temp_wp.stamp.toNSec() << "\n";
+            icao_to_operation_map[std::to_string(req.alternative.icao)].flight_plan.waypoints.push_back(temp_wp);
         }
+        return true;
     }
 
     void flightStatusCallback(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr &msg) {
@@ -402,7 +406,7 @@ class LightSim {
             gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
             status_msg.icao = std::stoi(icao_address);
             status_msg.status = "start";
-            status_pub.publish(status_msg);
+            status_pub.publish(status_msg);  // TODO: Possible endless loop here: start->callback->start...
             ROS_INFO("RPA[%s] starting (t = %lf)", icao_address.c_str(), icao_to_time_zero_map[icao_address].toSec());
         }
     }
@@ -544,9 +548,10 @@ class LightSim {
     ros::NodeHandle n;
     ros::Timer timer;
     std::vector<ros::Timer> auto_start_timers;
-    ros::Subscriber status_sub, alternative_plan_sub;
+    ros::Subscriber status_sub;
     ros::Publisher rpa_state_info_pub, status_pub;
     ros::ServiceServer change_param_service;
+    ros::ServiceServer change_flight_plan_service;
 };
 
 int main(int argc, char **argv) {

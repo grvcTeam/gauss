@@ -1,4 +1,5 @@
 import os
+import copy
 import rospkg
 import rospy
 
@@ -8,6 +9,7 @@ from python_qt_binding.QtCore import Signal
 from python_qt_binding.QtWidgets import QWidget, QMessageBox
 from gauss_msgs_mqtt.msg import UTMAlternativeFlightPlan, RPSFlightPlanAccept, RPSChangeFlightStatus
 from gauss_msgs.srv import ReadIcao, ReadIcaoRequest
+from gauss_light_sim.srv import ChangeFlightPlan, ChangeFlightPlanRequest
 
 class GaussPlugin(Plugin):
     pop_up = Signal()
@@ -120,8 +122,16 @@ class GaussPlugin(Plugin):
         ros_response = RPSFlightPlanAccept()
         ros_response.icao = self.alternative_flight_plan.icao
         ros_response.flight_plan_id = self.alternative_flight_plan.flight_plan_id
+
         if pop_up_response == QMessageBox.Yes:
             ros_response.accept = True
+            # Try to call light_sim service to change flight plan
+            try:
+                light_sim_change_flight_plan = rospy.ServiceProxy('/gauss_light_sim/change_flight_plan', ChangeFlightPlan)
+                light_sim_change_flight_plan(ChangeFlightPlanRequest(alternative=copy.deepcopy(self.alternative_flight_plan)))
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+
         if pop_up_response == QMessageBox.No:
             ros_response.accept = False
         self.acceptance_pub.publish(ros_response)
