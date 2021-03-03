@@ -309,7 +309,8 @@ class EmergencyManagement():
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
                 geofence = Geofence()          
-                geofence.id = 3
+                geofence.id = 1
+                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
                 geofence.max_altitude = 50.0
                 geofence.circle = geofence_base
@@ -377,7 +378,8 @@ class EmergencyManagement():
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
                 geofence = Geofence()
-                geofence.id = 3
+                geofence.id = 2
+                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
                 geofence.max_altitude = 100.0
                 geofence.circle = geofence_base
@@ -438,6 +440,7 @@ class EmergencyManagement():
                 geofence_base.radius = 80
                 geofence = Geofence()
                 geofence.id = 3
+                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
                 geofence.max_altitude = 700.0
                 geofence.circle = geofence_base
@@ -465,7 +468,8 @@ class EmergencyManagement():
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
                 geofence = Geofence()
-                geofence.id = 3
+                geofence.id = 4
+                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
                 geofence.max_altitude = 100.0
                 geofence.circle = geofence_base
