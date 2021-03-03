@@ -6,6 +6,7 @@
 #include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
 #include <gauss_msgs_mqtt/UTMAlternativeFlightPlan.h>
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
@@ -355,7 +356,7 @@ class LightSim {
         }
     }
 
-   protected:
+// protected:  // Leave it public to allow calling from main (TODO: add new public function?)
     bool changeParamCallback(gauss_light_sim::ChangeParam::Request &req, gauss_light_sim::ChangeParam::Response &res) {
         if (icao_to_state_info_map.count(req.icao_address) == 0) {
             ROS_WARN("[Sim] Discarding ChangeParam request for unknown RPA[%s]", req.icao_address.c_str());
@@ -367,6 +368,7 @@ class LightSim {
         return true;
     }
 
+   protected:
     bool changeFlightPlanCallback(gauss_light_sim::ChangeFlightPlan::Request &req, gauss_light_sim::ChangeFlightPlan::Response &res) {
         icao_to_operation_map[std::to_string(req.alternative.icao)].flight_plan.waypoints.clear();
         for (auto geo_wp : req.alternative.new_flight_plan){
@@ -478,6 +480,9 @@ int main(int argc, char **argv) {
     double time_param = 0.0;
     np.getParam("init_time", time_param);
 
+    std::string timing_file = "timing_test.yaml";  // TODO: default value should be empty string
+    np.getParam("timing_file", timing_file);
+
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
 
@@ -519,21 +524,62 @@ int main(int argc, char **argv) {
     LightSim sim(n, read_icao.response.icao_address);
     sim.setOperations(read_operation.response.operation);
 
-    // TODO: Load auto_start_map from config?
-    std::map<std::string, ros::Time> auto_start_map;
     ros::Time init_time;  // So it is the same for all
     if (time_param == 0.0){
         init_time = ros::Time::now();
     } else {
         init_time = ros::Time(time_param);
     }
-    // for (auto i : read_icao.response.icao_address){
-    //     auto_start_map[i] = init_time + ros::Duration(8);
-    // }
-    auto_start_map[read_icao.response.icao_address.front()] = init_time + ros::Duration(43);
-    auto_start_map[read_icao.response.icao_address.back()] = init_time + ros::Duration(8);
-    // auto_start_map["11259138"] = init_time + ros::Duration(8);
-    sim.setAutoStart(auto_start_map);
+
+    YAML::Node timing_yaml;
+    if (timing_file != "") {
+        std::string timing_url = ros::package::getPath("gauss_light_sim") + "/config/" + timing_file;
+        ROS_INFO("[Sim] Loading timing from %s", timing_url.c_str());
+        try {
+            timing_yaml = YAML::LoadFile(timing_url);
+        } catch(std::runtime_error& e) {
+            ROS_ERROR("[Sim] Ignoring yaml, as file may not exist or it is bad defined: %s", e.what());
+            // return 1;  // TODO: exit?
+        }
+    }
+
+    if (timing_yaml["auto_start"]) {
+        // Load auto_start_map from config file
+        auto auto_start_yaml = timing_yaml["auto_start"];
+        std::map<std::string, ros::Time> auto_start_map;
+        ROS_INFO("[Sim] auto_start:");
+        for (auto auto_start_item: auto_start_yaml) {
+            ROS_INFO_STREAM("[Sim] - " << auto_start_item);
+            auto icao = auto_start_item["icao"].as<std::string>();
+            auto delay = auto_start_item["delay"].as<float>();
+            auto_start_map[icao] = init_time + ros::Duration(delay);
+            // std::cout << icao << ": " << auto_start_map[icao] << '\n';
+        }
+        //auto_start_map[read_icao.response.icao_address.front()] = init_time + ros::Duration(43);
+        //auto_start_map[read_icao.response.icao_address.back()] = init_time + ros::Duration(8);
+        sim.setAutoStart(auto_start_map);
+    }
+
+    if (timing_yaml["change_param"]) {
+        // Load change_param from config file
+        auto change_param_yaml = timing_yaml["change_param"];
+        ROS_INFO("[Sim] change_param:");
+        for (auto change_param_item: change_param_yaml) {
+            ROS_INFO_STREAM("[Sim] - " << change_param_item);
+            auto icao = change_param_item["icao"].as<std::string>();
+            auto delay = change_param_item["delay"].as<float>();
+            YAML::Node inner_yaml = change_param_item["yaml"];
+            std::stringstream ss_yaml;
+            ss_yaml << inner_yaml;
+            gauss_light_sim::ChangeParam::Request req;
+            gauss_light_sim::ChangeParam::Response res;
+            req.icao_address = icao;
+            req.stamp = init_time + ros::Duration(delay);
+            req.yaml = ss_yaml.str();
+            // std::cout << req << '\n';
+            sim.changeParamCallback(req, res);
+        }
+    }
 
     sim.start();
     ros::spin();

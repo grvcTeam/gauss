@@ -51,6 +51,7 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>roscpp</build_depend>
+  <build_depend>roslib</build_depend>
   <build_depend>gauss_msgs_mqtt</build_depend>
   <build_depend>gauss_msgs</build_depend>
   <build_depend>message_generation</build_depend>
@@ -62,6 +63,7 @@
   <build_export_depend>gauss_msgs</build_export_depend>
 
   <exec_depend>roscpp</exec_depend>
+  <exec_depend>roslib</exec_depend>
   <exec_depend>gauss_msgs_mqtt</exec_depend>
   <exec_depend>gauss_msgs</exec_depend>
   <exec_depend>message_runtime</exec_depend>
