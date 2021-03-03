@@ -17,10 +17,6 @@
 #define ARENOSILLO_LATITUDE 37.094784
 #define ARENOSILLO_LONGITUDE -6.735478
 
-// TODO: Reference lat/lon as input paramaters?
-#define REFERENCE_LATITUDE ARENOSILLO_LATITUDE
-#define REFERENCE_LONGITUDE ARENOSILLO_LONGITUDE
-
 /*
 gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_msgs::Waypoint& to, const ros::Time& t) {
     // Make sure that from.stamp < to.stamp
@@ -167,15 +163,12 @@ class RPAStateInfoWrapper {
         return updatePhysics(elapsed, operation.flight_plan);
     }
 
+    void setProjection(const GeographicLib::LocalCartesian &projection) { proj = projection; }
+
     // TODO: Initialize phyics?
     bool updatePhysics(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan) {
         // This function returns true if 'physics' is running
         bool running = false;  // otherwise, it returns false
-        // Auxiliary variables for cartesian to geographic conversion
-        static double origin_latitude(REFERENCE_LATITUDE);
-        static double origin_longitude(REFERENCE_LONGITUDE);
-        static GeographicLib::Geocentric earth(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
-        static GeographicLib::LocalCartesian proj(origin_latitude, origin_longitude, 0, earth);
         double latitude, longitude, altitude;
 
         if (flight_plan.waypoints.size() == 0) {
@@ -299,20 +292,19 @@ class RPAStateInfoWrapper {
 
    protected:
     std::vector<gauss_light_sim::ChangeParam::Request> change_param_request_list;
+    GeographicLib::LocalCartesian proj;
 };
 
 class LightSim {
    public:
-    LightSim(ros::NodeHandle &n, const std::vector<std::string> &icao_addresses) : n(n),                                 
-                                                                                   origin_latitude_(REFERENCE_LATITUDE),
-                                                                                   origin_longitude_(REFERENCE_LONGITUDE),
-                                                                                   earth_(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f()),
-                                                                                   proj_(origin_latitude_, origin_longitude_, 0, earth_){
+    LightSim(ros::NodeHandle &n, const std::vector<std::string> &icao_addresses, const GeographicLib::LocalCartesian &projection) : 
+                                                                                                          n(n), proj_(projection){
         for (auto icao : icao_addresses) {
             icao_to_is_started_map[icao] = false;
             icao_to_time_zero_map[icao] = ros::Time(0);
             icao_to_operation_map[icao] = gauss_msgs::Operation();
             icao_to_state_info_map[icao] = RPAStateInfoWrapper();
+            icao_to_state_info_map[icao].setProjection(projection);
             ROS_INFO("[Sim] Ready to simulate icao [%s]", icao.c_str());
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
@@ -457,9 +449,7 @@ class LightSim {
     std::map<std::string, RPAStateInfoWrapper> icao_to_state_info_map;
     std::map<std::string, gauss_msgs::Waypoint> icao_to_current_position_map;
 
-    // Auxiliary variables for cartesian to geographic conversion
-    double origin_latitude_, origin_longitude_;
-    GeographicLib::Geocentric earth_;
+    // Auxiliary variable for cartesian to geographic conversion
     GeographicLib::LocalCartesian proj_;
 
     ros::NodeHandle n;
@@ -482,6 +472,14 @@ int main(int argc, char **argv) {
 
     std::string timing_file = "timing_test.yaml";  // TODO: default value should be empty string
     np.getParam("timing_file", timing_file);
+
+    // Auxiliary variables for cartesian to geographic conversion
+    double origin_latitude = ARENOSILLO_LATITUDE;
+    double origin_longitude = ARENOSILLO_LONGITUDE;
+    np.getParam("origin_latitude", origin_latitude);
+    np.getParam("origin_longitude", origin_longitude);
+    static GeographicLib::Geocentric earth(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
+    static GeographicLib::LocalCartesian projection(origin_latitude, origin_longitude, 0, earth);
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
@@ -521,7 +519,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    LightSim sim(n, read_icao.response.icao_address);
+    LightSim sim(n, read_icao.response.icao_address, projection);
     sim.setOperations(read_operation.response.operation);
 
     ros::Time init_time;  // So it is the same for all
