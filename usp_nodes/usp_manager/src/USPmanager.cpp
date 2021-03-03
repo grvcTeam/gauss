@@ -73,7 +73,7 @@ private:
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
 
     // Auxiliary methods
-    bool checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat);
+    bool checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat, const gauss_msgs::PositionReport &pos_report);
     gauss_msgs::Threats manageThreatList(const bool &_flag_new_threat, gauss_msgs::Threat &_in_threat);
 
     bool initializeICAOIDMap();
@@ -283,10 +283,6 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     auto it = icao_id_map_.find(msg->icao);
     if (it != icao_id_map_.end())
     {
-        gauss_msgs::Threat temp_threat;
-        bool flag_new_threat = checkRPAHealth(msg, temp_threat);
-        gauss_msgs::Threats new_threats_msgs = manageThreatList(flag_new_threat, temp_threat);
-        if (flag_new_threat) threats_client_.call(new_threats_msgs);
         position_report_msg.uav_id = (*it).second;
         position_report_msg.confidence = msg->covariance_h + msg->covariance_v; // TODO: Find a proper method for calculating confidence
         position_report_msg.source = position_report_msg.SOURCE_RPA;
@@ -317,6 +313,11 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
         // std::cout << "y: " << position_report_msg.position.y << "\n";
         // std::cout << "z: " << position_report_msg.position.z << "\n";
         position_report_pub_.publish(position_report_msg);
+
+        gauss_msgs::Threat temp_threat;
+        bool flag_new_threat = checkRPAHealth(msg, temp_threat, position_report_msg);
+        gauss_msgs::Threats new_threats_msgs = manageThreatList(flag_new_threat, temp_threat);
+        if (flag_new_threat) threats_client_.call(new_threats_msgs);
     }
     else
     {
@@ -372,7 +373,7 @@ void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightS
     change_flight_status_client_.call(change_flight_status_msg);
 }
 
-bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat){
+bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat, const gauss_msgs::PositionReport &pos_report){
     bool result = false;
     // Define threshold
     static double threshold_jamming = 0.5;
@@ -381,6 +382,7 @@ bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &r
     auto it = icao_id_map_.find(rpa_state->icao);
     threat.uav_ids.push_back(it->second);
     threat.times.push_back(ros::Time::now());
+    threat.location = pos_report.position;
     if (rpa_state->jamming >= threshold_jamming) {
         threat.threat_type = gauss_msgs::Threat::JAMMING_ATTACK;
         result = true;

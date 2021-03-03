@@ -12,20 +12,27 @@
             {
                 "waypoints" : 
                 [
-                    {
-                        "mandatory" : 0,
-                        "stamp" : 0.0,
-                        "x" : 371.91458665459146,
-                        "y" : 77.379581002755472,
-                        "z" : 69.988701680531747
-                    },
-                    {
-                        "mandatory" : 0,
-                        "stamp" : 365.0,
-                        "x" : 28.507690699381946,
-                        "y" : -44.14466615521232,
-                        "z" : 69.999783241408835
-                    }
+					{
+						"mandatory": 0,
+						"stamp": 0.19066413015543,
+						"x": 414.10604240900392,
+						"y": -9.2289361270542436,
+						"z": 69.986569474211336
+					},
+					{
+						"mandatory": 0,
+						"stamp": 366.0,
+						"x": 371.91458665459146,
+						"y": 77.379581002755472,
+						"z": 69.988701680531747
+					},
+					{
+						"mandatory": 0,
+						"stamp": 462.0,
+						"x": 28.507690699381946,
+						"y": -44.14466615521232,
+						"z": 69.999783241408835
+					}
                 ]
             },
             "dT": 20.0,
@@ -34,7 +41,61 @@
 				"waypoints": [
 				]
 			},
-			"time_horizon": 320,
+			"time_horizon": 420,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 0,
+                        "x" : -14.588147089974557,
+                        "y" : -22.691585716874354,
+                        "z" : 0.999942877249225
+                    }
+				]
+			},
+			"flight_geometry": 15.0,
+			"operational_volume": 30.0,
+			"conop": "Precision Agriculture"
+        }, 
+        {
+            "uav_id": 1,
+			"icao_address": "5525496",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 0,
+			"is_started": false,
+			"current_wp": 1,
+            "flight_plan" : 
+            {
+                "waypoints" : 
+                [
+					{
+						"mandatory": 0,
+						"stamp": 0,
+						"x": 200.0,
+						"y": 60.0,
+						"z": 29.996807606231748
+					},
+					{
+						"mandatory": 0,
+						"stamp": 10.000000000443293,
+						"x": 200.0,
+						"y": 60.0,
+						"z": 89.996807576637281
+					}
+                ]
+            },
+            "dT": 20.0,
+			"time_tracked": 10,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 420,
 			"estimated_trajectory": {
 				"waypoints": [
 				]

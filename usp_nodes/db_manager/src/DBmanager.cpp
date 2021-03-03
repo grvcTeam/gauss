@@ -358,7 +358,11 @@ bool DataBase::writeGeofenceCB(gauss_msgs::WriteGeofences::Request &req, gauss_m
             if (it != saved_geofences.end()) {
                 it->second = req.geofences[i];
             } else {
-                if (req.geofences[i].polygon.x.size() == 0 || req.geofences[i].polygon.y.size() == 0) ROS_WARN("Geofence %d has empty polygon!", req.geofences[i].id);
+                if (req.geofences[i].cylinder_shape) {
+                    if (req.geofences[i].circle.radius == 0) ROS_WARN("Geofence %d has no radius!", req.geofences[i].id);
+                } else {
+                    if (req.geofences[i].polygon.x.size() == 0 || req.geofences[i].polygon.y.size() == 0 ) ROS_WARN("Geofence %d has empty polygon!", req.geofences[i].id);
+                }
                 saved_geofences.insert(pair<int, gauss_msgs::Geofence>(req.geofences[i].id, req.geofences[i]));
             }
         }

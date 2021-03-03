@@ -7,10 +7,10 @@
 			"min_altitude": 0,
 			"max_altitude": 200,
 			"start_time": 0,
-			"end_time": 500,
+			"end_time": 1000,
 			"circle": {
-				"x_center": 200.0,
-				"y_center": -20.0,
+				"x_center": 200.22511498463649,
+				"y_center": 50.28959609931616,
 				"radius": 60.0
 			},
 			"polygon": {

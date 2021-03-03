@@ -430,20 +430,22 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'Attention: Jamming attack. Land now'
                 notification.uav_id = uav_threatened
-                self._notifications_list.append(notification) 
+                # self._notifications_list.append(notification) 
                 
                 # We create a geofence.
                 geofence_base = Circle()
                 alarm_center = threat.location
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
-                geofence_base.radius = 80
+                geofence_base.radius = 60
                 geofence = Geofence()
-                geofence.id = 3
-                geofence.cylinder_shape = True
+                geofence.id = 1
                 geofence.min_altitude = 0.0
-                geofence.max_altitude = 700.0
+                geofence.max_altitude = 100.0
                 geofence.circle = geofence_base
+                geofence.cylinder_shape = True
+                geofence.start_time = rospy.Time().now()
+                geofence.end_time = rospy.Time().from_sec(rospy.Time.now().to_sec() + 500.0)
     
                 # We write a geofence.
                 req = WriteGeofencesRequest()

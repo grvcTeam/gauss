@@ -543,10 +543,10 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     }
     gauss_msgs::ReadGeofences msg_geofence;
     if (msg_ids.response.geofence_id.size() > 0){
-        for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(i);
+        for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(msg_ids.response.geofence_id.at(i));
         if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
         {
-            ROS_ERROR("Failed to read a geofence");
+            ROS_ERROR_STREAM("[MON] " + msg_geofence.response.message);
             return;
         }
     }
