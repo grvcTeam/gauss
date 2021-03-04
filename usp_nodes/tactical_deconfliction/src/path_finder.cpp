@@ -172,7 +172,10 @@ nav_msgs::Path PathFinder::findNewPath() {
     temp_polygon.points.push_back(temp_point);
     vec_polygons.push_back(temp_polygon);
     // Call path planner A*
-    multidrone::PathPlanner path_planner(vec_polygons);
+    int max_grid_side;
+    if (x_max_ - x_min_ >= y_max_ - y_min_) max_grid_side = x_max_ - x_min_;
+    else max_grid_side = y_max_ - y_min_;
+    multidrone::PathPlanner path_planner(vec_polygons, max_grid_side);
     std::vector<geometry_msgs::Point> a_star_getpath = path_planner.getPath(init_astar_point_, goal_astar_point_, false, false);
     nav_msgs::Path a_star_path_res = createPathFromPlanner(a_star_getpath, init_astar_point_, target_path_.poses.front().pose.position.z);
     // Linear interpolation for Z axis
