@@ -682,7 +682,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*2, polygon_test_output); 
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume, polygon_test_output); 
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }
@@ -793,7 +793,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
             p_min_distance = Eigen::Vector2f(min_distance_coordinate.first.front(), min_distance_coordinate.first.back());
             unit_vec = (p_min_distance - p_conflict) / (p_min_distance - p_conflict).norm();
-            double safety_distance = conflictive_operations.front().operational_volume * 2;
+            double safety_distance = conflictive_operations.front().operational_volume;
             v_out_polygon = unit_vec * safety_distance;
             geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
             init_astar_point.x = min_distance_coordinate.first.front() + v_out_polygon(0);

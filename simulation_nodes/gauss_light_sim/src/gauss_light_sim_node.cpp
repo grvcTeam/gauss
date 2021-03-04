@@ -16,6 +16,7 @@
 
 #define ARENOSILLO_LATITUDE 37.094784
 #define ARENOSILLO_LONGITUDE -6.735478
+#define ARENOSILLO_ELLIPSOIDAL_HEIGHT 0.0 // TODO: MEASURE IT 
 
 /*
 gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_msgs::Waypoint& to, const ros::Time& t) {
@@ -476,10 +477,12 @@ int main(int argc, char **argv) {
     // Auxiliary variables for cartesian to geographic conversion
     double origin_latitude = ARENOSILLO_LATITUDE;
     double origin_longitude = ARENOSILLO_LONGITUDE;
+    double origin_ellipsoidal_height = ARENOSILLO_ELLIPSOIDAL_HEIGHT;
     np.getParam("origin_latitude", origin_latitude);
     np.getParam("origin_longitude", origin_longitude);
+    np.getParam("origin_ellipsoidal_height", origin_ellipsoidal_height);
     static GeographicLib::Geocentric earth(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
-    static GeographicLib::LocalCartesian projection(origin_latitude, origin_longitude, 0, earth);
+    static GeographicLib::LocalCartesian projection(origin_latitude, origin_longitude, origin_ellipsoidal_height, earth);
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";

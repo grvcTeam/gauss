@@ -1,108 +1,118 @@
-{
-	"operations": [
+[
+	{
+		"autonomy" : 10,
+		"conop" : "",
+		"current_wp" : 1,
+		"dT" : 5,
+		"estimated_trajectory" : 
 		{
-			"autonomy": 10,
-			"conop": "",
-			"current_wp": 1,
-			"dT": 5,
-			"estimated_trajectory": {
-				"waypoints": []
-			},
-			"flight_geometry": 4,
-			"flight_plan": {
-				"flight_plan": {
-					"waypoints": []
-				},
-				"waypoints": [
-					{
-						"mandatory": 0,
-						"stamp": 0,
-						"x": 67.99116537789466,
-						"y": -128.81193765910811,
-						"z": 69.998334217920331
-					},
-					{
-						"mandatory": 0,
-						"stamp": 366.19066413015543,
-						"x": 414.10604240900392,
-						"y": -9.2289361270542436,
-						"z": 69.986569474211336
-					},
-					{
-						"mandatory": 0,
-						"stamp": 462.5294111774748,
-						"x": 371.91458665459146,
-						"y": 77.379581002755472,
-						"z": 69.988701680531747
-					},
-					{
-						"mandatory": 0,
-						"stamp": 826.80463536888738,
-						"x": 28.507690699381946,
-						"y": -44.14466615521232,
-						"z": 69.999783241408835
-					}
-				]
-			},
-			"frame": "",
-			"icao_address": "",
-			"is_started": false,
-			"landing_spots": {
-				"waypoints": []
-			},
-			"operational_volume": 2,
-			"priority": 1,
-			"time_horizon": 90,
-			"time_tracked": 0,
-			"track": {
-				"waypoints": []
-			},
-			"uav_id": 0
+			"waypoints" : []
 		},
+		"flight_geometry" : 4,
+		"flight_plan" : 
 		{
-			"autonomy": 10,
-			"conop": "",
-			"current_wp": 1,
-			"dT": 5,
-			"estimated_trajectory": {
-				"waypoints": []
+			"flight_plan" : 
+			{
+				"waypoints" : []
 			},
-			"flight_geometry": 4,
-			"flight_plan": {
-				"flight_plan": {
-					"waypoints": []
+			"waypoints" : 
+			[
+				{
+					"mandatory" : 0,
+					"stamp" : 0,
+					"x" : 222.90414553372739,
+					"y" : -74.465248345936047,
+					"z" : 69.995674782087363
 				},
-				"waypoints": [
-					{
-						"mandatory": 0,
-						"stamp": 0,
-						"x": 153.22415542203649,
-						"y": 131.28877071826773,
-						"z": 29.996807606231748
-					},
-					{
-						"mandatory": 0,
-						"stamp": 60.000000000443293,
-						"x": 153.22559476596555,
-						"y": 131.29000878966497,
-						"z": 89.996807576637281
-					}
-				]
+				{
+					"mandatory" : 0,
+					"stamp" : 202.0246071238104,
+					"x" : 414.10604240900392,
+					"y" : -9.2289361270542436,
+					"z" : 69.986569474211336
+				},
+				{
+					"mandatory" : 0,
+					"stamp" : 298.3633541711298,
+					"x" : 371.91458665459146,
+					"y" : 77.379581002755472,
+					"z" : 69.988701680531747
+				},
+				{
+					"mandatory" : 0,
+					"stamp" : 662.63857836254238,
+					"x" : 28.507690699381946,
+					"y" : -44.14466615521232,
+					"z" : 69.999783241408835
+				}
+			]
+		},
+		"frame" : "",
+		"icao_address" : "",
+		"is_started" : false,
+		"landing_spots" : 
+		{
+			"waypoints" : []
+		},
+		"operational_volume" : 2,
+		"priority" : 1,
+		"time_horizon" : 90,
+		"time_tracked" : 0,
+		"track" : 
+		{
+			"waypoints" : []
+		},
+		"uav_id" : 0
+	},
+	{
+		"autonomy" : 10,
+		"conop" : "",
+		"current_wp" : 1,
+		"dT" : 5,
+		"estimated_trajectory" : 
+		{
+			"waypoints" : []
+		},
+		"flight_geometry" : 4,
+		"flight_plan" : 
+		{
+			"flight_plan" : 
+			{
+				"waypoints" : []
 			},
-			"frame": "",
-			"icao_address": "",
-			"is_started": false,
-			"landing_spots": {
-				"waypoints": []
-			},
-			"operational_volume": 2,
-			"priority": 2,
-			"time_horizon": 90,
-			"time_tracked": 0,
-			"track": {
-				"waypoints": []
-			},
-			"uav_id": 1
-		}
-	]
-}
+			"waypoints" : 
+			[
+				{
+					"mandatory" : 0,
+					"stamp" : 0,
+					"x" : 199.99906029260177,
+					"y" : 59.999717008014819,
+					"z" : 59.996585904945263
+				},
+				{
+					"mandatory" : 0,
+					"stamp" : 30.000000000256165,
+					"x" : 199.9999996552263,
+					"y" : 59.999999909318973,
+					"z" : 89.996585889160841
+				}
+			]
+		},
+		"frame" : "",
+		"icao_address" : "",
+		"is_started" : false,
+		"landing_spots" : 
+		{
+			"waypoints" : []
+		},
+		"operational_volume" : 2,
+		"priority" : 2,
+		"time_horizon" : 90,
+		"time_tracked" : 0,
+		"track" : 
+		{
+			"waypoints" : []
+		},
+		"uav_id" : 1
+	}
+]

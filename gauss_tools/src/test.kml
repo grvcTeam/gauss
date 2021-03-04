@@ -3,7 +3,7 @@
 <Document>
 	<name>GAUSS_Loring_geo</name>
 	<open>1</open>
-	<gx:CascadingStyle kml:id="__managed_style_02DE6A2A1919289CB72A">
+	<gx:CascadingStyle kml:id="__managed_style_22F04BA549193292EEE5">
 		<Style>
 			<IconStyle>
 				<scale>1.2</scale>
@@ -26,39 +26,7 @@
 			</BalloonStyle>
 		</Style>
 	</gx:CascadingStyle>
-	<gx:CascadingStyle kml:id="__managed_style_175C6AF17319289CB729">
-		<Style>
-			<IconStyle>
-				<Icon>
-					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
-				</Icon>
-				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
-			</IconStyle>
-			<LabelStyle>
-			</LabelStyle>
-			<LineStyle>
-				<color>ff2dc0fb</color>
-				<width>3.2</width>
-			</LineStyle>
-			<PolyStyle>
-				<color>40ffffff</color>
-			</PolyStyle>
-			<BalloonStyle>
-				<displayMode>hide</displayMode>
-			</BalloonStyle>
-		</Style>
-	</gx:CascadingStyle>
-	<StyleMap id="__managed_style_07A437BF9B19289CB729">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#__managed_style_175C6AF17319289CB729</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#__managed_style_02DE6A2A1919289CB72A</styleUrl>
-		</Pair>
-	</StyleMap>
-	<gx:CascadingStyle kml:id="__managed_style_2FAC9360BE19289CB728">
+	<gx:CascadingStyle kml:id="__managed_style_20F8756251193292EEE4">
 		<Style>
 			<IconStyle>
 				<scale>1.2</scale>
@@ -80,7 +48,7 @@
 			</BalloonStyle>
 		</Style>
 	</gx:CascadingStyle>
-	<gx:CascadingStyle kml:id="__managed_style_154A5EBAAB19289CB728">
+	<gx:CascadingStyle kml:id="__managed_style_193AA2C648193292EEE4">
 		<Style>
 			<IconStyle>
 				<Icon>
@@ -101,14 +69,46 @@
 			</BalloonStyle>
 		</Style>
 	</gx:CascadingStyle>
-	<StyleMap id="__managed_style_04591C9A3719289CB728">
+	<gx:CascadingStyle kml:id="__managed_style_1D74C3F651193292EEE5">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3.2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<displayMode>hide</displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_091F55961E193292EEE5">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#__managed_style_154A5EBAAB19289CB728</styleUrl>
+			<styleUrl>#__managed_style_1D74C3F651193292EEE5</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#__managed_style_2FAC9360BE19289CB728</styleUrl>
+			<styleUrl>#__managed_style_22F04BA549193292EEE5</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="__managed_style_05AF36ECFE193292EEE4">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_193AA2C648193292EEE4</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_20F8756251193292EEE4</styleUrl>
 		</Pair>
 	</StyleMap>
 	<Placemark id="05A9AB1DF418E59704B5">
@@ -123,11 +123,11 @@
 			<range>592.3341461</range>
 			<altitudeMode>absolute</altitudeMode>
 		</LookAt>
-		<styleUrl>#__managed_style_04591C9A3719289CB728</styleUrl>
+		<styleUrl>#__managed_style_05AF36ECFE193292EEE4</styleUrl>
 		<LineString>
 			<altitudeMode>relativeToGround</altitudeMode>
 			<coordinates>
-				-3.596092794724192,40.65858649438707,70 -3.592000011972684,40.65966324672676,70 -3.592498870011481,40.66044318248838,70 -3.59655967106388,40.65934893147006,70 
+				-3.594260976202782,40.65907586290069,70 -3.592000011972684,40.65966324672676,70 -3.592498870011481,40.66044318248838,70 -3.59655967106388,40.65934893147006,70 
 			</coordinates>
 		</LineString>
 	</Placemark>
@@ -143,11 +143,11 @@
 			<range>336.0480265702063</range>
 			<altitudeMode>absolute</altitudeMode>
 		</LookAt>
-		<styleUrl>#__managed_style_07A437BF9B19289CB729</styleUrl>
+		<styleUrl>#__managed_style_091F55961E193292EEE5</styleUrl>
 		<LineString>
 			<altitudeMode>relativeToGround</altitudeMode>
 			<coordinates>
-				-3.595084865608721,40.66092871538131,30 -3.595084865608721,40.66092871538131,90 
+				-3.59453177744,40.660286736,30 -3.59453177744,40.660286736,90 
 			</coordinates>
 		</LineString>
 	</Placemark>

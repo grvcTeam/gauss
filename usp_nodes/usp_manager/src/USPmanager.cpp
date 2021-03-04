@@ -175,7 +175,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
 {
     for (auto msg : req.notifications){
         // TODO: Treat all possible notifications properly
-        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION)
+        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_CONFLICT)
         {
             gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
             std::string uav_id_string = std::to_string(msg.uav_id);
@@ -210,7 +210,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
             {
                 id_threat_flight_plan_map_[msg.uav_id] = std::vector<ThreatFlightPlan>();
                 id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
-            }
+            } 
         }
         else if(msg.threat.threat_type == gauss_msgs::Threat::JAMMING_ATTACK)
         {
