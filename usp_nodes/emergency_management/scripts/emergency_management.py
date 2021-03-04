@@ -430,7 +430,8 @@ class EmergencyManagement():
                 uav_threatened = uavs_threatened[0]
                 notification.description = 'Attention: Jamming attack. Land now'
                 notification.uav_id = uav_threatened
-                # self._notifications_list.append(notification) 
+                notification.threat.threat_type = Threat.JAMMING_ATTACK
+                self._notifications_list.append(notification) 
                 
                 # We create a geofence.
                 geofence_base = Circle()

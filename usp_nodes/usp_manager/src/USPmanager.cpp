@@ -173,47 +173,53 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
 // Notification callback
 bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res)
 {
-    /*
-    gauss_msgs_mqtt::UTMAlert utm_alert_msg;
-    utm_alert_msg.alert_message = msg->description;
-    //utm_alert_msg.alert_title = msg->
-    alert_pub_.publish(utm_alert_msg);
-    */
-
     for (auto msg : req.notifications){
-        gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
-        std::string uav_id_string = std::to_string(msg.uav_id);
-        int n_zeros = 0;
-        if(uav_id_string.length() == 1)
-            n_zeros = 1;
-        alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
-        alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id];
-
-        for(auto it=msg.new_flight_plan.waypoints.begin(); it!=msg.new_flight_plan.waypoints.end(); it++)
+        // TODO: Treat all possible notifications properly
+        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION)
         {
-            gauss_msgs_mqtt::Waypoint waypoint_mqtt;
-            double lat,lon,h;
-            proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
-            waypoint_mqtt.waypoint_elements[0] = lon;
-            waypoint_mqtt.waypoint_elements[1] = lat;
-            waypoint_mqtt.waypoint_elements[2] = h;
-            waypoint_mqtt.waypoint_elements[3] = it->stamp.toSec();
-            alternative_flight_plan_msg.new_flight_plan.push_back(waypoint_mqtt);
+            gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
+            std::string uav_id_string = std::to_string(msg.uav_id);
+            int n_zeros = 0;
+            if(uav_id_string.length() == 1)
+                n_zeros = 1;
+            alternative_flight_plan_msg.flight_plan_id = std::string("MISSION") + std::string(n_zeros, '0') + uav_id_string;
+            alternative_flight_plan_msg.icao = id_icao_map_[msg.uav_id];
+
+            for(auto it=msg.new_flight_plan.waypoints.begin(); it!=msg.new_flight_plan.waypoints.end(); it++)
+            {
+                gauss_msgs_mqtt::Waypoint waypoint_mqtt;
+                double lat,lon,h;
+                proj_.Reverse(it->x,it->y,it->z,lat,lon,h);
+                waypoint_mqtt.waypoint_elements[0] = lon;
+                waypoint_mqtt.waypoint_elements[1] = lat;
+                waypoint_mqtt.waypoint_elements[2] = h;
+                waypoint_mqtt.waypoint_elements[3] = it->stamp.toSec();
+                alternative_flight_plan_msg.new_flight_plan.push_back(waypoint_mqtt);
+            }
+
+            alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
+
+            ThreatFlightPlan threat_flight_plan;
+            threat_flight_plan.threat_id = msg.threat.threat_id;
+            threat_flight_plan.new_flight_plan = msg.new_flight_plan;
+            if(id_threat_flight_plan_map_.find(msg.uav_id) != id_threat_flight_plan_map_.end())
+            {
+                id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
+            }
+            else
+            {
+                id_threat_flight_plan_map_[msg.uav_id] = std::vector<ThreatFlightPlan>();
+                id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
+            }
         }
-
-        alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
-
-        ThreatFlightPlan threat_flight_plan;
-        threat_flight_plan.threat_id = msg.threat.threat_id;
-        threat_flight_plan.new_flight_plan = msg.new_flight_plan;
-        if(id_threat_flight_plan_map_.find(msg.uav_id) != id_threat_flight_plan_map_.end())
+        else if(msg.threat.threat_type == gauss_msgs::Threat::JAMMING_ATTACK)
         {
-            id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
-        }
-        else
-        {
-            id_threat_flight_plan_map_[msg.uav_id] = std::vector<ThreatFlightPlan>();
-            id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
+            // TODO: Set properly alert message and title
+            gauss_msgs_mqtt::UTMAlert utm_alert_msg;
+            utm_alert_msg.alert_message = msg.description;
+            utm_alert_msg.alert_title = "JAMMING ATTACK";
+            utm_alert_msg.alert_id = "JAMMING ATTACK";
+            alert_pub_.publish(utm_alert_msg);   
         }
     }
     res.success = true;
