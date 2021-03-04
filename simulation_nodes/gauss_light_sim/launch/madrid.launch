@@ -1,4 +1,5 @@
 <launch>
+    <!-- TODO: Does not have a simulated version?! -->
     <!-- Arguments -->
     <arg name="operations_json" default="madrid_operations_11_12"/>
     <arg name="geofences_json"  default="loss_geofences"/>
