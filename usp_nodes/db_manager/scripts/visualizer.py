@@ -83,13 +83,13 @@ class WaypointListViz(object):
         self.lifetime = lifetime
         # Default values for markers:
         self.path_type = Marker.LINE_STRIP
-        self.path_scale = Vector3(0.1, 0, 0)
+        self.path_scale = Vector3(1, 0, 0)
         self.mandatory_wp_type = Marker.CUBE_LIST
-        self.mandatory_wp_scale = Vector3(0.15, 0.15, 0.15)
+        self.mandatory_wp_scale = Vector3(1.5, 1.5, 1.5)
         self.non_mandatory_wp_type = Marker.SPHERE_LIST
-        self.non_mandatory_wp_scale = Vector3(0.15, 0, 0)
-        self.stamp_font_size = 0.2
-        self.stamp_offset = Vector3(0, 0, 0.2)
+        self.non_mandatory_wp_scale = Vector3(1.5, 0, 0)
+        self.stamp_font_size = 2
+        self.stamp_offset = Vector3(0, 0, 2)
 
     def config_path(self, marker_type, marker_scale):
         self.path_type = marker_type
@@ -190,9 +190,9 @@ class GeofenceViz(object):
         # Default values for markers:
         self.surface_type = Marker.CYLINDER
         self.line_type = Marker.LINE_STRIP
-        self.line_scale = Vector3(0.1, 0, 0)
-        self.stamp_font_size = 0.2
-        self.stamp_offset = Vector3(0, 0, 0.2)
+        self.line_scale = Vector3(1, 0, 0)
+        self.stamp_font_size = 2
+        self.stamp_offset = Vector3(0, 0, 2)
 
     def get_markerarray(self, geofence, ns, color):
         marker_common = Marker()
@@ -394,11 +394,11 @@ def main():
     visualization_topic = 'visualization_marker_array'
     id_to_color = {}
     id_to_color[0] = 'orange'
-    id_to_color[1] = 'yellow'
-    id_to_color[2] = 'light_green'
-    id_to_color[3] = 'cyan'
-    id_to_color[4] = 'light_blue'
-    id_to_color[5] = 'pink'
+    id_to_color[1] = 'light_green'
+    id_to_color[2] = 'light_blue'
+    id_to_color[3] = 'pink'
+    id_to_color[4] = 'yellow'
+    id_to_color[5] = 'cyan'
     id_to_color[6] = 'purple'
     id_to_color[7] = 'tan'
     id_to_color[8] = 'brown'
@@ -468,7 +468,7 @@ def main():
                 info_marker.id = 0
                 info_marker.type = Marker.TEXT_VIEW_FACING
                 info_marker.action = Marker.ADD
-                info_marker.scale.z = 0.2  # TODO: param font_size
+                info_marker.scale.z = 2  # TODO: param font_size
                 info_marker.color = palette.get_color(id_to_color[operation.uav_id % 10])  # TODO: param!
 
                 current_point = Point()
@@ -505,9 +505,9 @@ def main():
                 frame_marker.type = Marker.MESH_RESOURCE
                 frame_marker.action = Marker.ADD
                 frame_marker.pose.position = current_point
-                frame_marker.scale.x = 0.4  # TODO: Param!
-                frame_marker.scale.y = 0.4
-                frame_marker.scale.z = 0.4
+                frame_marker.scale.x = 4  # TODO: Param!
+                frame_marker.scale.y = 4
+                frame_marker.scale.z = 4
                 frame_marker.color = palette.get_color(id_to_color[operation.uav_id % 10])
                 if operation.frame == Operation.FRAME_ROTOR:
                     frame_marker.mesh_resource = 'package://db_manager/config/rotor.dae'
@@ -533,9 +533,9 @@ def main():
                     current_wp_marker.pose.position.x = current_wp.x
                     current_wp_marker.pose.position.y = current_wp.y
                     current_wp_marker.pose.position.z = current_wp.z
-                    current_wp_marker.scale.x = 0.4  # TODO: Param!
-                    current_wp_marker.scale.y = 0.4
-                    current_wp_marker.scale.z = 0.4
+                    current_wp_marker.scale.x = 4  # TODO: Param!
+                    current_wp_marker.scale.y = 4
+                    current_wp_marker.scale.z = 4
                     current_wp_marker.color = palette.get_color('white', 0.4)
 
                     marker_array.markers.append(current_wp_marker)
