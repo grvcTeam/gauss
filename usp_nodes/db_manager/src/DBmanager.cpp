@@ -65,7 +65,7 @@ DataBase::DataBase() : nh_(), pnh_("~") {
     // Read (public) parameters
     double time_param = 0.0;
     std::string operations_name = "loss_operations";
-    std::string geofences_name = "loss_geofences";
+    std::string geofences_name = "no_geofences";
     nh_.getParam("init_time", time_param);
     nh_.getParam("operations_json", operations_name);
     nh_.getParam("geofences_json", geofences_name);

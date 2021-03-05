@@ -27,7 +27,7 @@
     <arg name="orientation_th" default="0.65"/>
     <arg name="hold_pose_time" default="3.0"/>
     <arg name="operations_json" default="loss_operations"/>
-    <arg name="geofences_json"  default="loss_geofences"/>
+    <arg name="geofences_json"  default="no_geofences"/>
 
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/tester.rviz" required="true"/>

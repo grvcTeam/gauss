@@ -1,18 +1,18 @@
 # Old madrid_light_sim.launch
-operations_json: "madrid_operations_11_12"
-geofences_json: "loss_geofences"
+operations_json: "madrid_loss_separation"
+geofences_json: "no_geofences"
 origin_latitude: 40.65974645776713
 origin_longitude: -3.59689676974471
-origin_ellipsoidal_height: 0.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
+origin_ellipsoidal_height: 675.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
 init_time: 0.0  # https://time.is/Unix_time_now
-time_horizon: 90
-dT: 5
-minX: -50
-minY: -100
+time_horizon: 300
+dT: 15
+minX: -300
+minY: -400
 minZ: 0
-maxX: 450
-maxY: 150
-maxZ: 450
+maxX: 900
+maxY: 900
+maxZ: 500
 deltaX: 10.0
 deltaY: 10.0
 deltaZ: 400.0

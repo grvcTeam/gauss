@@ -7,7 +7,7 @@ Panels:
         - /Global Options1
         - /MarkerArray1/Namespaces1
       Splitter Ratio: 0.5
-    Tree Height: 464
+    Tree Height: 366
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -84,7 +84,7 @@ Visualization Manager:
         11259137/operation_info: true
         11259137/track: true
         11259137/volumes/flight_geometry: true
-        11259137/volumes/operational_volume: false
+        11259137/volumes/operational_volume: true
         11259138/estimated_trajectory: true
         11259138/flight_plan: true
         11259138/flight_plan_updated: true
@@ -92,7 +92,7 @@ Visualization Manager:
         11259138/operation_info: true
         11259138/track: true
         11259138/volumes/flight_geometry: true
-        11259138/volumes/operational_volume: false
+        11259138/volumes/operational_volume: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -304,25 +304,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 272.277863
+      Distance: 415.058594
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -268.982239
-        Y: 230.638748
-        Z: 118.56163
+        X: -118.943787
+        Y: 160.864227
+        Z: 27.1905327
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.354797632
+      Pitch: 0.524797678
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.55537748
+      Yaw: 2.47354817
     Saved: ~
 Window Geometry:
   Displays:
@@ -340,5 +340,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 940
-  X: 980
-  Y: 31
+  X: 977
+  Y: 63

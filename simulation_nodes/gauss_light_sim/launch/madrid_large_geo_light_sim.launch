@@ -1,7 +1,0 @@
-<launch>
-    <!-- TODO: Delete launch and use light_sim.launch rviz_name:= madrid use_case_yaml:=madrid_...? -->
-    <include file="$(find gauss_light_sim)/launch/light_sim.launch">
-        <arg name="use_case_yaml" value="madrid_large_geo.yaml"/>
-        <arg name="rviz_name"  value="madrid"/>
-    </include>
-</launch>
