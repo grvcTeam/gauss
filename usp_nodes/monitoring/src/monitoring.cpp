@@ -85,19 +85,19 @@ private:
 Monitoring::Monitoring()
 {
     // Read
-    nh_.param("/monitoring/monitoring_rate",rate,5.0);
-    nh_.param("/monitoring/safetyDistance",minDist,10.0);
-    nh_.param("/monitoring/minX",minX,-400.0);
-    nh_.param("/monitoring/minY",minY,0.0);
-    nh_.param("/monitoring/minZ",minZ,0.0);
-    nh_.param("/monitoring/maxX",maxX,0.0);
-    nh_.param("/monitoring/maxY",maxY,400.0);
-    nh_.param("/monitoring/maxZ",maxZ,300.0);
-    nh_.param("/monitoring/time_horizon",maxT,300.0);
-    nh_.param("/monitoring/dT",dT,15.0);
-    nh_.param("/monitoring/deltaX",dX,10.0);
-    nh_.param("/monitoring/deltaY",dY,10.0);
-    nh_.param("/monitoring/deltaZ",dZ,10.0);
+    nh_.param("safetyDistance",minDist,10.0);
+    nh_.param("minX",minX,-400.0);
+    nh_.param("minY",minY,0.0);
+    nh_.param("minZ",minZ,0.0);
+    nh_.param("maxX",maxX,0.0);
+    nh_.param("maxY",maxY,400.0);
+    nh_.param("maxZ",maxZ,300.0);
+    nh_.param("time_horizon",maxT,300.0);
+    nh_.param("dT",dT,15.0);
+    nh_.param("monitoring_rate",rate,5.0);  // TODO: Check monitoring_rate from usp_manager_ual_bridge.cpp
+    nh_.param("deltaX",dX,10.0);
+    nh_.param("deltaY",dY,10.0);
+    nh_.param("deltaZ",dZ,10.0);
 
 
     // Initialization    

@@ -468,19 +468,21 @@ int main(int argc, char **argv) {
     ros::NodeHandle np("~");
     ROS_INFO("[Sim] Started gauss_light_sim_node!");
 
-    double time_param = 0.0;
-    np.getParam("init_time", time_param);
-
-    std::string timing_file = "timing_test.yaml";  // TODO: default value should be empty string
+    // Private param
+    std::string timing_file = "";
     np.getParam("timing_file", timing_file);
+
+    // Public params
+    double time_param = 0.0;
+    n.getParam("init_time", time_param);
 
     // Auxiliary variables for cartesian to geographic conversion
     double origin_latitude = ARENOSILLO_LATITUDE;
     double origin_longitude = ARENOSILLO_LONGITUDE;
     double origin_ellipsoidal_height = ARENOSILLO_ELLIPSOIDAL_HEIGHT;
-    np.getParam("origin_latitude", origin_latitude);
-    np.getParam("origin_longitude", origin_longitude);
-    np.getParam("origin_ellipsoidal_height", origin_ellipsoidal_height);
+    n.getParam("origin_latitude", origin_latitude);
+    n.getParam("origin_longitude", origin_longitude);
+    n.getParam("origin_ellipsoidal_height", origin_ellipsoidal_height);
     static GeographicLib::Geocentric earth(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
     static GeographicLib::LocalCartesian projection(origin_latitude, origin_longitude, origin_ellipsoidal_height, earth);
 
@@ -534,19 +536,18 @@ int main(int argc, char **argv) {
 
     YAML::Node timing_yaml;
     if (timing_file != "") {
-        std::string timing_url = ros::package::getPath("gauss_light_sim") + "/config/" + timing_file;
-        ROS_INFO("[Sim] Loading timing from %s", timing_url.c_str());
+        ROS_INFO("[Sim] Loading timing from %s", timing_file.c_str());
         try {
-            timing_yaml = YAML::LoadFile(timing_url);
+            timing_yaml = YAML::LoadFile(timing_file);
         } catch(std::runtime_error& e) {
             ROS_ERROR("[Sim] Ignoring yaml, as file may not exist or it is bad defined: %s", e.what());
             // return 1;  // TODO: exit?
         }
     }
 
-    if (timing_yaml["auto_start"]) {
+    if (timing_yaml["simulation"]["auto_start"]) {
         // Load auto_start_map from config file
-        auto auto_start_yaml = timing_yaml["auto_start"];
+        auto auto_start_yaml = timing_yaml["simulation"]["auto_start"];
         std::map<std::string, ros::Time> auto_start_map;
         ROS_INFO("[Sim] auto_start:");
         for (auto auto_start_item: auto_start_yaml) {
@@ -561,9 +562,9 @@ int main(int argc, char **argv) {
         sim.setAutoStart(auto_start_map);
     }
 
-    if (timing_yaml["change_param"]) {
+    if (timing_yaml["simulation"]["change_param"]) {
         // Load change_param from config file
-        auto change_param_yaml = timing_yaml["change_param"];
+        auto change_param_yaml = timing_yaml["simulation"]["change_param"];
         ROS_INFO("[Sim] change_param:");
         for (auto change_param_item: change_param_yaml) {
             ROS_INFO_STREAM("[Sim] - " << change_param_item);

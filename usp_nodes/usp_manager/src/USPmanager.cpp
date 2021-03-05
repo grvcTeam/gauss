@@ -525,12 +525,12 @@ bool USPManager::initializeIDOperationMap()
 int main(int argc, char *argv[])
 {
     ros::init(argc,argv,"USPManager");
-    ros::NodeHandle pnh("~");
+    ros::NodeHandle nh;
     double origin_latitude, origin_longitude, origin_ellipsoidal_height;
 
-    origin_latitude = pnh.param<double>("origin_latitude", ARENOSILLO_LATITUDE);
-    origin_longitude = pnh.param<double>("origin_longitude", ARENOSILLO_LONGITUDE);
-    origin_ellipsoidal_height = pnh.param<double>("origin_ellipsoidal_height", ARENOSILLO_ELLIPSOIDAL_HEIGHT);
+    origin_latitude = nh.param<double>("origin_latitude", ARENOSILLO_LATITUDE);
+    origin_longitude = nh.param<double>("origin_longitude", ARENOSILLO_LONGITUDE);
+    origin_ellipsoidal_height = nh.param<double>("origin_ellipsoidal_height", ARENOSILLO_ELLIPSOIDAL_HEIGHT);
     // Create a USPManager object
     USPManager *usp_manager = new USPManager(origin_latitude, origin_longitude, origin_ellipsoidal_height);
 
