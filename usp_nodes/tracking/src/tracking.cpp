@@ -114,6 +114,8 @@ private:
     bool use_position_report_;
     bool use_adsb_;
     bool use_speed_info_;
+    double time_horizon_;
+    double dT_;
 
     // Mutex
     boost::mutex candidates_list_mutex_;
@@ -155,6 +157,8 @@ Tracking::Tracking()
     nh_.param<bool>("use_adsb_", use_adsb_, true);
     nh_.param<double>("wp_distance_threshold_margin", distance_wp_threshold_margin_, 10.0);
     nh_.param<bool>("use_speed_info", use_speed_info_, false);
+    nh_.param<double>("time_horizon", time_horizon_, 90.0);
+    nh_.param<double>("dT", dT_, 5.0);
 
     read_icao_client_.waitForExistence();
     gauss_msgs::ReadIcao read_icao;
@@ -772,10 +776,10 @@ void Tracking::estimateTrajectory()
             // Trajectory estimation for cooperative uav
             operation_aux.current_wp = b_waypoint_index;
             // If this distance is smaller than a threshold, the estimated trajectory will be exactly the next waypoints of the flight plan
-            double dt = operation_aux.dT;
+            // double dt = operation_aux.dT;
             // dt = 5
             // time_horizon = 90
-            uint32_t number_estimated_wps = operation_aux.time_horizon/dt; // 18
+            uint32_t number_estimated_wps = time_horizon_/dT_; // 18
 
             #ifdef DEBUG
             std::cout << "a_waypoint_index: " << a_waypoint_index << "\n";
@@ -792,7 +796,7 @@ void Tracking::estimateTrajectory()
             
             #ifdef DEBUG
             std::cout << "Remaining waypoints count: " << remaining_flight_plan_wps << "\n"; 
-            std::cout << "time_horizon: " << operation_aux.time_horizon << "\n";
+            std::cout << "time_horizon: " << time_horizon_ << "\n";
             std::cout << "distance to segment: " << distance_to_segment << "\n";
             std::cout << "distance to point a: " << distance_to_point_a << "\n";
             std::cout << "distance to point b: " << distance_to_point_b << std::endl;
@@ -842,7 +846,7 @@ void Tracking::estimateTrajectory()
                 std::cout << "Time to next waypoint " << time_to_next_waypoint << "\n";
                 #endif
 
-                if(time_to_next_waypoint > dt)
+                if(time_to_next_waypoint > dT_)
                 {
                     // Estimate intermediate waypoints between current position and next waypoint
                     wp_aux = current_position;
@@ -852,7 +856,7 @@ void Tracking::estimateTrajectory()
                     speed_vector.z() = (flight_plan_ref.waypoints[b_waypoint_index].z - current_position.z)/time_to_next_waypoint;
 
                     //double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
-                    double epsilon = time_to_next_waypoint - dt*floor(time_to_next_waypoint/dt);
+                    double epsilon = time_to_next_waypoint - dT_*floor(time_to_next_waypoint/dT_);
 
                     #ifdef DEBUG
                     std::cout << "epsilon " << epsilon << "\n";
@@ -866,7 +870,7 @@ void Tracking::estimateTrajectory()
                         last_stamp = last_stamp + ros::Duration(epsilon);
                         wps_cumulative_time += ros::Duration(epsilon);
                         wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < it->second.time_horizon)
+                        if(wps_cumulative_time.toSec() < time_horizon_)
                             estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
@@ -877,7 +881,7 @@ void Tracking::estimateTrajectory()
 
                     }
 
-                    wp_count_aux = floor(time_to_next_waypoint/dt);
+                    wp_count_aux = floor(time_to_next_waypoint/dT_);
 
                     #ifdef DEBUG
                     std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
@@ -886,13 +890,13 @@ void Tracking::estimateTrajectory()
 
                     for(int index_1 = 0; (index_1 < (wp_count_aux - 1)); index_1++)
                     {
-                        wp_aux.x = wp_aux.x + speed_vector.x()*dt;
-                        wp_aux.y = wp_aux.y + speed_vector.y()*dt;
-                        wp_aux.z = wp_aux.z + speed_vector.z()*dt;
-                        last_stamp = last_stamp + ros::Duration(dt);
-                        wps_cumulative_time += ros::Duration(dt);
+                        wp_aux.x = wp_aux.x + speed_vector.x()*dT_;
+                        wp_aux.y = wp_aux.y + speed_vector.y()*dT_;
+                        wp_aux.z = wp_aux.z + speed_vector.z()*dT_;
+                        last_stamp = last_stamp + ros::Duration(dT_);
+                        wps_cumulative_time += ros::Duration(dT_);
                         wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < it->second.time_horizon)
+                        if(wps_cumulative_time.toSec() < time_horizon_)
                             estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
@@ -903,7 +907,7 @@ void Tracking::estimateTrajectory()
                         #endif
                     }
                 }
-                else if(time_to_next_waypoint <= dt)
+                else if(time_to_next_waypoint <= dT_)
                 {
                     closer_than_dt_flag = true;
                 }                
@@ -923,11 +927,11 @@ void Tracking::estimateTrajectory()
                     }
                     else
                     {
-                        last_stamp = last_stamp + ros::Duration(dt);
-                        wps_cumulative_time += ros::Duration(dt);
+                        last_stamp = last_stamp + ros::Duration(dT_);
+                        wps_cumulative_time += ros::Duration(dT_);
                     }
                     wp_aux.stamp = last_stamp;
-                    if(wps_cumulative_time.toSec() < it->second.time_horizon)
+                    if(wps_cumulative_time.toSec() < time_horizon_)
                         estimated_trajectory.waypoints.push_back(wp_aux);
                     flight_plan_updated.waypoints.push_back(wp_aux);
                     estimated_wp_count++;
@@ -947,7 +951,7 @@ void Tracking::estimateTrajectory()
                     speed_vector.z() = (flight_plan_ref.waypoints[flight_plan_wp_index].z - flight_plan_ref.waypoints[flight_plan_wp_index-1].z)/time_to_next_waypoint;
 
                     //double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
-                    double epsilon = time_to_next_waypoint - dt*floor(time_to_next_waypoint/dt);
+                    double epsilon = time_to_next_waypoint - dT_*floor(time_to_next_waypoint/dT_);
 
                     if (epsilon > 0)
                     {
@@ -957,7 +961,7 @@ void Tracking::estimateTrajectory()
                         last_stamp = last_stamp + ros::Duration(epsilon);
                         wps_cumulative_time += ros::Duration(epsilon);
                         wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < it->second.time_horizon)
+                        if(wps_cumulative_time.toSec() < time_horizon_)
                             estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
@@ -966,7 +970,7 @@ void Tracking::estimateTrajectory()
                         #endif
                     }
 
-                    wp_count_aux = floor(time_to_next_waypoint/dt);
+                    wp_count_aux = floor(time_to_next_waypoint/dT_);
 
                     #ifdef DEBUG
                     std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
@@ -974,13 +978,13 @@ void Tracking::estimateTrajectory()
                     #endif
                     for(int index_1 = 0; (index_1 < (wp_count_aux - 1)) && (estimated_wp_count < number_estimated_wps); index_1++)
                     {
-                        wp_aux.x = wp_aux.x + speed_vector.x()*dt;
-                        wp_aux.y = wp_aux.y + speed_vector.y()*dt;
-                        wp_aux.z = wp_aux.z + speed_vector.z()*dt;
-                        last_stamp = last_stamp + ros::Duration(dt);
-                        wps_cumulative_time += ros::Duration(dt);
+                        wp_aux.x = wp_aux.x + speed_vector.x()*dT_;
+                        wp_aux.y = wp_aux.y + speed_vector.y()*dT_;
+                        wp_aux.z = wp_aux.z + speed_vector.z()*dT_;
+                        last_stamp = last_stamp + ros::Duration(dT_);
+                        wps_cumulative_time += ros::Duration(dT_);
                         wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < it->second.time_horizon)
+                        if(wps_cumulative_time.toSec() < time_horizon_)
                             estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
@@ -997,11 +1001,11 @@ void Tracking::estimateTrajectory()
                         #endif
                         wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
                         //ros::Duration delta_time = flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp;
-                        last_stamp = last_stamp + ros::Duration(dt);
-                        wps_cumulative_time += ros::Duration(dt);
+                        last_stamp = last_stamp + ros::Duration(dT_);
+                        wps_cumulative_time += ros::Duration(dT_);
                         //last_stamp += delta_time;
                         wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < it->second.time_horizon)
+                        if(wps_cumulative_time.toSec() < time_horizon_)
                             estimated_trajectory.waypoints.push_back(wp_aux);
                         flight_plan_updated.waypoints.push_back(wp_aux);
                         estimated_wp_count++;
@@ -1016,7 +1020,7 @@ void Tracking::estimateTrajectory()
                 {
                     wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
                     ros::Duration delta_time = flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp;
-                    //last_stamp = last_stamp + ros::Duration(dt);
+                    //last_stamp = last_stamp + ros::Duration(dT_);
                     last_stamp += delta_time;
                     wp_aux.stamp = last_stamp;
                     flight_plan_updated.waypoints.push_back(wp_aux);
@@ -1036,7 +1040,7 @@ void Tracking::estimateTrajectory()
                 #endif
                 // If distance from current estimated position is too far from the flight plan, the estimated trajectory
                 // will be composed of waypoints predicted based on the current estimated speed and position of the uav
-                cooperative_targets_[uav_id]->predictNTimes(number_estimated_wps, dt, estimated_trajectory);
+                cooperative_targets_[uav_id]->predictNTimes(number_estimated_wps, dT_, estimated_trajectory);
                 // Signal that the operation has been modified to write it on the database
                 modified_cooperative_operations_flags_[uav_id] = true;
             }
