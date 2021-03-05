@@ -220,6 +220,11 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
             utm_alert_msg.alert_title = "JAMMING ATTACK";
             utm_alert_msg.alert_id = "JAMMING ATTACK";
             alert_pub_.publish(utm_alert_msg);   
+            // Finish threatened operation
+            gauss_msgs::ChangeFlightStatus change_flight_status_msg;
+            change_flight_status_msg.request.icao = id_icao_map_[msg.uav_id];
+            change_flight_status_msg.request.is_started = false;
+            change_flight_status_client_.call(change_flight_status_msg);
         }
     }
     res.success = true;

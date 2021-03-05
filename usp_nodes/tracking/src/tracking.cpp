@@ -653,6 +653,7 @@ bool Tracking::writeTrackingInfoToDatabase()
     write_tracking_msg_.request.times_tracked.clear();
     write_tracking_msg_.request.tracks.clear();
     write_tracking_msg_.request.flight_plans_updated.clear();
+    write_tracking_msg_.request.is_started.clear();
 
     write_operation_msg_.request.uav_ids.clear();
     write_operation_msg_.request.operation.clear();
