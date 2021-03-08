@@ -484,12 +484,12 @@ def main():
                 # TODO: Check unused information
                 info_marker.pose.position = text_point
                 info_marker.text = '{} [{}]\n'.format(operation.icao_address, operation.uav_id)
-                info_marker.text += 'autonomy: {}m\n'.format(operation.autonomy)
+                #info_marker.text += 'autonomy: {}m\n'.format(operation.autonomy)
                 info_marker.text += 'priority: {}\n'.format(operation.priority)
-                info_marker.text += 'dt: {}s\n'.format(operation.dT)
-                info_marker.text += 't_mod: {}s\n'.format(operation.flight_plan_mod_t)
-                info_marker.text += 't_tracked: {}s\n'.format(operation.time_tracked)
-                info_marker.text += 't_horizon: {}s\n'.format(operation.time_horizon)
+                #info_marker.text += 'dt: {}s\n'.format(operation.dT)
+                #info_marker.text += 't_mod: {}s\n'.format(operation.flight_plan_mod_t)
+                #info_marker.text += 't_tracked: {}s\n'.format(operation.time_tracked)
+                #info_marker.text += 't_horizon: {}s\n'.format(operation.time_horizon)
                 info_marker.text += 'flight_geom: {}m\n'.format(operation.flight_geometry)
                 info_marker.text += 'operational_vol: {}m\n'.format(operation.operational_volume)
                 info_marker.text += 'conop: {}\n'.format(operation.conop)

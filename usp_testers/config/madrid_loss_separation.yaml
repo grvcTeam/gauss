@@ -3,7 +3,7 @@ operations_json: "madrid_loss_separation"
 geofences_json: "no_geofences"
 origin_latitude: 40.65974645776713
 origin_longitude: -3.59689676974471
-origin_ellipsoidal_height: 0.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
+origin_ellipsoidal_height: 675.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
 init_time: 0.0  # https://time.is/Unix_time_now
 time_horizon: 320
 dT: 20
