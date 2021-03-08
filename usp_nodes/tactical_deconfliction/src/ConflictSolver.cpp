@@ -716,21 +716,21 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
             // [3] Ruta que me manda devuelta a casa
-            temp_wp_list.waypoint_list.clear();
-            temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
-            temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp_list.maneuver_type = 3;
-            temp_wp_list.cost = pathDistance(temp_wp_list);
-            temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
-            temp_wp_list.uav_id = req.threat.uav_ids.front();
-            res.deconfliction_plans.push_back(temp_wp_list);
+            // temp_wp_list.waypoint_list.clear();
+            // temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+            // temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+            // temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+            // temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+            // temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+            // temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp_list.maneuver_type = 3;
+            // temp_wp_list.cost = pathDistance(temp_wp_list);
+            // temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
+            // temp_wp_list.uav_id = req.threat.uav_ids.front();
+            // res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";
             res.success = true;

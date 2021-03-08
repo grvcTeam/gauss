@@ -456,7 +456,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
             {
                 // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
                 if (msg_ids.response.geofence_id.size()>0){
-                    int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, msg_op.response.operation[i].estimated_trajectory.waypoints.at(j),max(minDist,msg_op.response.operation[i].operational_volume));
+                    int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, msg_op.response.operation[i].estimated_trajectory.waypoints.at(j),max(minDist,msg_op.response.operation[i].operational_volume/2));
                     if (geofence_intrusion>=0)
                     {
                         gauss_msgs::Threat threat;
@@ -472,7 +472,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
                     }
                 }
                 // TODO: Try to get the best value for minDistAux
-                double minDistAux = msg_op.response.operation.at(i).operational_volume;
+                double minDistAux = msg_op.response.operation.at(i).operational_volume/2;
 
                 for (auto traj2_wp : req.deconflicted_wp){
                     if (sqrt(pow(msg_op.response.operation[i].estimated_trajectory.waypoints.at(j).x-traj2_wp.x,2)+
@@ -611,7 +611,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             {
                 // para la trayectoria estimada comprobar que no estas dentro de un GEOFENCE
                 if (msg_ids.response.geofence_id.size()>0){
-                    int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, trajectory.waypoints.at(j),max(minDist,operation.operational_volume));
+                    int geofence_intrusion = checkGeofences(msg_geofence.response.geofences, trajectory.waypoints.at(j),max(minDist,operation.operational_volume/2));
                     if (geofence_intrusion>=0)
                     {
                         gauss_msgs::Threat threat;
@@ -653,7 +653,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                         {
                                             gauss_msgs::WaypointList trajectory2 = msg_op.response.operation.at(*it).estimated_trajectory;
 
-                                            double minDistAux=max(minDist,operation.operational_volume+msg_op.response.operation.at(*it).operational_volume);
+                                            double minDistAux=max(minDist,operation.operational_volume+msg_op.response.operation.at(*it).operational_volume/2);
 
 
                                             if (sqrt(pow(trajectory.waypoints.at(j).x-trajectory2.waypoints.at(*it_wp).x,2)+
