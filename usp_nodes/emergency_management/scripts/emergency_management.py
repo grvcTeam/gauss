@@ -446,7 +446,7 @@ class EmergencyManagement():
                 geofence.circle = geofence_base
                 geofence.cylinder_shape = True
                 geofence.start_time = rospy.Time().now()
-                geofence.end_time = rospy.Time().from_sec(rospy.Time.now().to_sec() + 500.0)
+                geofence.end_time = rospy.Time().from_sec(rospy.Time.now().to_sec() + 800.0)
     
                 # We write a geofence.
                 req = WriteGeofencesRequest()
