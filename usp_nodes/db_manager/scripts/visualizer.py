@@ -350,8 +350,8 @@ class VolumeViz(object):
         flight_geometry_marker_array = MarkerArray()
         operational_volume_marker_array = MarkerArray()
 
-        flight_geometry = operation.flight_geometry
-        operational_volume = operation.operational_volume
+        flight_geometry = operation.flight_geometry * 2 # Flight geometry is a radius, the marker needs a diameter 
+        operational_volume = operation.operational_volume * 2 # Operational volume is a radius, the marker needs a diameter
         waypointlist = operation.flight_plan.waypoints
         for i, (prev, current) in enumerate(zip(waypointlist, waypointlist[1:])):
             prev_point    = Point(prev.x,    prev.y,    prev.z)
