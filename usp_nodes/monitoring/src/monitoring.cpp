@@ -703,9 +703,9 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                 return;
             }
         }
-        // Delete old saved threats
-        if(threat_list_.size() > 0) cleanThreatList(threats_msg.request.threats);
     }
+    // Delete old saved threats
+    if(threat_list_.size() > 0) cleanThreatList(threats_msg.request.threats);
 }
 
 bool Monitoring::posIndicesAreInRange(int x, int y, int z, int t) {
