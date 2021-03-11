@@ -480,7 +480,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 k++;
             wp2 = traj2.waypoints.at(k);
             
-            double minDistAux = max(minDist_, conflictive_operations.at(0).operational_volume + conflictive_operations.at(1).operational_volume);
+            double minDistAux = max(minDist_ + conflictive_operations.at(0).operational_volume + conflictive_operations.at(1).operational_volume, conflictive_operations.at(0).operational_volume + conflictive_operations.at(1).operational_volume);
 
             double dist_vert = abs(wp2.z - wp1.z);
             double dist_hor = sqrt(pow(wp2.x - wp1.x, 2) + pow(wp2.y - wp1.y, 2));
@@ -682,7 +682,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume, polygon_test_output); 
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*1.1, polygon_test_output); 
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }
@@ -716,21 +716,21 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
             // [3] Ruta que me manda devuelta a casa
-            temp_wp_list.waypoint_list.clear();
-            temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
-            temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp_list.maneuver_type = 3;
-            temp_wp_list.cost = pathDistance(temp_wp_list);
-            temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
-            temp_wp_list.uav_id = req.threat.uav_ids.front();
-            res.deconfliction_plans.push_back(temp_wp_list);
+            // temp_wp_list.waypoint_list.clear();
+            // temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+            // temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+            // temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+            // temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+            // temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+            // temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp_list.maneuver_type = 3;
+            // temp_wp_list.cost = pathDistance(temp_wp_list);
+            // temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
+            // temp_wp_list.uav_id = req.threat.uav_ids.front();
+            // res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";
             res.success = true;
@@ -803,7 +803,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume, polygon_test_output);
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*1.1, polygon_test_output);
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }

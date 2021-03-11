@@ -45,7 +45,7 @@ class GaussPlugin(Plugin):
 
         # Do connections and stuff here. For complex plugins, consider
         # creating custom helper classes instead of QWidget
-        self.status_pub = rospy.Publisher('flight_status', RPSChangeFlightStatus, queue_size=1)
+        self.status_pub = rospy.Publisher('/gauss/flight', RPSChangeFlightStatus, queue_size=1)
         self.acceptance_pub = rospy.Publisher('/gauss/flightacceptance', RPSFlightPlanAccept, queue_size=1)
         rospy.Subscriber('/gauss/alternative_flight_plan', UTMAlternativeFlightPlan, self.alternative_flight_plan_callback)
         self.read_icao_service = rospy.ServiceProxy('/gauss/read_icao', ReadIcao)

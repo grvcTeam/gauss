@@ -126,7 +126,7 @@ bool DataBase::operationsFromJson(std::string _file_name) {
             } else {
                 operation.current_wp = item.value()["current_wp"].get<double>();
             }
-            operation.dT = item.value()["dT"].get<double>();
+            // operation.dT = item.value()["dT"].get<double>();
             operation.operational_volume = item.value()["operational_volume"].get<double>();
             if (item.value()["operational_volume"].get<double>() < item.value()["flight_geometry"].get<double>()) {
                 operation.flight_geometry = item.value()["operational_volume"].get<double>() * 0.8;
@@ -136,7 +136,7 @@ bool DataBase::operationsFromJson(std::string _file_name) {
             operation.frame = operation.FRAME_ROTOR;  // Check this parameter
             operation.icao_address = item.value()["icao_address"].get<std::string>();
             operation.priority = item.value()["priority"].get<double>();
-            operation.time_horizon = item.value()["time_horizon"].get<double>();
+            // operation.time_horizon = item.value()["time_horizon"].get<double>();
             operation.time_tracked = item.value()["time_tracked"].get<double>();
             gauss_msgs::WaypointList wp_list;
             if (item.value()["flight_plan"].front().size() == 0) {
