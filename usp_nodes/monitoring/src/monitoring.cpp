@@ -99,6 +99,12 @@ Monitoring::Monitoring()
     nh_.param("deltaY",dY,10.0);
     nh_.param("deltaZ",dZ,10.0);
 
+    double cell_diagonal = sqrt(pow(dX, 2) + pow(dY, 2) + pow(dZ, 2));
+
+    if (minDist > cell_diagonal){
+        ROS_ERROR("Safety distance (%.2f) can not be bigger than the diagonal of the 3D cell (%.2f). Check delta XYZ values and safety distance to fix it.", minDist, cell_diagonal);
+        minDist = cell_diagonal;
+    }
 
     // Initialization    
     // dT=1.0/rate;
