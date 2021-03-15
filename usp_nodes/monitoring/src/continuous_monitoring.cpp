@@ -252,7 +252,7 @@ CheckSegmentsLossResults checkUnifiedSegmentsLoss(Segment first, Segment second,
   return result;
 }
 
-CheckSegmentsLossResults checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold = 1.0) {
+CheckSegmentsLossResults checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold) {
   // print('checkSegmentsLoss:')
   // print(first.point_a)
   // print(first.point_b)
@@ -277,7 +277,7 @@ CheckSegmentsLossResults checkSegmentsLoss(const std::pair<Segment, Segment>& se
   return checkUnifiedSegmentsLoss(Segment(p_alpha1, p_beta1), Segment(p_alpha2, p_beta2), s_threshold);
 }
 
-void checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories) {
+void checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories, double s_threshold) {
     if (trajectories.first.waypoints.size() < 2) {
         // TODO: Warn and push the same point twice?
         ROS_ERROR("[Monitoring]: trajectory must contain more than 2 points, [%ld] found in first argument", trajectories.first.waypoints.size());
@@ -298,7 +298,11 @@ void checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs:
             printf("Second segment, j = %d\n", j);
             segments.second = Segment(trajectories.second.waypoints[j], trajectories.second.waypoints[j+1]);
             // std::cout << segments.second.point_a << "_____________\n" << segments.second.point_b << '\n';
-            checkSegmentsLoss(segments);
+            auto loss_check = checkSegmentsLoss(segments, s_threshold);
+            if (loss_check.threshold_is_violated) {
+                ROS_ERROR("Loss of separation!");
+                std::cout << loss_check << '\n';
+            }
         }
     }
 }
@@ -310,21 +314,7 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     // ros::NodeHandle np("~");
     ROS_INFO("[Monitoring] Started monitoring node!");
-
-    gauss_msgs::Waypoint a1, b1, a2, b2;
-    b1.x = 8;
-    b1.y = 6;
-    b1.stamp = ros::Time(10);
-    a2.y = 6;
-    b2.x = 8;
-    b2.stamp = ros::Time(10);
-    auto first  = Segment(a1, b1);
-    auto second = Segment(a2, b2);
-
-    double s_threshold = 1.0;  // TODO: param
-    std:: cout << checkSegmentsLoss(std::make_pair(first, second), s_threshold) << '\n';
-    return 0;
-
+    double s_threshold = 109000;  // TODO: param (330m)^2
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
@@ -376,7 +366,7 @@ int main(int argc, char **argv) {
             for (int j = i + 1; j < trajectories_count; j++){
                 printf("[%d, %d]\n", i, j);
                 trajectories.second = estimated_trajectories[j];
-                checkTrajectoriesLoss(trajectories);
+                checkTrajectoriesLoss(trajectories, s_threshold);
             }
         }
 
