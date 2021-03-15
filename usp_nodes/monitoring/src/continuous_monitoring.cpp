@@ -1,28 +1,290 @@
 #include <ros/ros.h>
+#include <geometry_msgs/Vector3.h>
+#include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
 
-struct Segment {
-    Segment() = default;
-    Segment(gauss_msgs::Waypoint a, gauss_msgs::Waypoint b): point_a(a), point_b(b) {}
-    gauss_msgs::Waypoint point_a;
-    gauss_msgs::Waypoint point_b;
-};
-
-void checkSegments(const std::pair<Segment, Segment>& segments) {
-    printf("Checking:\n");
-    std::cout << segments.first.point_a << "_____________\n" << segments.first.point_b << '\n';
-    printf("Against:\n");
-    std::cout << segments.second.point_a << "_____________\n" << segments.second.point_b << '\n';
-    printf("Done!\n\n");
+double clamp(double x, double min_x, double max_x) {
+  if (min_x > max_x) {
+    ROS_ERROR("min_x[%lf] > max_x[%lf], swapping!", min_x, max_x);
+    std::swap(min_x, max_x);
+  }
+  return std::max(std::min(x, max_x), min_x);
 }
 
-void checkTrajectories(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories) {
+double dot(const geometry_msgs::Vector3& u, const geometry_msgs::Vector3& v) {
+  return u.x*v.x + u.y*v.y + u.z*v.z;
+}
+
+double length(const geometry_msgs::Vector3& u) {
+  return sqrt(u.x*u.x + u.y*u.y + u.z*u.z);
+}
+
+// TODO: Use geometry_msgs/Point instead of Waypoint?
+geometry_msgs::Vector3 vector_from_point_to_point(const gauss_msgs::Waypoint& a, const gauss_msgs::Waypoint& b) {
+  geometry_msgs::Vector3 ab;
+  ab.x = b.x - a.x;
+  ab.y = b.y - a.y;
+  ab.z = b.z - a.z;
+  return ab;
+}
+
+// Signed Distance Fucntion from P to:
+// a sphere centered in C with radius R
+double sdSphere(const gauss_msgs::Waypoint& p, const gauss_msgs::Waypoint& c, double r) {
+  return length(vector_from_point_to_point(c, p)) - r;
+}
+
+// Signed Distance Fucntion from P to:
+// a segment (A,B) with some radius R
+double sdSegment(const gauss_msgs::Waypoint& p, const gauss_msgs::Waypoint& a, const gauss_msgs::Waypoint& b, double r = 0) {
+  geometry_msgs::Vector3 ap = vector_from_point_to_point(a, p);
+  geometry_msgs::Vector3 ab = vector_from_point_to_point(a, b);
+  double h = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0);
+  geometry_msgs::Vector3 aux;
+  aux.x = ap.x - ab.x * h;  // TODO: Use eigen?
+  aux.y = ap.y - ab.y * h;
+  aux.z = ap.z - ab.z * h;
+  return length(aux) - r;
+}
+
+struct Segment {
+  Segment() = default;
+  Segment(gauss_msgs::Waypoint a, gauss_msgs::Waypoint b) {
+    if (a == b) { ROS_WARN("a == b == [%lf, %lf, %lf, %lf]", a.x, a.y, a.z, a.stamp.toSec()); }
+    point_a = a;
+    point_b = b;
+    t_a = a.stamp.toSec();
+    t_b = b.stamp.toSec();
+    if (t_a >= t_b) { ROS_WARN("t_a[%lf] >= t_b[%lf]", t_a, t_b); }
+  }
+
+  gauss_msgs::Waypoint point_at_time(double t) const {
+    if (t < t_a) {
+      ROS_WARN("t[%lf] < t_a[%lf]", t, t_a);
+      return point_a;
+    }
+    if (t > t_b) {
+      ROS_WARN("t[%lf] > t_b[%lf]", t, t_b);
+      return point_b;
+    }
+    if (t_a == t_b) {
+      ROS_WARN("t_a == t_b == %lf", t_a);
+      return point_a;
+    }
+
+    double u = (t - t_a) / (t_b - t_a);
+    gauss_msgs::Waypoint point;
+    point.x = point_a.x * (1.0 - u) + point_b.x * u;
+    point.y = point_a.y * (1.0 - u) + point_b.y * u;
+    point.z = point_a.z * (1.0 - u) + point_b.z * u;
+    point.stamp.fromSec(t);
+    return point;
+  }
+
+  friend std::ostream& operator<< (std::ostream& out, const Segment& s);
+  gauss_msgs::Waypoint point_a;
+  gauss_msgs::Waypoint point_b;
+  double t_a = 0;
+  double t_b = 0;
+};
+
+std::ostream& operator<< (std::ostream& out, const Segment& s) {
+  out << "[(" << s.point_a << "); (" << s.point_b << ")]";
+  return out;
+}
+
+std::pair<geometry_msgs::Vector3, geometry_msgs::Vector3> delta(const Segment& first, const Segment& second) {
+  geometry_msgs::Vector3 delta_a;
+  delta_a.x = second.point_a.x - first.point_a.x;
+  delta_a.y = second.point_a.y - first.point_a.y;
+  delta_a.z = second.point_a.z - first.point_a.z;
+  geometry_msgs::Vector3 delta_b;
+  delta_b.x = second.point_b.x - first.point_b.x;
+  delta_b.y = second.point_b.y - first.point_b.y;
+  delta_b.z = second.point_b.z - first.point_b.z;
+  return std::make_pair(delta_a, delta_b);
+}
+
+double sq_distance(const Segment& first, const Segment& second, double u) {
+  if (u < 0) {
+    ROS_WARN("u[%lf] < 0, clamping!", u);
+    u = 0;
+  }
+
+  if (u > 1) {
+    ROS_WARN("u[%lf] > 1, clamping!", u);
+    u = 1;
+  }
+
+  auto d = delta(first, second);
+  double delta_x = d.first.x * (1 - u) + d.second.x * u;
+  double delta_y = d.first.y * (1 - u) + d.second.y * u;
+  double delta_z = d.first.z * (1 - u) + d.second.z * u;
+  return pow(delta_x, 2) + pow(delta_y, 2) + pow(delta_z, 2);
+}
+
+std::pair<double, double> quadratic_roots(double a, double b, double c) {
+  if ((a == 0) && (b == 0) && (c == 0)) {
+    ROS_WARN("a = b = c = 0, any number is a solution!");
+    return std::make_pair(std::nan(""), std::nan(""));
+  }
+  if ((a == 0) && (b == 0) && (c != 0)) {
+    ROS_WARN("a = b = 0, there is no solution!");
+    return std::make_pair(std::nan(""), std::nan(""));
+  }
+  if ((a == 0) && (b != 0)) {
+    ROS_WARN("a = 0, non quadratic!");
+    return std::make_pair(-c/b, -c/b);
+  }
+
+  float d = b*b - 4*a*c;
+  if (d < 0) {
+    ROS_WARN("d = [%lf], complex solutions!", d);
+    return std::make_pair(std::nan(""), std::nan(""));
+  }
+  double e = sqrt(d);
+  return std::make_pair((-b - e)/(2*a), (-b + e)/(2*a));
+}
+
+struct CheckSegmentsLossResults {
+  
+  CheckSegmentsLossResults(const Segment& first, const Segment& second): first(first), second(second) {}
+
+  friend std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResults& r);
+  Segment first;
+  Segment second;
+  double t_min = std::nan("");
+  double s_min = std::nan("");
+  double t_crossing_0 = std::nan("");
+  double t_crossing_1 = std::nan("");
+  bool threshold_is_violated = false;
+};
+
+std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResults& r) {
+    out << "first = " << r.first << '\n';
+    out << "second = " << r.second << '\n';
+    out << "t_min[s] = " << r.t_min << '\n';
+    out << "s_min[m2] = " << r.s_min << '\n';
+    out << "t_crossing_0[s] = " << r.t_crossing_0 << '\n';
+    out << "t_crossing_1[s] = " << r.t_crossing_1 << '\n';
+    out << "threshold_is_violated = " << r.threshold_is_violated << '\n';
+    return out;
+}
+
+CheckSegmentsLossResults checkUnifiedSegmentsLoss(Segment first, Segment second, double s_threshold) {
+  // print('checkUnifiedSegmentsLoss:')
+  // print(first.point_a)
+  // print(first.point_b)
+  // print('___________')
+  // print(second.point_a)
+  // print(second.point_b)
+  auto d = delta(first, second);
+  // print(d)
+  double C_x = pow(d.first.x, 2);
+  double C_y = pow(d.first.y, 2);
+  double C_z = pow(d.first.z, 2);
+  double B_x = 2 * (d.first.x * d.second.x - C_x);
+  double B_y = 2 * (d.first.y * d.second.y - C_y);
+  double B_z = 2 * (d.first.z * d.second.z - C_z);
+  double A_x = pow(d.second.x - d.first.x, 2);
+  double A_y = pow(d.second.y - d.first.y, 2);
+  double A_z = pow(d.second.z - d.first.z, 2);
+  double A = A_x + A_y + A_z;
+  double B = B_x + B_y + B_z;
+  double C = C_x + C_y + C_z;
+
+  double u_min, t_min, s_min;
+  if (A == 0) {
+    ROS_WARN("A = 0");
+    if (B >= 0) {
+      u_min = 0;
+      t_min = first.t_a;
+      s_min = C;
+    } else {
+      u_min = 1;
+      t_min = first.t_b;
+      s_min = B+C;
+    }
+
+  } else {  // A != 0
+    double u_star = -0.5 * B / A;
+    double t_star = first.t_a * (1-u_star) + first.t_b * u_star;
+    // print(u_star)
+    // print(t_star)
+    // print(sq_distance(first, second, u_star))
+    u_min = clamp(u_star, 0, 1);
+    t_min = first.t_a * (1-u_min) + first.t_b * u_min;
+    s_min = sq_distance(first, second, u_min);
+    // print(u_min)
+    // print(t_min)
+    // print(s_min)
+  }
+  auto result = CheckSegmentsLossResults(first, second);
+  result.t_min = t_min;
+  result.s_min = s_min;
+
+  if (s_min > s_threshold) {
+    ROS_INFO("s_min[%lf] > s_threshold[%lf]", s_min, s_threshold);
+    result.threshold_is_violated = false;
+    return result;
+  }
+
+  auto u_bar = quadratic_roots(A, B, C - s_threshold);
+  double t_bar_0 = first.t_a * (1-u_bar.first) + first.t_b * u_bar.first;
+  double t_bar_1 = first.t_a * (1-u_bar.second) + first.t_b * u_bar.second;
+  // print(u_bar)
+  // print(t_bar_0, t_bar_1)
+  double u_crossing_0 = clamp(u_bar.first, 0, 1);
+  double u_crossing_1 = clamp(u_bar.second, 0, 1);
+  double t_crossing_0 = first.t_a * (1-u_crossing_0) + first.t_b * u_crossing_0;
+  double t_crossing_1 = first.t_a * (1-u_crossing_1) + first.t_b * u_crossing_1;
+  // print(u_crossing_0, u_crossing_1)
+  // print(t_crossing_0, t_crossing_1)
+  auto first_in_conflict = Segment(first.point_at_time(t_crossing_0), first.point_at_time(t_crossing_1));
+  auto second_in_conflict = Segment(second.point_at_time(t_crossing_0), second.point_at_time(t_crossing_1));
+
+  result.first = first_in_conflict;
+  result.second = second_in_conflict;
+  result.t_crossing_0 = t_crossing_0;
+  result.t_crossing_1 = t_crossing_1;
+  result.threshold_is_violated = true;
+  return result;
+}
+
+CheckSegmentsLossResults checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold = 1.0) {
+  // print('checkSegmentsLoss:')
+  // print(first.point_a)
+  // print(first.point_b)
+  // print('___________')
+  // print(second.point_a)
+  // print(second.point_b)
+  double t_a1 = segments.first.t_a;
+  double t_b1 = segments.first.t_b;
+  double t_a2 = segments.second.t_a;
+  double t_b2 = segments.second.t_b;
+  double t_alpha = std::max(t_a1, t_a2);
+  double t_beta  = std::min(t_b1, t_b2);
+  if (t_alpha > t_beta) {
+    ROS_INFO("t_alpha[%lf] > t_beta[%lf]", t_alpha, t_beta);
+    return CheckSegmentsLossResults(segments.first, segments.second);
+  }
+
+  auto p_alpha1 = segments.first.point_at_time(t_alpha);
+  auto p_beta1 = segments.first.point_at_time(t_beta);
+  auto p_alpha2 = segments.second.point_at_time(t_alpha);
+  auto p_beta2 = segments.second.point_at_time(t_beta);
+  return checkUnifiedSegmentsLoss(Segment(p_alpha1, p_beta1), Segment(p_alpha2, p_beta2), s_threshold);
+}
+
+void checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories) {
     if (trajectories.first.waypoints.size() < 2) {
+        // TODO: Warn and push the same point twice?
         ROS_ERROR("[Monitoring]: trajectory must contain more than 2 points, [%ld] found in first argument", trajectories.first.waypoints.size());
         return;
     }
     if (trajectories.second.waypoints.size() < 2) {
+        // TODO: Warn and push the same point twice?
         ROS_ERROR("[Monitoring]: trajectory must contain more than 2 points, [%ld] found in second argument", trajectories.second.waypoints.size());
         return;
     }
@@ -36,7 +298,7 @@ void checkTrajectories(const std::pair<gauss_msgs::WaypointList, gauss_msgs::Way
             printf("Second segment, j = %d\n", j);
             segments.second = Segment(trajectories.second.waypoints[j], trajectories.second.waypoints[j+1]);
             // std::cout << segments.second.point_a << "_____________\n" << segments.second.point_b << '\n';
-            checkSegments(segments);
+            checkSegmentsLoss(segments);
         }
     }
 }
@@ -48,6 +310,21 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     // ros::NodeHandle np("~");
     ROS_INFO("[Monitoring] Started monitoring node!");
+
+    gauss_msgs::Waypoint a1, b1, a2, b2;
+    b1.x = 8;
+    b1.y = 6;
+    b1.stamp = ros::Time(10);
+    a2.y = 6;
+    b2.x = 8;
+    b2.stamp = ros::Time(10);
+    auto first  = Segment(a1, b1);
+    auto second = Segment(a2, b2);
+
+    double s_threshold = 1.0;  // TODO: param
+    std:: cout << checkSegmentsLoss(std::make_pair(first, second), s_threshold) << '\n';
+    return 0;
+
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
@@ -99,7 +376,7 @@ int main(int argc, char **argv) {
             for (int j = i + 1; j < trajectories_count; j++){
                 printf("[%d, %d]\n", i, j);
                 trajectories.second = estimated_trajectories[j];
-                checkTrajectories(trajectories);
+                checkTrajectoriesLoss(trajectories);
             }
         }
 

@@ -1,14 +1,13 @@
 #!/usr/bin/python
 import math
+import copy
 import rospy
 from geometry_msgs.msg import Vector3
 from gauss_msgs.msg import Waypoint
 
 def clamp(x, min_x, max_x):
   if min_x > max_x:
-    print('min_x[{}] > max_x[{}]'.format(min_x, max_x))
-    # TODO
-
+    raise ValueError('min_x[{}] > max_x[{}]'.format(min_x, max_x))
   return max(min(x, max_x), min_x)
 
 def dot(u, v):
@@ -24,38 +23,30 @@ def vector_from_point_to_point(a, b):
   ab.z = b.z - a.z
   return ab
 
-# float sdSphere( vec3 p, float s )
-# {
-#   return length(p)-s;
-# }
+# Signed Distance Fucntion from P to:
+# a sphere centered in C with radius R
 def sdSphere(p, c, r):
   cp = vector_from_point_to_point(c, p)
   return length(cp) - r
 
-# float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
-# {
-#   vec3 pa = p - a, ba = b - a;
-#   float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
-#   return length( pa - ba*h ) - r;
-# }
 # Signed Distance Fucntion from P to:
 # a segment (A,B) with some radius R
-def sdCapsule(p, a, b, r):
+def sdSegment(p, a, b, r = 0):
   ap = vector_from_point_to_point(a, p)
   ab = vector_from_point_to_point(a, b)
-  h = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0 )
+  h = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0)
   return length(ap - ab*h) - r
 
 class Segment(object):
   def __init__(self, a, b):
     self.point_a = a
     self.point_b = b
-    # TODO: What if a == b?
+    if self.point_a == self.point_b:
+      print('a == b == {}'.format(self.point_a))
     self.t_a = a.stamp.to_sec()
     self.t_b = b.stamp.to_sec()
     if self.t_a >= self.t_b:
       print('t_a[{}] >= t_b[{}]'.format(self.t_a, self.t_b))
-      # TODO
 
   def __str__(self):
     result = ''
@@ -65,19 +56,20 @@ class Segment(object):
   def point_at_time(self, t):
     if t < self.t_a:
       print('t[{}] < t_a[{}]'.format(t, self.t_a))
-      # TODO
+      return self.point_a
     if t > self.t_b:
       print('t[{}] > t_b[{}]'.format(t, self.t_b))
-      # TODO
+      return self.point_b
+    if self.t_a == self.t_b:
+      print('t_a == t_b == {}'.format(self.t_a))
+      return self.point_a
 
-    # TODO: division by zero: is_valid flag?
     u = (t - self.t_a) / (self.t_b - self.t_a)
     point = Waypoint()
     point.x = self.point_a.x * (1.0 - u) + self.point_b.x * u
     point.y = self.point_a.y * (1.0 - u) + self.point_b.y * u
     point.z = self.point_a.z * (1.0 - u) + self.point_b.z * u
     point.stamp = rospy.Time.from_sec(t)
-    # TODO: use mandatory as is_valid?
     return point
 
 def delta(first, second):
@@ -93,12 +85,12 @@ def delta(first, second):
 
 def sq_distance(first, second, u):
     if u < 0:
-      print('u[{}] < 0'.format(u))
-      # TODO
+      print('u[{}] < 0, clamping!'.format(u))
+      u = 0
 
     if u > 1:
-      print('u[{}] > 1'.format(u))
-      # TODO
+      print('u[{}] > 1, clamping!'.format(u))
+      u = 1
 
     d = delta(first, second)
     delta_x = d[0].x * (1 - u) + d[1].x * u
@@ -107,9 +99,15 @@ def sq_distance(first, second, u):
     return delta_x**2 + delta_y**2 + delta_z**2
 
 def quadratic_roots(a, b, c):  
-  if (a == 0):
-    print('a = 0, non quadratic!')
+  if (a == 0) and (b == 0) and (c == 0):
+    print('a = b = c = 0, any number is a solution!')
     return (float('nan'), float('nan'))
+  if (a == 0) and (b == 0) and (c != 0):
+    print('a = b = 0, there is no solution!')
+    return (float('nan'), float('nan')) 
+  if (a == 0) and (b != 0):
+    print('a = 0, non quadratic!')
+    return (-c/b, -c/b)
 
   d = b*b - 4*a*c
   if d < 0:
@@ -119,10 +117,10 @@ def quadratic_roots(a, b, c):
   e = math.sqrt(d)
   return ((-b - e)/(2*a), (-b + e)/(2*a))
 
-class CheckSegmentsResults(object):
+class CheckSegmentsLossResults(object):
   def __init__(self, first, second):
-    self.first = first
-    self.second = second
+    self.first = copy.deepcopy(first)
+    self.second = copy.deepcopy(second)
     self.t_min = float('nan')
     self.s_min = float('nan')
     self.t_crossing_0 = float('nan')
@@ -140,8 +138,8 @@ class CheckSegmentsResults(object):
     result += 'threshold_is_violated = {}\n'.format(self.threshold_is_violated)
     return result
 
-def checkUnifiedSegments(first, second, s_threshold = 0):
-  # print('checkUnifiedSegments:')
+def checkUnifiedSegmentsLoss(first, second, s_threshold):
+  # print('checkUnifiedSegmentsLoss:')
   # print(first.point_a)
   # print(first.point_b)
   # print('___________')
@@ -149,25 +147,29 @@ def checkUnifiedSegments(first, second, s_threshold = 0):
   # print(second.point_b)
   d = delta(first, second)
   # print(d)
-  A_x = (d[1].x - d[0].x) ** 2
-  A_y = (d[1].y - d[0].y) ** 2
-  A_z = (d[1].z - d[0].z) ** 2
-  B_x = 2 * (d[0].x * d[1].x - d[0].x ** 2)
-  B_y = 2 * (d[0].y * d[1].y - d[0].y ** 2)
-  B_z = 2 * (d[0].z * d[1].z - d[0].z ** 2)
-  # TODO: reuse C_* in B_* and A_*?
   C_x = d[0].x ** 2
   C_y = d[0].y ** 2
   C_z = d[0].z ** 2
+  B_x = 2 * (d[0].x * d[1].x - C_x)
+  B_y = 2 * (d[0].y * d[1].y - C_y)
+  B_z = 2 * (d[0].z * d[1].z - C_z)
+  A_x = (d[1].x - d[0].x) ** 2
+  A_y = (d[1].y - d[0].y) ** 2
+  A_z = (d[1].z - d[0].z) ** 2
   A = A_x + A_y + A_z
   B = B_x + B_y + B_z
   C = C_x + C_y + C_z
 
   if A == 0:
     print('A = 0')
-    # TODO: t_min?
-    s_min = min(C, B+C)
-    # print(s_min)
+    if B >= 0:
+      u_min = 0
+      t_min = first.t_a
+      s_min = C
+    else:
+      u_min = 1
+      t_min = first.t_b
+      s_min = B+C
   else:
     u_star = -0.5 * B / A
     t_star = first.t_a * (1-u_star) + first.t_b * u_star
@@ -181,7 +183,7 @@ def checkUnifiedSegments(first, second, s_threshold = 0):
     # print(t_min)
     # print(s_min)
 
-  result = CheckSegmentsResults(first, second)
+  result = CheckSegmentsLossResults(first, second)
   result.t_min = t_min
   result.s_min = s_min
 
@@ -196,7 +198,6 @@ def checkUnifiedSegments(first, second, s_threshold = 0):
   t_bar_1 = first.t_a * (1-u_bar[1]) + first.t_b * u_bar[1]
   # print(u_bar)
   # print(t_bar_0, t_bar_1)
-  # TODO: Calculate t_crossing and new segments to return
   u_crossing_0 = clamp(u_bar[0], 0, 1)
   u_crossing_1 = clamp(u_bar[1], 0, 1)
   t_crossing_0 = first.t_a * (1-u_crossing_0) + first.t_b * u_crossing_0
@@ -213,8 +214,8 @@ def checkUnifiedSegments(first, second, s_threshold = 0):
   result.threshold_is_violated = True
   return result
 
-def checkSegments(first, second):
-  # print('checkSegments:')
+def checkSegmentsLoss(first, second, s_threshold):
+  # print('checkSegmentsLoss:')
   # print(first.point_a)
   # print(first.point_b)
   # print('___________')
@@ -229,13 +230,13 @@ def checkSegments(first, second):
   if t_alpha > t_beta:
     print('t_alpha[{}] > t_beta[{}]'.format(t_alpha, t_beta))
     # TODO
-    return CheckSegmentsResults(first, second)
+    return CheckSegmentsLossResults(first, second)
 
   p_alpha1 = first.point_at_time(t_alpha)
   p_beta1 = first.point_at_time(t_beta)
   p_alpha2 = second.point_at_time(t_alpha)
   p_beta2 = second.point_at_time(t_beta)
-  return checkUnifiedSegments(Segment(a=p_alpha1, b=p_beta1), Segment(a=p_alpha2, b=p_beta2), 1.0)
+  return checkUnifiedSegmentsLoss(Segment(a=p_alpha1, b=p_beta1), Segment(a=p_alpha2, b=p_beta2), s_threshold)
 
 def main():
   first  = Segment(Waypoint(x = 0, y = 0, z = 0, stamp = rospy.Time(0)), Waypoint(x = 8, y = 6, z = 0, stamp = rospy.Time(10)))
@@ -243,8 +244,8 @@ def main():
   # first  = Segment(Waypoint(x = 0, y = 5, z = 0, stamp = rospy.Time(0)), Waypoint(x = 8, y = 6, z = 0, stamp = rospy.Time(10)))
   # second = Segment(Waypoint(x = 0, y = 0, z = 0, stamp = rospy.Time(10)), Waypoint(x = 8, y = 0, z = 0, stamp = rospy.Time(12)))
 
-  # print(first.point_at_time(0.0))
-  print(checkSegments(first, second))
+  s_threshold = 1.0  # TODO: param
+  print(checkSegmentsLoss(first, second, s_threshold))
 
 if __name__ == '__main__':
   try:
