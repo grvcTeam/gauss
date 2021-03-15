@@ -1222,6 +1222,7 @@ void Tracking::main()
     int counter = 0;
     while(pnh.ok())
     {
+        double start_computational_time = ros::Time::now().toSec();
         candidates_list_mutex_.lock();
         bool new_operations_to_download = false;
         for(auto it=candidates_.begin(); it!=candidates_.end(); ++it)
@@ -1291,6 +1292,7 @@ void Tracking::main()
             counter = 0;
             this->writeTrackingInfoToDatabase();
         }
+        // ROS_INFO("[Tracking] Computational time: %0.4f", ros::Time::now().toSec() - start_computational_time);
         rate.sleep();
         //std::cout << "Cycle time: " << rate.cycleTime() << std::endl;
     }

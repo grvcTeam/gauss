@@ -512,7 +512,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     int geofeces;
 
     // Ask for number of missions and geofences
-
+    double start_computational_time = ros::Time::now().toSec();
     gauss_msgs::ReadIcao msg_ids;
     if (!(read_icao_client_.call(msg_ids)) || !(msg_ids.response.success))
     {
@@ -703,6 +703,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         if (new_threats_msgs.request.threats.size() > 0){
             new_threats_msgs = fillConflictiveFields(new_threats_msgs, msg_op, msg_geofence);
             // Call threats service
+            // ROS_INFO("[Monitoring] Computational time: %0.4f", ros::Time::now().toSec() - start_computational_time);
             if(!(threats_client_.call(new_threats_msgs)) || !(new_threats_msgs.response.success))
             {
                 ROS_ERROR("Failed to send alert message");

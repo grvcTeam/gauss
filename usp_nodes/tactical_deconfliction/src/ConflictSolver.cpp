@@ -456,6 +456,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
     ROS_INFO("[Deconfliction] New conflict received! [%d %d]", req.threat.threat_id, req.threat.threat_type);
     //Deconfliction
     if (req.tactical) {
+        double start_computational_time = ros::Time::now().toSec();
         gauss_msgs::Threat conflict;
         conflict = req.threat;
         std::vector<gauss_msgs::ConflictiveOperation> conflictive_operations;
@@ -978,6 +979,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";
             res.success = true;
         }
+        // ROS_INFO("[Tactical] Computational time: %0.4f", ros::Time::now().toSec() - start_computational_time);
     }
     int cont = 1;
     for (auto plan : res.deconfliction_plans){
