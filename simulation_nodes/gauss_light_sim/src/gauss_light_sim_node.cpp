@@ -258,8 +258,8 @@ class RPAStateInfoWrapper {
         } else if ((param_name == "val") && (param_type == "float")) {
             data.val = yaml_change["value"].as<float>();
 
-        } else if ((param_name == "solution_mode") && (param_type == "string")) {
-            data.solution_mode = yaml_change["value"].as<std::string>();
+        } else if ((param_name == "solution_mode") && (param_type == "int")) {
+            data.solution_mode = yaml_change["value"].as<int>();
 
         } else if ((param_name == "jamming") && (param_type == "float")) {
             data.jamming = yaml_change["value"].as<float>();
