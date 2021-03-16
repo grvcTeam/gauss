@@ -1,0 +1,23 @@
+uint32 icao
+float64 latitude
+float64 longitude
+float32 altitude
+float32 yaw
+float32 pitch
+float32 roll
+float32 groundspeed
+float32 covariance_h
+float32 covariance_v
+float32 hpl
+float32 hal
+float32 vpl
+float32 val
+string solution_mode
+uint64 timestamp # UTC in ms
+float32 jamming
+float32 spoofing
+bool anomalous_clock_drift
+bool anomalous_pos_drift
+bool integrity_alarm
+float32 signal_noise_ratio
+float32 received_power

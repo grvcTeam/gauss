@@ -1,0 +1,161 @@
+{
+    "operations": [
+        {
+            "uav_id": 0,
+			"icao_address": "3434000",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 0,
+			"is_started": false,
+			"current_wp": 1,
+            "flight_plan" : 
+            {
+                "waypoints" : 
+                [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 20.0,
+                        "x" : 376.01719644799016,
+                        "y" : 99.651174231081669,
+                        "z" : 69.988151642162933
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 79.0,
+                        "x" : 469.984726825785,
+                        "y" : -71.471602158218843,
+                        "z" : 69.98230754587982
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 99.0,
+                        "x" : 416.96828273272376,
+                        "y" : -88.59487546049516,
+                        "z" : 69.985773148843592
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 157.0,
+                        "x" : 323.23109404291756,
+                        "y" : 82.9359487344597,
+                        "z" : 69.991280857874585
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 179.0,
+                        "x" : 261.21816494891078,
+                        "y" : 63.157874707126425,
+                        "z" : 69.99434507359237
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 237.0,
+                        "x" : 344.86974691875122,
+                        "y" : -110.62655539791318,
+                        "z" : 69.989727971201916
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 260.0,
+                        "x" : 284.20673498842802,
+                        "y" : -129.34820981551212,
+                        "z" : 69.992362228655836
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 319.0,
+                        "x" : 198.48207686908643,
+                        "y" : 45.69949654117373,
+                        "z" : 69.996752011356818
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 384.0,
+                        "x" : -11.354088897537128,
+                        "y" : -19.963842860753974,
+                        "z" : 69.999958588322798
+                    }
+                ]
+            },
+            "dT": 20.0,
+			"time_tracked": 10,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 320,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 0,
+                        "x" : -14.588147089974557,
+                        "y" : -22.691585716874354,
+                        "z" : 0.999942877249225
+                    }
+				]
+			},
+			"flight_geometry": 10.0,
+			"operational_volume": 15.0,
+			"conop": "Precision Agriculture"
+        },
+        {
+            "uav_id": 1,
+			"icao_address": "3434009",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 1,
+			"is_started": false,
+			"current_wp": 1,
+            "flight_plan" : 
+            {
+                "waypoints" : 
+                [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 0.0,
+                        "x" : -3558.9505176303023,
+                        "y" : 9902.5886534131605,
+                        "z" : 391.30292762420322
+                    },
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 373.0,
+                        "x" : 300.14456423102757,
+                        "y" : -543.39785163885369,
+                        "z" : 399.96974512978517
+                    }
+                ]
+            },
+            "dT": 20.0,
+			"time_tracked": 10,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 320,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 0,
+                        "x" : 127.9183398084007,
+                        "y" : -41.52745588328446,
+                        "z" : 0.99858364132865
+                    }
+				]
+			},
+			"flight_geometry": 10.0,
+			"operational_volume": 15.0,
+			"conop": "Long Forest Surveillance"
+        }
+    ]
+}

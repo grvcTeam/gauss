@@ -21,8 +21,7 @@
 #include <geometry_msgs/Pose.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
-#include <upat_follower/generator.h>
-#include <tactical_deconfliction/path_planner.h>
+#include <path_planner.h>
 
 #include <Eigen/Eigen>
 
@@ -36,6 +35,11 @@ class PathFinder {
     ~PathFinder();
 
     nav_msgs::Path findNewPath();
+    int nearestNeighbourIndex(std::vector<double> &_x, double &_value);
+    std::vector<double> interpWaypointList(std::vector<double> &_list_pose_axis, int _amount_of_points);
+    std::vector<double> linealInterp1(std::vector<double> &_x, std::vector<double> &_y, std::vector<double> &_x_new);
+    nav_msgs::Path generatePath(nav_msgs::Path &_init_path, int _generator_mode = 0, double _d_between_wps = 0.01);
+
 
    private:
     // Callbacks

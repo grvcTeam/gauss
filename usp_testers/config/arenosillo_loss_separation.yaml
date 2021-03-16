@@ -1,0 +1,27 @@
+# Old light_sim.launch
+operations_json: "arenosillo_loss_separation"
+geofences_json: "no_geofences"
+origin_latitude: 40.65974645776713
+origin_longitude: -3.59689676974471
+origin_ellipsoidal_height: 0.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
+init_time: 0.0  # https://time.is/Unix_time_now
+time_horizon: 90
+dT: 5
+minX: -400
+minY: 0
+minZ: 0
+maxX: 0
+maxY: 400
+maxZ: 300
+# deltaX: 10.0
+# deltaY: 10.0
+# deltaZ: 400.0
+safetyDistance: 20
+
+simulation:
+  auto_start:
+    - {icao: 11259137, delay: 8.0}
+    - {icao: 11259138, delay: 8.0}
+
+  # change_param:
+  #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}

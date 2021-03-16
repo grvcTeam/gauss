@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(tactical_deconfliction)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++11 -g3)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   std_msgs
-  upat_follower
+  path_planner
 )
 find_package(Eigen3 REQUIRED)
 
@@ -111,7 +111,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES tactical_deconfliction
- CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs upat_follower
+ CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs path_planner
  DEPENDS EIGEN3
 )
 
@@ -146,11 +146,11 @@ add_executable(ConflictSolver src/ConflictSolver.cpp)
 target_link_libraries(ConflictSolver path_finder ${catkin_LIBRARIES})
 add_dependencies(ConflictSolver ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
-add_library(path_planner src/path_planner.cpp)
-add_dependencies(path_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_library(path_planner src/path_planner.cpp)
+# add_dependencies(path_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_library(path_finder src/path_finder.cpp)
-target_link_libraries(path_finder path_planner ${catkin_LIBRARIES} ${PYTHON_LIBRARIES}) #pylib matplotlib
+target_link_libraries(path_finder ${catkin_LIBRARIES} ${PYTHON_LIBRARIES}) #pylib matplotlib
 add_dependencies(path_finder ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 

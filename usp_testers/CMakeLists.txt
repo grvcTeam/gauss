@@ -192,9 +192,13 @@ include_directories(
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
-add_executable(prueba src/prueba.cpp)
-target_link_libraries(prueba ${catkin_LIBRARIES})
-add_dependencies(prueba ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+add_executable(solve_geofence src/solve_geofence.cpp)
+target_link_libraries(solve_geofence ${catkin_LIBRARIES})
+add_dependencies(solve_geofence ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
+add_executable(solve_loss_of_separation src/solve_loss_of_separation.cpp)
+target_link_libraries(solve_loss_of_separation ${catkin_LIBRARIES})
+add_dependencies(solve_loss_of_separation ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 #############
 ## Testing ##

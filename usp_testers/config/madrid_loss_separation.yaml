@@ -1,0 +1,27 @@
+# Old madrid_large_light_sim.launch
+operations_json: "madrid_loss_separation"
+geofences_json: "no_geofences"
+origin_latitude: 40.65974645776713
+origin_longitude: -3.59689676974471
+origin_ellipsoidal_height: 0.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
+init_time: 0.0  # https://time.is/Unix_time_now
+time_horizon: 380
+dT: 20
+minX: -4000
+minY: -600
+minZ: 0
+maxX: 900
+maxY: 10000
+maxZ: 500
+deltaX: 100.0
+deltaY: 100.0
+deltaZ: 500.0
+safetyDistance: 350
+
+simulation:
+  auto_start:
+    - {icao: 3434009, delay: 2.0}
+    - {icao: 3434000, delay: 20.0}
+
+  # change_param:
+  #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}

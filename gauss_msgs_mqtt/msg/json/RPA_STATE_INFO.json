@@ -1,0 +1,27 @@
+{    
+	"icao": ,
+	"latitude": ,
+	"longitude": ,
+	"altitude": ,		
+	"yaw": ,
+	"pitch": ,
+	"roll": ,
+	"groundspeed": ,					
+	"covariance_h": ,					
+	"covariance_v": ,
+	"hpl": ,
+	"hal": ,
+	"hpe"; ,
+	"vpl": ,
+	"val": ,
+	"vpe": ,					
+	"solution_mode": ,  				 					
+	"timestamp": ,					
+	"jamming": ,					
+	"spoofing": ,
+	"anomalous_clock_drift": ,					  
+	"anomalous_pos_drift": , 
+	"signal_noise_ratio": , 
+	"received_power":  
+}
+

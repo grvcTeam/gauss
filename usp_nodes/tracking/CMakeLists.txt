@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   std_msgs
+  geodesy
 )
 find_package(Eigen3 REQUIRED)
 
@@ -108,7 +109,7 @@ find_package(Eigen3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+ INCLUDE_DIRS include
  LIBRARIES usp_nodes
  CATKIN_DEPENDS gauss_msgs roscpp rospy geometry_msgs nav_msgs std_msgs
  DEPENDS EIGEN3
@@ -121,7 +122,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-#  include
+ include
  ${catkin_INCLUDE_DIRS}
  ${EIGEN3_INCLUDE_DIR}
 )
@@ -141,7 +142,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/usp_nodes_node.cpp)
 
-add_executable(tracking src/tracking.cpp)
+add_executable(tracking src/tracking.cpp src/target_tracker.cpp)
 target_link_libraries(tracking ${catkin_LIBRARIES})
 add_dependencies(tracking ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 

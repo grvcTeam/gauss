@@ -1,0 +1,9 @@
+int8 uav_id	
+int32 current_wp
+float64 operational_volume
+Waypoint actual_wp
+WaypointList flight_plan
+WaypointList flight_plan_updated
+WaypointList landing_spots
+WaypointList estimated_trajectory
+
