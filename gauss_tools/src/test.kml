@@ -1,155 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
 <Document>
-	<name>GAUSS_Loring_geo</name>
+	<name>Loring_conflict Use case.kml</name>
 	<open>1</open>
-	<gx:CascadingStyle kml:id="__managed_style_22F04BA549193292EEE5">
-		<Style>
-			<IconStyle>
-				<scale>1.2</scale>
-				<Icon>
-					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
-				</Icon>
-				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
-			</IconStyle>
-			<LabelStyle>
-			</LabelStyle>
-			<LineStyle>
-				<color>ff2dc0fb</color>
-				<width>4.8</width>
-			</LineStyle>
-			<PolyStyle>
-				<color>40ffffff</color>
-			</PolyStyle>
-			<BalloonStyle>
-				<displayMode>hide</displayMode>
-			</BalloonStyle>
-		</Style>
-	</gx:CascadingStyle>
-	<gx:CascadingStyle kml:id="__managed_style_20F8756251193292EEE4">
-		<Style>
-			<IconStyle>
-				<scale>1.2</scale>
-				<Icon>
-					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
-				</Icon>
-				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
-			</IconStyle>
-			<LabelStyle>
-			</LabelStyle>
-			<LineStyle>
-				<width>6</width>
-			</LineStyle>
-			<PolyStyle>
-				<color>40ffffff</color>
-			</PolyStyle>
-			<BalloonStyle>
-				<displayMode>hide</displayMode>
-			</BalloonStyle>
-		</Style>
-	</gx:CascadingStyle>
-	<gx:CascadingStyle kml:id="__managed_style_193AA2C648193292EEE4">
-		<Style>
-			<IconStyle>
-				<Icon>
-					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
-				</Icon>
-				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
-			</IconStyle>
-			<LabelStyle>
-			</LabelStyle>
-			<LineStyle>
-				<width>4</width>
-			</LineStyle>
-			<PolyStyle>
-				<color>40ffffff</color>
-			</PolyStyle>
-			<BalloonStyle>
-				<displayMode>hide</displayMode>
-			</BalloonStyle>
-		</Style>
-	</gx:CascadingStyle>
-	<gx:CascadingStyle kml:id="__managed_style_1D74C3F651193292EEE5">
-		<Style>
-			<IconStyle>
-				<Icon>
-					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
-				</Icon>
-				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
-			</IconStyle>
-			<LabelStyle>
-			</LabelStyle>
-			<LineStyle>
-				<color>ff2dc0fb</color>
-				<width>3.2</width>
-			</LineStyle>
-			<PolyStyle>
-				<color>40ffffff</color>
-			</PolyStyle>
-			<BalloonStyle>
-				<displayMode>hide</displayMode>
-			</BalloonStyle>
-		</Style>
-	</gx:CascadingStyle>
-	<StyleMap id="__managed_style_091F55961E193292EEE5">
+	<StyleMap id="inline4">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#__managed_style_1D74C3F651193292EEE5</styleUrl>
+			<styleUrl>#inline0</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#__managed_style_22F04BA549193292EEE5</styleUrl>
+			<styleUrl>#inline1</styleUrl>
 		</Pair>
 	</StyleMap>
-	<StyleMap id="__managed_style_05AF36ECFE193292EEE4">
+	<Style id="inline0">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline1">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline2">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="inline">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#__managed_style_193AA2C648193292EEE4</styleUrl>
+			<styleUrl>#inline2</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#__managed_style_20F8756251193292EEE4</styleUrl>
+			<styleUrl>#inline3</styleUrl>
 		</Pair>
 	</StyleMap>
-	<Placemark id="05A9AB1DF418E59704B5">
-		<name>op_1.1</name>
-		<LookAt>
-			<longitude>-3.5945899</longitude>
-			<latitude>40.659653</latitude>
-			<altitude>624.4046606000001</altitude>
-			<heading>-1.842813198422051</heading>
-			<tilt>0.5372115558843042</tilt>
-			<gx:fovy>35</gx:fovy>
-			<range>592.3341461</range>
-			<altitudeMode>absolute</altitudeMode>
-		</LookAt>
-		<styleUrl>#__managed_style_05AF36ECFE193292EEE4</styleUrl>
-		<LineString>
-			<altitudeMode>relativeToGround</altitudeMode>
-			<coordinates>
-				-3.594260976202782,40.65907586290069,70 -3.592000011972684,40.65966324672676,70 -3.592498870011481,40.66044318248838,70 -3.59655967106388,40.65934893147006,70 
-			</coordinates>
-		</LineString>
-	</Placemark>
-	<Placemark id="03D9C2ADE0192838D3D1">
-		<name>op1.3</name>
-		<LookAt>
-			<longitude>-3.5950724</longitude>
-			<latitude>40.660704</latitude>
-			<altitude>700</altitude>
-			<heading>6.997440475087327</heading>
-			<tilt>73.29474994173913</tilt>
-			<gx:fovy>30</gx:fovy>
-			<range>336.0480265702063</range>
-			<altitudeMode>absolute</altitudeMode>
-		</LookAt>
-		<styleUrl>#__managed_style_091F55961E193292EEE5</styleUrl>
-		<LineString>
-			<altitudeMode>relativeToGround</altitudeMode>
-			<coordinates>
-				-3.59453177744,40.660286736,30 -3.59453177744,40.660286736,90 
-			</coordinates>
-		</LineString>
-	</Placemark>
+	<Style id="inline3">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Folder>
+		<name>Sitios temporales</name>
+		<open>1</open>
+		<Placemark>
+			<name>M600 OP 1.1</name>
+			<styleUrl>#inline</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<altitudeMode>relativeToGround</altitudeMode>
+				<coordinates>
+					-3.592450343226171,40.66064373784966,70 -3.591339299276539,40.65910271724152,70 -3.591966218920967,40.65894854942518,70 -3.593074550731166,40.66049323845071,70 -3.593807864005979,40.66031515748237,70 -3.592818779048942,40.65875018583948,70 -3.593536111079527,40.65858161911211,70 -3.594549723982908,40.66015796104696,70 -3.597031030385994,40.65956668189179,70 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>Atlantic OP1.2</name>
+			<styleUrl>#inline4</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<altitudeMode>relativeToGround</altitudeMode>
+				<coordinates>
+					-3.639035,40.748907,400.0000000000001 -3.593348031984799,40.65485331945293,400.0000000000001 
+				</coordinates>
+			</LineString>
+		</Placemark>
+	</Folder>
 </Document>
 </kml>
