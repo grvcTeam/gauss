@@ -65,6 +65,7 @@ class EmergencyManagement():
         request.notifications = self._notifications_list
         request.operations = self._conflictive_operations
         response = self._notifications_service_handle(request)
+        self._notifications_list = [] # DO NOT DELETE THIS LINE
         return response
     
     def send_threat2deconfliction(self, threat2deconflicted): 

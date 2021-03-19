@@ -389,6 +389,7 @@ bool DataBase::writeTrackingCB(gauss_msgs::WriteTracking::Request &req, gauss_ms
                 it->second.estimated_trajectory = req.estimated_trajectories[i];
                 it->second.flight_plan_updated = req.flight_plans_updated[i];
                 it->second.is_started = req.is_started[i];
+                it->second.uav_id = req.uav_ids[i];
             } else {
                 not_found_ids.push_back(i);
             }
