@@ -588,6 +588,7 @@ def main():
             ns = operation_ns + '/flight_plan'
             color = palette.get_color(id_to_color[operation.uav_id % 10])
             color_scheme = WaypointListColorScheme(color, color, color, color)
+            flight_plan_viz.path_scale = Vector3(5, 0, 0)
             flight_plan = flight_plan_viz.get_markerarray(operation.flight_plan.waypoints, ns, color_scheme)
             marker_array.markers.extend(flight_plan.markers)
 
