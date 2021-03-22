@@ -56,7 +56,7 @@ class EmergencyManagement():
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(1), self.timer_cb)
         
         print("Started Emergency Management(EM) module!. This module proposes threats solutions to the USP module.")
 

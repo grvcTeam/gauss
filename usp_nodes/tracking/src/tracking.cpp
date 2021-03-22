@@ -1205,13 +1205,13 @@ void Tracking::main()
 {
     double estimator_rate;
     ros::NodeHandle pnh("~");
-    pnh.param<double>("estimator_rate", estimator_rate, 1); // Each second the estimator gets updated
+    nh_.param("estimator_rate", estimator_rate, 5.0); // Each second the estimator gets updated
 
     ros::AsyncSpinner spinner(4);
     spinner.start();
 
     ros::Rate rate(estimator_rate);
-    ros::Rate sleep_rate(5);
+    ros::Rate sleep_rate(1);
 
     while(ros::Time::now() == ros::Time(0)) // Wait until /clock messages are published if in simulation
     {

@@ -49,7 +49,7 @@ private:
     bool posIndicesAreInRange(int x, int y, int z, int t);
 
     // Auxilary variables
-    double rate;
+    double monitoring_timer;
     int X,Y,Z,T;
     double dX,dY,dZ,dT;
     double minX,maxX,minY,maxY,minZ,maxZ,maxT;
@@ -94,7 +94,7 @@ Monitoring::Monitoring()
     nh_.param("maxZ",maxZ,300.0);
     nh_.param("time_horizon",maxT,300.0);
     nh_.param("dT",dT,15.0);
-    nh_.param("monitoring_rate",rate,5.0);  // TODO: Check monitoring_rate from usp_manager_ual_bridge.cpp
+    nh_.param("monitoring_timer", monitoring_timer,1.0);  // TODO: Check monitoring_rate from usp_manager_ual_bridge.cpp
     nh_.param("deltaX",dX,10.0);
     nh_.param("deltaY",dY,10.0);
     nh_.param("deltaZ",dZ,10.0);
@@ -146,7 +146,7 @@ Monitoring::Monitoring()
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
 
     // Timer
-    timer_sub_=nh_.createTimer(ros::Duration(rate),&Monitoring::timerCallback,this);
+    timer_sub_=nh_.createTimer(ros::Duration(monitoring_timer),&Monitoring::timerCallback,this);
 
     ROS_INFO("[Monitoring] Started Monitoring node!");
 }
