@@ -56,7 +56,7 @@ class EmergencyManagement():
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(1), self.timer_cb)
         
         print("Started Emergency Management(EM) module!. This module proposes threats solutions to the USP module.")
 
@@ -65,6 +65,7 @@ class EmergencyManagement():
         request.notifications = self._notifications_list
         request.operations = self._conflictive_operations
         response = self._notifications_service_handle(request)
+        self._notifications_list = [] # DO NOT DELETE THIS LINE
         return response
     
     def send_threat2deconfliction(self, threat2deconflicted): 
@@ -516,6 +517,7 @@ class EmergencyManagement():
         for i in range(num):
             threat = EmergencyManagement.Threat2Solve(rospy.Time.now(), 'TODO', req.threats[i])
             self._threats_list.append(threat)
+        self._conflictive_operations = [] # DO NOT DELETE THIS LINE
         for i in range(len(req.operations)):
             self._conflictive_operations.append(req.operations[i])
         for i in range(len(req.geofences)):

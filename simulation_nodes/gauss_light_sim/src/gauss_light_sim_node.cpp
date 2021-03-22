@@ -7,6 +7,9 @@
 #include <gauss_msgs_mqtt/UTMAlternativeFlightPlan.h>
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
@@ -48,8 +51,14 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
 }
 */
 
+struct RPYAngles {
+    double roll = 0;
+    double pitch = 0;
+    double yaw = 0;
+};
+
 // This is a trickier version of the previous function, as time-base issues must be addressed (TODO!)
-gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t) {
+gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t, RPYAngles* angles = nullptr) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
         ROS_ERROR("[Sim] from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
@@ -78,6 +87,14 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_m
     interpolated.z = from.z + (delta_z / delta_t) * elapsed_t;
     // interpolated.stamp = t;  // Cannot do this anymore
 
+    if (angles) {
+        angles->yaw = atan2(delta_y, delta_x);
+        // double xy_distance = sqrt(delta_x*delta_x + delta_y*delta_y);
+        // angles->pitch = atan2(delta_z, xy_distance);  // TODO: only fixed_wing!
+        angles->pitch = 0;
+        angles->roll = 0;
+    }
+
     return interpolated;
 }
 
@@ -105,15 +122,16 @@ class RPAStateInfoWrapper {
    public:
     // RPAStateInfoWrapper wraps (has-a) RPAStateInfo named data
     gauss_msgs_mqtt::RPAStateInfo data;
+    geometry_msgs::TransformStamped tf;
 
     // Each function updates a subset of fields in data:
     // uint32 icao                 - update
     // float64 latitude            -------- updatePhysics
     // float64 longitude           -------- updatePhysics
     // float32 altitude            -------- updatePhysics
-    // float32 yaw                 -------- updatePhysics[?]
-    // float32 pitch               -------- updatePhysics[?]
-    // float32 roll                -------- updatePhysics[?]
+    // float32 yaw                 -------- updatePhysics
+    // float32 pitch               -------- updatePhysics
+    // float32 roll                -------- updatePhysics
     // float32 groundspeed         -------- updatePhysics
     // float32 covariance_h        ---------------------- applyChange
     // float32 covariance_v        ---------------------- applyChange
@@ -172,6 +190,11 @@ class RPAStateInfoWrapper {
         bool running = false;  // otherwise, it returns false
         double latitude, longitude, altitude;
 
+        // Update common tf data
+        tf.header.stamp = ros::Time::now();
+        tf.header.frame_id = "map";
+        tf.child_frame_id = std::to_string(data.icao);
+
         if (flight_plan.waypoints.size() == 0) {
             ROS_ERROR("[Sim] Flight plan is empty");
             return false;
@@ -205,7 +228,21 @@ class RPAStateInfoWrapper {
             target_point = next;
         } else {
             running = true;
-            target_point = interpolate(prev, next, elapsed);
+            RPYAngles angles;
+            target_point = interpolate(prev, next, elapsed, &angles);
+            data.yaw = angles.yaw;
+            data.pitch = angles.pitch;
+            data.roll = angles.roll;
+            // Update tf transform data
+            tf2::Quaternion q;
+            q.setRPY(data.roll, data.pitch, data.yaw);
+            tf.transform.rotation.x = q.x();
+            tf.transform.rotation.y = q.y();
+            tf.transform.rotation.z = q.z();
+            tf.transform.rotation.w = q.w();
+            tf.transform.translation.x = target_point.x;
+            tf.transform.translation.y = target_point.y;
+            tf.transform.translation.z = target_point.z;
         }
 
         // TODO: Play with a current_point and target_point to add some memory and behave more realistically if flight_plan is changed
@@ -440,6 +477,7 @@ class LightSim {
                     // status_pub.publish(status_msg);
                 }
                 rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
+                tf_broadcaster.sendTransform(icao_to_state_info_map[icao].tf);
             }
         }
     }
@@ -449,6 +487,7 @@ class LightSim {
     std::map<std::string, gauss_msgs::Operation> icao_to_operation_map;
     std::map<std::string, RPAStateInfoWrapper> icao_to_state_info_map;
     std::map<std::string, gauss_msgs::Waypoint> icao_to_current_position_map;
+    // std::vector<geometry_msgs::TransformStamped> tf_vector;  // TODO?
 
     // Auxiliary variable for cartesian to geographic conversion
     GeographicLib::LocalCartesian proj_;
@@ -460,6 +499,7 @@ class LightSim {
     ros::Publisher rpa_state_info_pub, status_pub;
     ros::ServiceServer change_param_service;
     ros::ServiceServer change_flight_plan_service;
+    tf2_ros::TransformBroadcaster tf_broadcaster;
 };
 
 int main(int argc, char **argv) {

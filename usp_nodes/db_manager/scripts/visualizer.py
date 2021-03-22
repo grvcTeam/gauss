@@ -453,6 +453,24 @@ def main():
         volume_viz = VolumeViz(global_frame_id, rospy.Duration(1.0/update_rate))
 
         marker_array = MarkerArray()
+
+        # Add map marker
+        map_marker = Marker()
+        map_marker.header.stamp = rospy.Time.now()
+        map_marker.header.frame_id = global_frame_id
+        map_marker.ns = 'map'
+        map_marker.lifetime = rospy.Duration()
+        map_marker.id = 0
+        map_marker.type = Marker.MESH_RESOURCE
+        map_marker.mesh_resource = 'package://db_manager/maps/loring.dae'
+        map_marker.action = Marker.ADD
+        map_marker.pose.position.y = -30  # TODO: visual correction
+        map_marker.scale.x = 3048
+        map_marker.scale.y = 3048
+        map_marker.scale.z = 3048
+        map_marker.mesh_use_embedded_materials = True
+        marker_array.markers.append(map_marker)
+
         for operation in read_operation_response.operation:
             operation_ns = operation.icao_address
 

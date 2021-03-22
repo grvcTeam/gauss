@@ -49,7 +49,7 @@ private:
     bool posIndicesAreInRange(int x, int y, int z, int t);
 
     // Auxilary variables
-    double rate;
+    double monitoring_timer;
     int X,Y,Z,T;
     double dX,dY,dZ,dT;
     double minX,maxX,minY,maxY,minZ,maxZ,maxT;
@@ -94,7 +94,7 @@ Monitoring::Monitoring()
     nh_.param("maxZ",maxZ,300.0);
     nh_.param("time_horizon",maxT,300.0);
     nh_.param("dT",dT,15.0);
-    nh_.param("monitoring_rate",rate,5.0);  // TODO: Check monitoring_rate from usp_manager_ual_bridge.cpp
+    nh_.param("monitoring_timer", monitoring_timer,1.0);  // TODO: Check monitoring_rate from usp_manager_ual_bridge.cpp
     nh_.param("deltaX",dX,10.0);
     nh_.param("deltaY",dY,10.0);
     nh_.param("deltaZ",dZ,10.0);
@@ -146,7 +146,7 @@ Monitoring::Monitoring()
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
 
     // Timer
-    timer_sub_=nh_.createTimer(ros::Duration(rate),&Monitoring::timerCallback,this);
+    timer_sub_=nh_.createTimer(ros::Duration(monitoring_timer),&Monitoring::timerCallback,this);
 
     ROS_INFO("[Monitoring] Started Monitoring node!");
 }
@@ -209,9 +209,12 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
     } 
 
     std::string cout_threats;
-    for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
-                                                              ", " + std::to_string(i.threat_type) + "]";
-    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] New threats detected: (id, type) " + cout_threats);
+    for (auto threat : out_threats.request.threats) {
+        cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
+        for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
+        cout_threats = cout_threats + "]";
+    } 
+    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] New threats detected: (id type | uav) " + cout_threats);
 
     return out_threats;
 }
@@ -687,8 +690,10 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                 }
                             }
             }
-        } else {
-            ROS_WARN("Operation %d did not start or current wp is 0", operation.uav_id);
+        } else if (operation.is_started && operation.current_wp == 0) {
+            ROS_WARN("[Monitoring] Operation %d current wp is 0", operation.uav_id);
+        } else if (!operation.is_started && ros::Time::now().toSec() > operation.flight_plan.waypoints.front().stamp.toSec()) {
+            ROS_WARN_ONCE("[Monitoring] Operation %d did not start. First waypoint is at %.f (s)", operation.uav_id, operation.flight_plan.waypoints.front().stamp.toSec());
         }
     }
     //locker=false;
@@ -712,7 +717,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         }
     }
     // Delete old saved threats
-    if(threat_list_.size() > 0) cleanThreatList(threats_msg.request.threats);
+    // if(threat_list_.size() > 0) cleanThreatList(threats_msg.request.threats);
 }
 
 bool Monitoring::posIndicesAreInRange(int x, int y, int z, int t) {
