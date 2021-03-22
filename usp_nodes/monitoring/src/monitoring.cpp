@@ -209,9 +209,12 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
     } 
 
     std::string cout_threats;
-    for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
-                                                              ", " + std::to_string(i.threat_type) + "]";
-    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] New threats detected: (id, type) " + cout_threats);
+    for (auto threat : out_threats.request.threats) {
+        cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
+        for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
+        cout_threats = cout_threats + "]";
+    } 
+    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] New threats detected: (id type | uav) " + cout_threats);
 
     return out_threats;
 }
@@ -687,8 +690,10 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
                                 }
                             }
             }
-        } else {
-            ROS_WARN("Operation %d did not start or current wp is 0", operation.uav_id);
+        } else if (operation.is_started && operation.current_wp == 0) {
+            ROS_WARN("[Monitoring] Operation %d current wp is 0", operation.uav_id);
+        } else if (!operation.is_started && ros::Time::now().toSec() > operation.flight_plan.waypoints.front().stamp.toSec()) {
+            ROS_WARN_ONCE("[Monitoring] Operation %d did not start. First waypoint is at %.f (s)", operation.uav_id, operation.flight_plan.waypoints.front().stamp.toSec());
         }
     }
     //locker=false;
@@ -712,7 +717,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         }
     }
     // Delete old saved threats
-    if(threat_list_.size() > 0) cleanThreatList(threats_msg.request.threats);
+    // if(threat_list_.size() > 0) cleanThreatList(threats_msg.request.threats);
 }
 
 bool Monitoring::posIndicesAreInRange(int x, int y, int z, int t) {

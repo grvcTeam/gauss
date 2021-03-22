@@ -97,7 +97,7 @@ ConflictSolver::ConflictSolver() {
     // Cient
     check_client_ = nh_.serviceClient<gauss_msgs::CheckConflicts>("/gauss/check_conflicts");
 
-    ROS_INFO("[Deconfliction] Started ConflictSolver node!");
+    ROS_INFO("[Tactical] Started ConflictSolver node!");
 }
 
 int ConflictSolver::pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy) {
@@ -453,7 +453,11 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
 
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res) {
-    ROS_INFO("[Deconfliction] New conflict received! [%d %d]", req.threat.threat_id, req.threat.threat_type);
+    std::string cout_request;
+    cout_request = cout_request + " [" + std::to_string(req.threat.threat_id) + " " + std::to_string(req.threat.threat_type) + " |";
+    for (auto uav_id : req.threat.uav_ids) cout_request = cout_request + " " + std::to_string(uav_id);
+    cout_request = cout_request + "]";
+    ROS_INFO_STREAM("[Tactical] New conflict received!" + cout_request);
     //Deconfliction
     if (req.tactical) {
         double start_computational_time = ros::Time::now().toSec();
