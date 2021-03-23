@@ -588,7 +588,7 @@ def main():
             ns = operation_ns + '/flight_plan'
             color = palette.get_color(id_to_color[operation.uav_id % 10])
             color_scheme = WaypointListColorScheme(color, color, color, color)
-            flight_plan_viz.path_scale = Vector3(5, 0, 0)
+            flight_plan_viz.path_scale = Vector3(1, 0, 0)
             flight_plan = flight_plan_viz.get_markerarray(operation.flight_plan.waypoints, ns, color_scheme)
             marker_array.markers.extend(flight_plan.markers)
 
@@ -622,8 +622,8 @@ def main():
 
             # Visualize volumes (flight geometry, operational volume)
             ns = operation_ns + '/volumes'
-            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.5)
-            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.2)
+            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.7)
+            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.5)
             volume = volume_viz.get_markerarray(operation, ns, fg_color, ov_color)
             marker_array.markers.extend(volume.markers)
 

@@ -153,8 +153,8 @@
                     }
 				]
 			},
-			"flight_geometry": 10.0,
-			"operational_volume": 15.0,
+			"flight_geometry": 20.0,
+			"operational_volume": 30.0,
 			"conop": "Long Forest Surveillance"
         }
     ]
