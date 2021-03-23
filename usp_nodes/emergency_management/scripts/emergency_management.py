@@ -430,7 +430,7 @@ class EmergencyManagement():
                 geofence = Geofence()
                 geofence.id = 1
                 geofence.min_altitude = 0.0
-                geofence.max_altitude = 100.0
+                geofence.max_altitude = 450.0
                 geofence.circle = geofence_base
                 geofence.cylinder_shape = True
                 geofence.start_time = rospy.Time().now()
