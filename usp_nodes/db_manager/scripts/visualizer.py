@@ -162,7 +162,7 @@ class WaypointListViz(object):
             text_point.y += self.stamp_offset.y
             text_point.z += self.stamp_offset.z
             stamp_marker.pose.position = text_point
-            stamp_marker.text = 't = {}s'.format(waypoint.stamp.to_sec())
+            stamp_marker.text = 't = {:.0f}s'.format(waypoint.stamp.to_sec())
             stamp_marker_array.markers.append(copy.deepcopy(stamp_marker))
 
         markerarray = MarkerArray()
