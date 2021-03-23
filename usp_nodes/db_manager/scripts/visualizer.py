@@ -375,6 +375,29 @@ class VolumeViz(object):
             operational_volume_marker.scale = Vector3(operational_volume, operational_volume, 0.01)
             operational_volume_marker_array.markers.append(copy.deepcopy(operational_volume_marker))
 
+        flight_geometry_spheres = copy.deepcopy(marker_common)
+        flight_geometry_spheres.type = Marker.SPHERE_LIST
+        flight_geometry_spheres.ns = ns + '/flight_geometry_spheres'
+        flight_geometry_spheres.color = fg_color
+        # flight_geometry_spheres.color.a *= 2.0
+        flight_geometry_spheres.id = 1
+        flight_geometry_spheres.scale = Vector3(flight_geometry, flight_geometry, flight_geometry)
+
+        operational_volume_spheres = copy.deepcopy(marker_common)
+        operational_volume_spheres.type = Marker.SPHERE_LIST
+        operational_volume_spheres.ns = ns + '/operational_volume_spheres'
+        operational_volume_spheres.color = ov_color
+        # operational_volume_spheres.color.a *= 2.0
+        operational_volume_spheres.id = 1
+        operational_volume_spheres.scale = Vector3(operational_volume, operational_volume, operational_volume)
+
+        for current in waypointlist:
+            point = Point(current.x, current.y, current.z)
+            flight_geometry_spheres.points.append(point)
+            operational_volume_spheres.points.append(point)
+        flight_geometry_marker_array.markers.append(flight_geometry_spheres)
+        operational_volume_marker_array.markers.append(operational_volume_spheres)
+
         markerarray = MarkerArray()
         markerarray.markers.extend(flight_geometry_marker_array.markers)
         markerarray.markers.extend(operational_volume_marker_array.markers)
@@ -565,6 +588,7 @@ def main():
             ns = operation_ns + '/flight_plan'
             color = palette.get_color(id_to_color[operation.uav_id % 10])
             color_scheme = WaypointListColorScheme(color, color, color, color)
+            flight_plan_viz.path_scale = Vector3(5, 0, 0)
             flight_plan = flight_plan_viz.get_markerarray(operation.flight_plan.waypoints, ns, color_scheme)
             marker_array.markers.extend(flight_plan.markers)
 
