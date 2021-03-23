@@ -1205,7 +1205,7 @@ void Tracking::main()
 {
     double estimator_rate;
     ros::NodeHandle pnh("~");
-    nh_.param("estimator_rate", estimator_rate, 5.0); // Each second the estimator gets updated
+    nh_.param("estimator_rate", estimator_rate, 1.0); // Each second the estimator gets updated
 
     ros::AsyncSpinner spinner(4);
     spinner.start();
@@ -1283,13 +1283,13 @@ void Tracking::main()
 
         candidates_.clear();
 
-        counter++;
+        // counter++;
         // Write on database each five iterations of the filter to avoid unnecessary overload
-        if (counter == 5)
-        {
-            counter = 0;
+        // if (counter == 5)
+        // {
+        //     counter = 0;
             this->writeTrackingInfoToDatabase();
-        }
+        // }
         // ROS_INFO("[Tracking] Computational time: %0.4f", ros::Time::now().toSec() - start_computational_time);
         rate.sleep();
         //std::cout << "Cycle time: " << rate.cycleTime() << std::endl;

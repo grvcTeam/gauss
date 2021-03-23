@@ -18,8 +18,6 @@ deltaY: 100.0
 deltaZ: 500.0
 safetyDistance: 350
 
-estimator_rate: 1
-
 simulation:
   auto_start:
     - {icao: 3434009, delay: 2.0}
