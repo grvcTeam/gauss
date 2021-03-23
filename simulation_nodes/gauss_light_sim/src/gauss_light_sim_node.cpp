@@ -16,6 +16,7 @@
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
 #include <limits>
+#include <random>
 
 #define ARENOSILLO_LATITUDE 37.094784
 #define ARENOSILLO_LONGITUDE -6.735478
@@ -136,7 +137,40 @@ void smoothTarget(const gauss_msgs::Waypoint& target_position, double target_yaw
     *current_yaw = 2.0 * atan2(current_transform->rotation.z, current_transform->rotation.w);  // Only yaw!
 }
 
-// TODO: simTarget? Add some noise...
+void simTarget(const gauss_msgs::Waypoint& target_position, double target_yaw, geometry_msgs::Transform* current_transform, float* current_yaw) {
+    static std::default_random_engine generator;
+    static std::normal_distribution<double> xyz_distribution(0, 1.00);  // N(mean, stddev) TODO: as params?
+    static std::normal_distribution<double> yaw_distribution(0, 0.01);  // N(mean, stddev) TODO: as params?
+
+    // Add noise to current data...
+    double tf_yaw_with_noise = 2.0 * atan2(current_transform->rotation.z, current_transform->rotation.w);
+    tf_yaw_with_noise += yaw_distribution(generator);
+    tf2::Quaternion q_yaw_with_noise;  // Only yaw!
+    q_yaw_with_noise.setRPY(0, 0, tf_yaw_with_noise);
+    current_transform->rotation.x = q_yaw_with_noise.x();
+    current_transform->rotation.y = q_yaw_with_noise.y();
+    current_transform->rotation.z = q_yaw_with_noise.z();
+    current_transform->rotation.w = q_yaw_with_noise.w();
+    *current_yaw = tf_yaw_with_noise;  // Not needed...
+
+    current_transform->translation.x += xyz_distribution(generator);
+    current_transform->translation.y += xyz_distribution(generator);
+    current_transform->translation.z += xyz_distribution(generator);
+
+    smoothTarget(target_position, target_yaw, current_transform, current_yaw);
+
+/*
+    // ...or add noise to target data
+    auto new_target_position = target_position;
+    new_target_position.x += xyz_distribution(generator);
+    new_target_position.y += xyz_distribution(generator);
+    new_target_position.z += xyz_distribution(generator);
+
+    auto new_target_yaw = target_yaw + yaw_distribution(generator);
+
+    smoothTarget(new_target_position, new_target_yaw, current_transform, current_yaw);
+*/
+}
 
 class RPAStateInfoWrapper {
    public:
@@ -290,8 +324,10 @@ class RPAStateInfoWrapper {
             double target_yaw;
             gauss_msgs::Waypoint target_point;
             target_point = interpolate(prev, next, elapsed, &target_yaw);
+            // TODO: Realism level as a parameter!
             //copyTarget(target_point, target_yaw, &tf.transform, &data.yaw);
-            smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            //smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            simTarget(target_point, target_yaw, &tf.transform, &data.yaw);  // TODO: Merge copy, smooth and sim into one function?
         }
 
         // Cartesian to geographic conversion
