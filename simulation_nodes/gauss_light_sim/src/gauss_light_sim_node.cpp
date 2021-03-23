@@ -51,14 +51,8 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
 }
 */
 
-struct RPYAngles {
-    double roll = 0;
-    double pitch = 0;
-    double yaw = 0;
-};
-
 // This is a trickier version of the previous function, as time-base issues must be addressed (TODO!)
-gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t, RPYAngles* angles = nullptr) {
+gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t, double* yaw = nullptr) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
         ROS_ERROR("[Sim] from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
@@ -87,13 +81,7 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_m
     interpolated.z = from.z + (delta_z / delta_t) * elapsed_t;
     // interpolated.stamp = t;  // Cannot do this anymore
 
-    if (angles) {
-        angles->yaw = atan2(delta_y, delta_x);
-        // double xy_distance = sqrt(delta_x*delta_x + delta_y*delta_y);
-        // angles->pitch = atan2(delta_z, xy_distance);  // TODO: only fixed_wing!
-        angles->pitch = 0;
-        angles->roll = 0;
-    }
+    if (yaw != nullptr) { *yaw = atan2(delta_y, delta_x); }
 
     return interpolated;
 }
@@ -117,6 +105,38 @@ float calculateMeanSpeed(const gauss_msgs::Waypoint &from, const gauss_msgs::Way
 
     return distance / delta_t;
 }
+
+void copyTarget(const gauss_msgs::Waypoint& target_position, double target_yaw, geometry_msgs::Transform* current_transform, float* current_yaw) {
+    tf2::Quaternion q;
+    q.setRPY(0, 0, target_yaw);  // Only yaw!
+    current_transform->rotation.x = q.x();
+    current_transform->rotation.y = q.y();
+    current_transform->rotation.z = q.z();
+    current_transform->rotation.w = q.w();
+    current_transform->translation.x = target_position.x;
+    current_transform->translation.y = target_position.y;
+    current_transform->translation.z = target_position.z;
+    *current_yaw = target_yaw;
+}
+
+void smoothTarget(const gauss_msgs::Waypoint& target_position, double target_yaw, geometry_msgs::Transform* current_transform, float* current_yaw) {
+    double alpha = 0.5;  // TODO: as param?
+    double beta = 1 - alpha;
+    tf2::Quaternion q_target;
+    q_target.setRPY(0, 0, target_yaw);
+    tf2::Quaternion q_current(current_transform->rotation.x, current_transform->rotation.y, current_transform->rotation.z, current_transform->rotation.w);
+    auto q_smooth = q_current.slerp(q_target, beta);
+    current_transform->rotation.x = q_smooth.x();
+    current_transform->rotation.y = q_smooth.y();
+    current_transform->rotation.z = q_smooth.z();
+    current_transform->rotation.w = q_smooth.w();
+    current_transform->translation.x = alpha*current_transform->translation.x + beta*target_position.x;
+    current_transform->translation.y = alpha*current_transform->translation.y + beta*target_position.y;
+    current_transform->translation.z = alpha*current_transform->translation.z + beta*target_position.z;
+    *current_yaw = 2.0 * atan2(current_transform->rotation.z, current_transform->rotation.w);  // Only yaw!
+}
+
+// TODO: simTarget? Add some noise...
 
 class RPAStateInfoWrapper {
    public:
@@ -184,7 +204,41 @@ class RPAStateInfoWrapper {
 
     void setProjection(const GeographicLib::LocalCartesian &projection) { proj = projection; }
 
-    // TODO: Initialize phyics?
+    void initPhysics(const gauss_msgs::WaypointList &flight_plan) {
+        double latitude, longitude, altitude;
+        if (flight_plan.waypoints.size() == 0) {
+            ROS_ERROR("[Sim] Flight plan is empty");
+            return;
+        } else {
+            // At least one point, get position
+            tf.transform.translation.x = flight_plan.waypoints[0].x;
+            tf.transform.translation.y = flight_plan.waypoints[0].y;
+            tf.transform.translation.z = flight_plan.waypoints[0].z;
+            proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
+            data.latitude = latitude;
+            data.longitude = longitude;
+            data.altitude = altitude;
+            data.groundspeed = 0;
+        }
+
+        if(flight_plan.waypoints.size() >= 2) {
+            // At least two points, get also orientation!
+            gauss_msgs::Waypoint prev, next;
+            prev = flight_plan.waypoints[0];
+            next = flight_plan.waypoints[1];
+            double delta_x = next.x - prev.x;
+            double delta_y = next.y - prev.y;
+            double yaw = atan2(delta_y, delta_x);
+            tf2::Quaternion q;
+            q.setRPY(0, 0, yaw);
+            tf.transform.rotation.x = q.x();
+            tf.transform.rotation.y = q.y();
+            tf.transform.rotation.z = q.z();
+            tf.transform.rotation.w = q.w();
+            data.yaw = yaw;
+        }
+    }
+
     bool updatePhysics(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan) {
         // This function returns true if 'physics' is running
         bool running = false;  // otherwise, it returns false
@@ -200,7 +254,10 @@ class RPAStateInfoWrapper {
             return false;
 
         } else if (flight_plan.waypoints.size() == 1) {
-            proj.Reverse(flight_plan.waypoints[0].x, flight_plan.waypoints[0].y, flight_plan.waypoints[0].z, latitude, longitude, altitude);
+            tf.transform.translation.x = flight_plan.waypoints[0].x;
+            tf.transform.translation.y = flight_plan.waypoints[0].y;
+            tf.transform.translation.z = flight_plan.waypoints[0].z;
+            proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
             data.latitude = latitude;
             data.longitude = longitude;
             data.altitude = altitude;
@@ -221,33 +278,24 @@ class RPAStateInfoWrapper {
                 ++it;
             }
         }
-        gauss_msgs::Waypoint target_point;
+
         if (prev.stamp == next.stamp) {
             // Last waypoint is reached
             running = false;
-            target_point = next;
+            tf.transform.translation.x = next.x;
+            tf.transform.translation.y = next.y;
+            tf.transform.translation.z = next.z;
         } else {
             running = true;
-            RPYAngles angles;
-            target_point = interpolate(prev, next, elapsed, &angles);
-            data.yaw = angles.yaw;
-            data.pitch = angles.pitch;
-            data.roll = angles.roll;
-            // Update tf transform data
-            tf2::Quaternion q;
-            q.setRPY(data.roll, data.pitch, data.yaw);
-            tf.transform.rotation.x = q.x();
-            tf.transform.rotation.y = q.y();
-            tf.transform.rotation.z = q.z();
-            tf.transform.rotation.w = q.w();
-            tf.transform.translation.x = target_point.x;
-            tf.transform.translation.y = target_point.y;
-            tf.transform.translation.z = target_point.z;
+            double target_yaw;
+            gauss_msgs::Waypoint target_point;
+            target_point = interpolate(prev, next, elapsed, &target_yaw);
+            //copyTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
         }
 
-        // TODO: Play with a current_point and target_point to add some memory and behave more realistically if flight_plan is changed
         // Cartesian to geographic conversion
-        proj.Reverse(target_point.x, target_point.y, target_point.z, latitude, longitude, altitude);
+        proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
         data.latitude = latitude;
         data.longitude = longitude;
         data.altitude = altitude;
@@ -354,7 +402,7 @@ class LightSim {
 
     void start() {
         ROS_INFO("[Sim] Starting simulation at t = [%lf]s", ros::Time::now().toSec());
-        timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);
+        timer = n.createTimer(ros::Duration(0.1), &LightSim::updateCallback, this);
     }
 
     void setOperations(const std::vector<gauss_msgs::Operation> &operations) {
@@ -362,6 +410,7 @@ class LightSim {
             // There should be one operation for each icao_address
             icao_to_operation_map[operation.icao_address] = operation;
             icao_to_current_position_map[operation.icao_address] = operation.flight_plan.waypoints.front();
+            icao_to_state_info_map[operation.icao_address].initPhysics(operation.flight_plan);
             ROS_INFO("[Sim] Loaded operation for icao [%s]", operation.icao_address.c_str());
         }
     }
