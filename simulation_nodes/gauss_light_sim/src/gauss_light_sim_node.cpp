@@ -326,8 +326,8 @@ class RPAStateInfoWrapper {
             target_point = interpolate(prev, next, elapsed, &target_yaw);
             // TODO: Realism level as a parameter!
             //copyTarget(target_point, target_yaw, &tf.transform, &data.yaw);
-            //smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
-            simTarget(target_point, target_yaw, &tf.transform, &data.yaw);  // TODO: Merge copy, smooth and sim into one function?
+            smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            //simTarget(target_point, target_yaw, &tf.transform, &data.yaw);  // TODO: Merge copy, smooth and sim into one function?
         }
 
         // Cartesian to geographic conversion
