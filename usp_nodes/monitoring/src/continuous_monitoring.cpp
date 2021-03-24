@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Vector3.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
@@ -70,6 +72,10 @@ struct Segment {
     }
     if (t_a == t_b) {
       ROS_WARN("t_a == t_b == %lf", t_a);
+      return point_a;
+    }
+    if (isnan(t)) {
+      ROS_WARN("t is NaN");
       return point_a;
     }
 
@@ -147,11 +153,11 @@ std::pair<double, double> quadratic_roots(double a, double b, double c) {
   return std::make_pair((-b - e)/(2*a), (-b + e)/(2*a));
 }
 
-struct CheckSegmentsLossResults {
+struct CheckSegmentsLossResult {
   
-  CheckSegmentsLossResults(const Segment& first, const Segment& second): first(first), second(second) {}
+  CheckSegmentsLossResult(const Segment& first, const Segment& second): first(first), second(second) {}
 
-  friend std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResults& r);
+  friend std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResult& r);
   Segment first;
   Segment second;
   double t_min = std::nan("");
@@ -161,7 +167,7 @@ struct CheckSegmentsLossResults {
   bool threshold_is_violated = false;
 };
 
-std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResults& r) {
+std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResult& r) {
     out << "first = " << r.first << '\n';
     out << "second = " << r.second << '\n';
     out << "t_min[s] = " << r.t_min << '\n';
@@ -172,7 +178,7 @@ std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResults& r) 
     return out;
 }
 
-CheckSegmentsLossResults checkUnifiedSegmentsLoss(Segment first, Segment second, double s_threshold) {
+CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, double s_threshold) {
   // print('checkUnifiedSegmentsLoss:')
   // print(first.point_a)
   // print(first.point_b)
@@ -220,7 +226,7 @@ CheckSegmentsLossResults checkUnifiedSegmentsLoss(Segment first, Segment second,
     // print(t_min)
     // print(s_min)
   }
-  auto result = CheckSegmentsLossResults(first, second);
+  auto result = CheckSegmentsLossResult(first, second);
   result.t_min = t_min;
   result.s_min = s_min;
 
@@ -252,7 +258,7 @@ CheckSegmentsLossResults checkUnifiedSegmentsLoss(Segment first, Segment second,
   return result;
 }
 
-CheckSegmentsLossResults checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold) {
+CheckSegmentsLossResult checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold) {
   // print('checkSegmentsLoss:')
   // print(first.point_a)
   // print(first.point_b)
@@ -267,7 +273,7 @@ CheckSegmentsLossResults checkSegmentsLoss(const std::pair<Segment, Segment>& se
   double t_beta  = std::min(t_b1, t_b2);
   if (t_alpha > t_beta) {
     ROS_INFO("t_alpha[%lf] > t_beta[%lf]", t_alpha, t_beta);
-    return CheckSegmentsLossResults(segments.first, segments.second);
+    return CheckSegmentsLossResult(segments.first, segments.second);
   }
 
   auto p_alpha1 = segments.first.point_at_time(t_alpha);
@@ -277,16 +283,17 @@ CheckSegmentsLossResults checkSegmentsLoss(const std::pair<Segment, Segment>& se
   return checkUnifiedSegmentsLoss(Segment(p_alpha1, p_beta1), Segment(p_alpha2, p_beta2), s_threshold);
 }
 
-void checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories, double s_threshold) {
+std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories, double s_threshold) {
+    std::vector<CheckSegmentsLossResult> segment_loss_results;
     if (trajectories.first.waypoints.size() < 2) {
         // TODO: Warn and push the same point twice?
-        ROS_ERROR("[Monitoring]: trajectory must contain more than 2 points, [%ld] found in first argument", trajectories.first.waypoints.size());
-        return;
+        ROS_ERROR("[Monitoring]: trajectory must contain at least 2 points, [%ld] found in first argument", trajectories.first.waypoints.size());
+        return segment_loss_results;
     }
     if (trajectories.second.waypoints.size() < 2) {
         // TODO: Warn and push the same point twice?
-        ROS_ERROR("[Monitoring]: trajectory must contain more than 2 points, [%ld] found in second argument", trajectories.second.waypoints.size());
-        return;
+        ROS_ERROR("[Monitoring]: trajectory must contain at least 2 points, [%ld] found in second argument", trajectories.second.waypoints.size());
+        return segment_loss_results;
     }
 
     for (int i = 0; i < trajectories.first.waypoints.size() - 1; i++) {
@@ -302,9 +309,80 @@ void checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs:
             if (loss_check.threshold_is_violated) {
                 ROS_ERROR("Loss of separation!");
                 std::cout << loss_check << '\n';
+                segment_loss_results.push_back(loss_check);
             }
         }
     }
+    return segment_loss_results;
+}
+
+struct LossResult {
+  LossResult(const int i, const int j): first_trajectory_index(i), second_trajectory_index(j) {}
+
+  friend std::ostream& operator<< (std::ostream& out, const LossResult& r);
+  int first_trajectory_index;
+  int second_trajectory_index;
+  std::vector<CheckSegmentsLossResult> segments_loss_results;
+};
+
+geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint& wp) {
+  geometry_msgs::Point p;
+  p.x = wp.x;
+  p.y = wp.y;
+  p.z = wp.z;
+  return p;
+}
+
+visualization_msgs::Marker translateToMarker(const LossResult& result) {
+  visualization_msgs::Marker marker;
+  marker.header.stamp = ros::Time::now();  // std_msgs/Header header
+  marker.header.frame_id = "map";  // TODO: other?
+  marker.ns = "loss_" + std::to_string(result.first_trajectory_index) + "_" + std::to_string(result.second_trajectory_index);
+  marker.type = visualization_msgs::Marker::LINE_LIST;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.pose.orientation.w = 1;
+  marker.scale.x = 1.0;
+  marker.color.r = 1.0;  // TODO: color?
+  marker.color.a = 1.0;
+  marker.lifetime = ros::Duration();  // duration lifetime
+  for (auto segments_loss: result.segments_loss_results) {
+    marker.points.push_back(translateToPoint(segments_loss.first.point_a));
+    marker.points.push_back(translateToPoint(segments_loss.first.point_b));
+    marker.points.push_back(translateToPoint(segments_loss.second.point_a));
+    marker.points.push_back(translateToPoint(segments_loss.second.point_b));
+  }
+/*
+  double t_min = std::nan("");
+  double s_min = std::nan("");
+  double t_crossing_0 = std::nan("");
+  double t_crossing_1 = std::nan("");
+  bool threshold_is_violated = false;
+*/
+  return marker;
+}
+
+std::ostream& operator<< (std::ostream& out, const LossResult& r) {
+    out << "first_trajectory_index = " << r.first_trajectory_index << '\n';
+    out << "second_trajectory_index = " << r.second_trajectory_index << '\n';
+    out << "segments_loss_results = [" << r.second_trajectory_index << '\n';
+    for (int i = 0; i < r.segments_loss_results.size(); i++) {
+      out << r.segments_loss_results[i] << '\n';
+    }
+    out << "]\n";
+    return out;
+}
+
+bool happensBefore(const LossResult& a, const LossResult& b) {
+  if (a.segments_loss_results.size() < 1) {
+    ROS_ERROR("a.segments_loss_results.size() < 1");
+    return false;
+  }
+  if (b.segments_loss_results.size() < 1) {
+    ROS_ERROR("b.segments_loss_results.size() < 1");
+    return true;
+  }
+
+  return a.segments_loss_results[0].t_crossing_0 < b.segments_loss_results[0].t_crossing_0;
 }
 
 int main(int argc, char **argv) {
@@ -314,13 +392,14 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     // ros::NodeHandle np("~");
     ROS_INFO("[Monitoring] Started monitoring node!");
-    double s_threshold = 109000;  // TODO: param (330m)^2
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
+    auto visualization_topic_url = "/gauss/visualize_monitoring";
 
     ros::ServiceClient icao_client = n.serviceClient<gauss_msgs::ReadIcao>(read_icao_srv_url);
     ros::ServiceClient operation_client = n.serviceClient<gauss_msgs::ReadOperation>(read_operation_srv_url);
+    ros::Publisher visualization_pub = n.advertise<visualization_msgs::MarkerArray>(visualization_topic_url, 1);
 
     ROS_INFO("[Monitoring] Waiting for required services...");
     ros::service::waitForService(read_icao_srv_url, -1);
@@ -352,23 +431,42 @@ int main(int argc, char **argv) {
 
         std::map<std::string, int> icao_to_index_map;
         std::vector<gauss_msgs::WaypointList> estimated_trajectories;
+        std::vector<double> operational_volumes;
         for (auto operation: read_operation.response.operation) {
             // std::cout << operation << '\n';
             icao_to_index_map[operation.icao_address] = estimated_trajectories.size();
             estimated_trajectories.push_back(operation.estimated_trajectory);
+            operational_volumes.push_back(operation.operational_volume);
         }
 
         auto trajectories_count = estimated_trajectories.size();
         if (trajectories_count < 2) { continue; }
+
+        std::vector<LossResult> loss_results_list;
         for (int i = 0; i < trajectories_count - 1; i++) {
             std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList> trajectories;
             trajectories.first = estimated_trajectories[i];
-            for (int j = i + 1; j < trajectories_count; j++){
+            for (int j = i + 1; j < trajectories_count; j++) {
                 printf("[%d, %d]\n", i, j);
                 trajectories.second = estimated_trajectories[j];
-                checkTrajectoriesLoss(trajectories, s_threshold);
+                //double s_threshold = 109000;  // TODO: param (330m)^2
+                double s_threshold = pow(operational_volumes[i] + operational_volumes[j], 2);
+                auto segments_loss_results = checkTrajectoriesLoss(trajectories, s_threshold);
+                if (segments_loss_results.size() > 0) {
+                  LossResult loss_result(i, j);
+                  loss_result.segments_loss_results = segments_loss_results;
+                  loss_results_list.push_back(loss_result);
+                }
             }
         }
+
+        std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
+        visualization_msgs::MarkerArray marker_array;
+        for (int i = 0; i < loss_results_list.size(); i++) {
+          //std::cout << loss_results_list[i] << '\n';
+          marker_array.markers.push_back(translateToMarker(loss_results_list[i]));
+        }
+        visualization_pub.publish(marker_array);
 
         ros::spinOnce();
         rate.sleep();
