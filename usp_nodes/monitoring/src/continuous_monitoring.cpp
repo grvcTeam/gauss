@@ -50,6 +50,14 @@ double sdSegment(const gauss_msgs::Waypoint& p, const gauss_msgs::Waypoint& a, c
   return length(aux) - r;
 }
 
+geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint& wp) {
+  geometry_msgs::Point p;
+  p.x = wp.x;
+  p.y = wp.y;
+  p.z = wp.z;
+  return p;
+}
+
 struct Segment {
   Segment() = default;
   Segment(gauss_msgs::Waypoint a, gauss_msgs::Waypoint b) {
@@ -316,6 +324,37 @@ std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss
     return segment_loss_results;
 }
 
+struct LossExtreme {
+  gauss_msgs::Waypoint in_point;
+  gauss_msgs::Waypoint out_point;
+};
+
+visualization_msgs::Marker translateToMarker(const LossExtreme& extremes, int id = 0) {
+  visualization_msgs::Marker marker;
+  std_msgs::ColorRGBA red, green;  // TODO: constants
+  red.r = 1.0;
+  red.a = 1.0;
+  green.g = 1.0;
+  green.a = 1.0;
+
+  marker.header.stamp = ros::Time::now();
+  marker.header.frame_id = "map";  // TODO: other?
+  marker.ns = "extremes";  // TODO: other?
+  marker.id = id;
+  marker.type = visualization_msgs::Marker::SPHERE_LIST;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.pose.orientation.w = 1;
+  marker.scale.x = 2.0;
+  marker.scale.y = 2.0;
+  marker.scale.z = 2.0;
+  marker.lifetime = ros::Duration(1.0);  // TODO: pair with frequency
+  marker.points.push_back(translateToPoint(extremes.in_point));
+  marker.colors.push_back(red);
+  marker.points.push_back(translateToPoint(extremes.out_point));
+  marker.colors.push_back(green);
+  return marker;
+}
+
 struct LossResult {
   LossResult(const int i, const int j): first_trajectory_index(i), second_trajectory_index(j) {}
 
@@ -325,17 +364,41 @@ struct LossResult {
   std::vector<CheckSegmentsLossResult> segments_loss_results;
 };
 
-geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint& wp) {
-  geometry_msgs::Point p;
-  p.x = wp.x;
-  p.y = wp.y;
-  p.z = wp.z;
-  return p;
+std::pair<LossExtreme, LossExtreme> calculateExtremes(const LossResult& result) {
+  std::pair<LossExtreme, LossExtreme> extremes;
+  if (result.segments_loss_results.size() < 1) {
+    ROS_ERROR("result.segments_loss_results.size() < 1");
+    return extremes;
+  }
+
+  // In points are for sure A's from segment 0
+  extremes.first.in_point = result.segments_loss_results[0].first.point_a;
+  extremes.second.in_point = result.segments_loss_results[0].second.point_a;
+
+  // Initialize out points as B's from segment 0...
+  extremes.first.out_point = result.segments_loss_results[0].first.point_b;
+  extremes.second.out_point = result.segments_loss_results[0].second.point_b;
+  //  ...but update if more contiguous segments are available
+  float t_gap_threshold = 1.0;  // [s]
+  // Check for first
+  for (int i = 1; i < result.segments_loss_results.size(); i++) {
+    double t_gap = fabs(result.segments_loss_results[i].first.t_a - result.segments_loss_results[i-1].first.t_b);
+    if (t_gap > t_gap_threshold) { break; }
+    extremes.first.out_point = result.segments_loss_results[i].first.point_b;
+  }
+  // Check for second
+  for (int i = 1; i < result.segments_loss_results.size(); i++) {
+    double t_gap = fabs(result.segments_loss_results[i].second.t_a - result.segments_loss_results[i-1].second.t_b);
+    if (t_gap > t_gap_threshold) { break; }
+    extremes.second.out_point = result.segments_loss_results[i].second.point_b;
+  }
+
+  return extremes;
 }
 
 visualization_msgs::Marker translateToMarker(const LossResult& result) {
   visualization_msgs::Marker marker;
-  marker.header.stamp = ros::Time::now();  // std_msgs/Header header
+  marker.header.stamp = ros::Time::now();
   marker.header.frame_id = "map";  // TODO: other?
   marker.ns = "loss_" + std::to_string(result.first_trajectory_index) + "_" + std::to_string(result.second_trajectory_index);
   marker.type = visualization_msgs::Marker::LINE_LIST;
@@ -344,7 +407,7 @@ visualization_msgs::Marker translateToMarker(const LossResult& result) {
   marker.scale.x = 1.0;
   marker.color.r = 1.0;  // TODO: color?
   marker.color.a = 1.0;
-  marker.lifetime = ros::Duration();  // duration lifetime
+  marker.lifetime = ros::Duration(1.0);  // TODO: pair with frequency
   for (auto segments_loss: result.segments_loss_results) {
     marker.points.push_back(translateToPoint(segments_loss.first.point_a));
     marker.points.push_back(translateToPoint(segments_loss.first.point_b));
@@ -465,6 +528,9 @@ int main(int argc, char **argv) {
         for (int i = 0; i < loss_results_list.size(); i++) {
           //std::cout << loss_results_list[i] << '\n';
           marker_array.markers.push_back(translateToMarker(loss_results_list[i]));
+          auto extremes = calculateExtremes(loss_results_list[i]);
+          marker_array.markers.push_back(translateToMarker(extremes.first, 10*i));
+          marker_array.markers.push_back(translateToMarker(extremes.second, 10*i+1));
         }
         visualization_pub.publish(marker_array);
 
