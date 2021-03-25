@@ -21,7 +21,7 @@
 #include <geometry_msgs/Pose.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
-#include <tactical_deconfliction/path_planner.h>
+#include <path_planner.h>
 
 #include <Eigen/Eigen>
 

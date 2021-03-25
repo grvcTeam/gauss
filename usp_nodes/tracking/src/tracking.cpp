@@ -313,8 +313,6 @@ bool Tracking::changeFlightStatusCB(gauss_msgs::ChangeFlightStatus::Request &req
 {
     bool result = true;
     uint8_t uav_id = icao_address_uav_id_map_[std::to_string(req.icao)];
-    std::cout << "Change flight status request received for ICAO address: " << req.icao << "\n";
-    std::cout << "UAV ID associated with this ICAO: " << (int)uav_id << "\n"; 
 
     switch (uav_id_flight_status_map_[uav_id])
     {
@@ -322,14 +320,14 @@ bool Tracking::changeFlightStatusCB(gauss_msgs::ChangeFlightStatus::Request &req
         if(req.is_started == true)
         {
             uav_id_flight_status_map_[uav_id] = FlightStatus::STARTED;
-            std::cout << "Flight started\n";
+            ROS_INFO_STREAM("[Tracking] Change flight status request received for ICAO [" << req.icao << "] UAV [" << (int)uav_id << "] : Flight started");
         }
         break;
     case FlightStatus::STARTED:
         if(req.is_started == false)
         {
             uav_id_flight_status_map_[uav_id] = FlightStatus::ENDED;
-            std::cout << "Flight ended\n";
+            ROS_INFO_STREAM("[Tracking] Change flight status request received for ICAO [" << req.icao << "] UAV [" << (int)uav_id << "] : Flight ended");
         }
         break;
     case FlightStatus::ENDED:
@@ -626,7 +624,7 @@ bool Tracking::writeTrackingInfoToDatabase()
         }
         else
         {
-            ROS_INFO("Succesful writing operation to database");
+            // ROS_INFO("Succesful writing operation to database");
             result = true;
         }
     }
@@ -642,7 +640,7 @@ bool Tracking::writeTrackingInfoToDatabase()
         }
         else
         {
-            ROS_INFO("Succesful writing operation to database");
+            ROS_INFO("[Tracking] Succesful writing alternative operation [%d] to database", write_operation_msg_.request.uav_ids.front());
             result = true;
         }
     }    
@@ -1207,13 +1205,13 @@ void Tracking::main()
 {
     double estimator_rate;
     ros::NodeHandle pnh("~");
-    pnh.param<double>("estimator_rate", estimator_rate, 1); // Each second the estimator gets updated
+    nh_.param("estimator_rate", estimator_rate, 1.0); // Each second the estimator gets updated
 
     ros::AsyncSpinner spinner(4);
     spinner.start();
 
     ros::Rate rate(estimator_rate);
-    ros::Rate sleep_rate(5);
+    ros::Rate sleep_rate(1);
 
     while(ros::Time::now() == ros::Time(0)) // Wait until /clock messages are published if in simulation
     {
@@ -1222,6 +1220,7 @@ void Tracking::main()
     int counter = 0;
     while(pnh.ok())
     {
+        double start_computational_time = ros::Time::now().toSec();
         candidates_list_mutex_.lock();
         bool new_operations_to_download = false;
         for(auto it=candidates_.begin(); it!=candidates_.end(); ++it)
@@ -1284,13 +1283,14 @@ void Tracking::main()
 
         candidates_.clear();
 
-        counter++;
+        // counter++;
         // Write on database each five iterations of the filter to avoid unnecessary overload
-        if (counter == 5)
-        {
-            counter = 0;
+        // if (counter == 5)
+        // {
+        //     counter = 0;
             this->writeTrackingInfoToDatabase();
-        }
+        // }
+        // ROS_INFO("[Tracking] Computational time: %0.4f", ros::Time::now().toSec() - start_computational_time);
         rate.sleep();
         //std::cout << "Cycle time: " << rate.cycleTime() << std::endl;
     }

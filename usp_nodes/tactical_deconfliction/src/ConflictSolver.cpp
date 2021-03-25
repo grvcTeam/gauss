@@ -97,7 +97,7 @@ ConflictSolver::ConflictSolver() {
     // Cient
     check_client_ = nh_.serviceClient<gauss_msgs::CheckConflicts>("/gauss/check_conflicts");
 
-    ROS_INFO("[Deconfliction] Started ConflictSolver node!");
+    ROS_INFO("[Tactical] Started ConflictSolver node!");
 }
 
 int ConflictSolver::pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy) {
@@ -453,9 +453,14 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
 
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res) {
-    ROS_INFO("[Deconfliction] New conflict received! [%d %d]", req.threat.threat_id, req.threat.threat_type);
+    std::string cout_request;
+    cout_request = cout_request + " [" + std::to_string(req.threat.threat_id) + " " + std::to_string(req.threat.threat_type) + " |";
+    for (auto uav_id : req.threat.uav_ids) cout_request = cout_request + " " + std::to_string(uav_id);
+    cout_request = cout_request + "]";
+    ROS_INFO_STREAM("[Tactical] New conflict received!" + cout_request);
     //Deconfliction
     if (req.tactical) {
+        double start_computational_time = ros::Time::now().toSec();
         gauss_msgs::Threat conflict;
         conflict = req.threat;
         std::vector<gauss_msgs::ConflictiveOperation> conflictive_operations;
@@ -468,19 +473,21 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
 
         if (req.threat.threat_type == req.threat.LOSS_OF_SEPARATION) {
-            gauss_msgs::WaypointList traj1 = conflictive_operations.at(0).estimated_trajectory;
-            gauss_msgs::WaypointList traj2 = conflictive_operations.at(1).estimated_trajectory;
+            if (req.operations.size() != 2) ROS_ERROR("[Monitoring] Loss of separation. Operation size should be equal to 2 not %zd", req.operations.size());
+            if (req.threat.times.size() != 2) ROS_ERROR("[Monitoring] Loss of separation. Threat times size should be equal to 2 not %zd", req.threat.times.size());
+            gauss_msgs::WaypointList traj1 = conflictive_operations.front().estimated_trajectory;
+            gauss_msgs::WaypointList traj2 = conflictive_operations.back().estimated_trajectory;
             gauss_msgs::Waypoint wp1, wp2;
             int j = 0;
-            while (abs(traj1.waypoints.at(j).stamp.toSec() - conflict.times.at(0).toSec()) >= dT_ / 2)
+            while (abs(traj1.waypoints.at(j).stamp.toSec() - conflict.times.front().toSec()) >= dT_ / 2)
                 j++;
             wp1 = traj1.waypoints.at(j);
             int k = 0;
-            while (abs(traj2.waypoints.at(k).stamp.toSec() - conflict.times.at(1).toSec()) >= dT_ / 2)
+            while (abs(traj2.waypoints.at(k).stamp.toSec() - conflict.times.back().toSec()) >= dT_ / 2)
                 k++;
             wp2 = traj2.waypoints.at(k);
             
-            double minDistAux = max(minDist_, conflictive_operations.at(0).operational_volume + conflictive_operations.at(1).operational_volume);
+            double minDistAux = max(minDist_ + conflictive_operations.front().operational_volume + conflictive_operations.back().operational_volume, conflictive_operations.front().operational_volume + conflictive_operations.back().operational_volume);
 
             double dist_vert = abs(wp2.z - wp1.z);
             double dist_hor = sqrt(pow(wp2.x - wp1.x, 2) + pow(wp2.y - wp1.y, 2));
@@ -491,8 +498,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             gauss_msgs::Waypoint newwp;
             newplan.maneuver_type = 8;  // defined in https://docs.google.com/document/d/1R5jWSw4pyPyplHwwrQCDprIUkMimVz-yR8u_t19ooOA/edit
 
-            if (req.threat.priority_ops.at(0) >= req.threat.priority_ops.at(1)) {
-                newplan.uav_id = req.threat.uav_ids.at(1);
+            if (req.threat.priority_ops.front() >= req.threat.priority_ops.back()) {
+                newplan.uav_id = req.threat.uav_ids.back();
                 //Above
                 if (k > 0)
                     newplan.waypoint_list.push_back(traj2.waypoints.at(k - 1));
@@ -565,8 +572,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     res.deconfliction_plans.push_back(newplan);
                 }
             }
-            if (req.threat.priority_ops.at(1) >= req.threat.priority_ops.at(0)) {
-                newplan.uav_id = req.threat.uav_ids.at(0);
+            if (req.threat.priority_ops.back() >= req.threat.priority_ops.front()) {
+                newplan.uav_id = req.threat.uav_ids.front();
                 //Above
                 newplan.waypoint_list.clear();
                 if (j > 0)
@@ -682,7 +689,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume, polygon_test_output); 
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*1.1, polygon_test_output); 
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }
@@ -803,7 +810,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume, polygon_test_output);
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*1.1, polygon_test_output);
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }
@@ -978,6 +985,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             res.message = "Conflict solved";
             res.success = true;
         }
+        // ROS_INFO("[Tactical] Computational time: %0.4f", ros::Time::now().toSec() - start_computational_time);
     }
     int cont = 1;
     for (auto plan : res.deconfliction_plans){

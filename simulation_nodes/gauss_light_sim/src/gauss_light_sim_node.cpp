@@ -7,12 +7,16 @@
 #include <gauss_msgs_mqtt/UTMAlternativeFlightPlan.h>
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
 #include <limits>
+#include <random>
 
 #define ARENOSILLO_LATITUDE 37.094784
 #define ARENOSILLO_LONGITUDE -6.735478
@@ -49,7 +53,7 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
 */
 
 // This is a trickier version of the previous function, as time-base issues must be addressed (TODO!)
-gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t) {
+gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t, double* yaw = nullptr) {
     // Make sure that from.stamp < to.stamp
     if (from.stamp > to.stamp) {
         ROS_ERROR("[Sim] from.stamp > to.stamp (%lf > %lf)", from.stamp.toSec(), to.stamp.toSec());
@@ -78,6 +82,8 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_m
     interpolated.z = from.z + (delta_z / delta_t) * elapsed_t;
     // interpolated.stamp = t;  // Cannot do this anymore
 
+    if (yaw != nullptr) { *yaw = atan2(delta_y, delta_x); }
+
     return interpolated;
 }
 
@@ -101,19 +107,85 @@ float calculateMeanSpeed(const gauss_msgs::Waypoint &from, const gauss_msgs::Way
     return distance / delta_t;
 }
 
+void copyTarget(const gauss_msgs::Waypoint& target_position, double target_yaw, geometry_msgs::Transform* current_transform, float* current_yaw) {
+    tf2::Quaternion q;
+    q.setRPY(0, 0, target_yaw);  // Only yaw!
+    current_transform->rotation.x = q.x();
+    current_transform->rotation.y = q.y();
+    current_transform->rotation.z = q.z();
+    current_transform->rotation.w = q.w();
+    current_transform->translation.x = target_position.x;
+    current_transform->translation.y = target_position.y;
+    current_transform->translation.z = target_position.z;
+    *current_yaw = target_yaw;
+}
+
+void smoothTarget(const gauss_msgs::Waypoint& target_position, double target_yaw, geometry_msgs::Transform* current_transform, float* current_yaw) {
+    double alpha = 0.5;  // TODO: as param?
+    double beta = 1 - alpha;
+    tf2::Quaternion q_target;
+    q_target.setRPY(0, 0, target_yaw);
+    tf2::Quaternion q_current(current_transform->rotation.x, current_transform->rotation.y, current_transform->rotation.z, current_transform->rotation.w);
+    auto q_smooth = q_current.slerp(q_target, beta);
+    current_transform->rotation.x = q_smooth.x();
+    current_transform->rotation.y = q_smooth.y();
+    current_transform->rotation.z = q_smooth.z();
+    current_transform->rotation.w = q_smooth.w();
+    current_transform->translation.x = alpha*current_transform->translation.x + beta*target_position.x;
+    current_transform->translation.y = alpha*current_transform->translation.y + beta*target_position.y;
+    current_transform->translation.z = alpha*current_transform->translation.z + beta*target_position.z;
+    *current_yaw = 2.0 * atan2(current_transform->rotation.z, current_transform->rotation.w);  // Only yaw!
+}
+
+void simTarget(const gauss_msgs::Waypoint& target_position, double target_yaw, geometry_msgs::Transform* current_transform, float* current_yaw) {
+    static std::default_random_engine generator;
+    static std::normal_distribution<double> xyz_distribution(0, 1.00);  // N(mean, stddev) TODO: as params?
+    static std::normal_distribution<double> yaw_distribution(0, 0.01);  // N(mean, stddev) TODO: as params?
+
+    // Add noise to current data...
+    double tf_yaw_with_noise = 2.0 * atan2(current_transform->rotation.z, current_transform->rotation.w);
+    tf_yaw_with_noise += yaw_distribution(generator);
+    tf2::Quaternion q_yaw_with_noise;  // Only yaw!
+    q_yaw_with_noise.setRPY(0, 0, tf_yaw_with_noise);
+    current_transform->rotation.x = q_yaw_with_noise.x();
+    current_transform->rotation.y = q_yaw_with_noise.y();
+    current_transform->rotation.z = q_yaw_with_noise.z();
+    current_transform->rotation.w = q_yaw_with_noise.w();
+    *current_yaw = tf_yaw_with_noise;  // Not needed...
+
+    current_transform->translation.x += xyz_distribution(generator);
+    current_transform->translation.y += xyz_distribution(generator);
+    current_transform->translation.z += xyz_distribution(generator);
+
+    smoothTarget(target_position, target_yaw, current_transform, current_yaw);
+
+/*
+    // ...or add noise to target data
+    auto new_target_position = target_position;
+    new_target_position.x += xyz_distribution(generator);
+    new_target_position.y += xyz_distribution(generator);
+    new_target_position.z += xyz_distribution(generator);
+
+    auto new_target_yaw = target_yaw + yaw_distribution(generator);
+
+    smoothTarget(new_target_position, new_target_yaw, current_transform, current_yaw);
+*/
+}
+
 class RPAStateInfoWrapper {
    public:
     // RPAStateInfoWrapper wraps (has-a) RPAStateInfo named data
     gauss_msgs_mqtt::RPAStateInfo data;
+    geometry_msgs::TransformStamped tf;
 
     // Each function updates a subset of fields in data:
     // uint32 icao                 - update
     // float64 latitude            -------- updatePhysics
     // float64 longitude           -------- updatePhysics
     // float32 altitude            -------- updatePhysics
-    // float32 yaw                 -------- updatePhysics[?]
-    // float32 pitch               -------- updatePhysics[?]
-    // float32 roll                -------- updatePhysics[?]
+    // float32 yaw                 -------- updatePhysics
+    // float32 pitch               -------- updatePhysics
+    // float32 roll                -------- updatePhysics
     // float32 groundspeed         -------- updatePhysics
     // float32 covariance_h        ---------------------- applyChange
     // float32 covariance_v        ---------------------- applyChange
@@ -166,18 +238,60 @@ class RPAStateInfoWrapper {
 
     void setProjection(const GeographicLib::LocalCartesian &projection) { proj = projection; }
 
-    // TODO: Initialize phyics?
+    void initPhysics(const gauss_msgs::WaypointList &flight_plan) {
+        double latitude, longitude, altitude;
+        if (flight_plan.waypoints.size() == 0) {
+            ROS_ERROR("[Sim] Flight plan is empty");
+            return;
+        } else {
+            // At least one point, get position
+            tf.transform.translation.x = flight_plan.waypoints[0].x;
+            tf.transform.translation.y = flight_plan.waypoints[0].y;
+            tf.transform.translation.z = flight_plan.waypoints[0].z;
+            proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
+            data.latitude = latitude;
+            data.longitude = longitude;
+            data.altitude = altitude;
+            data.groundspeed = 0;
+        }
+
+        if(flight_plan.waypoints.size() >= 2) {
+            // At least two points, get also orientation!
+            gauss_msgs::Waypoint prev, next;
+            prev = flight_plan.waypoints[0];
+            next = flight_plan.waypoints[1];
+            double delta_x = next.x - prev.x;
+            double delta_y = next.y - prev.y;
+            double yaw = atan2(delta_y, delta_x);
+            tf2::Quaternion q;
+            q.setRPY(0, 0, yaw);
+            tf.transform.rotation.x = q.x();
+            tf.transform.rotation.y = q.y();
+            tf.transform.rotation.z = q.z();
+            tf.transform.rotation.w = q.w();
+            data.yaw = yaw;
+        }
+    }
+
     bool updatePhysics(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan) {
         // This function returns true if 'physics' is running
         bool running = false;  // otherwise, it returns false
         double latitude, longitude, altitude;
+
+        // Update common tf data
+        tf.header.stamp = ros::Time::now();
+        tf.header.frame_id = "map";
+        tf.child_frame_id = std::to_string(data.icao);
 
         if (flight_plan.waypoints.size() == 0) {
             ROS_ERROR("[Sim] Flight plan is empty");
             return false;
 
         } else if (flight_plan.waypoints.size() == 1) {
-            proj.Reverse(flight_plan.waypoints[0].x, flight_plan.waypoints[0].y, flight_plan.waypoints[0].z, latitude, longitude, altitude);
+            tf.transform.translation.x = flight_plan.waypoints[0].x;
+            tf.transform.translation.y = flight_plan.waypoints[0].y;
+            tf.transform.translation.z = flight_plan.waypoints[0].z;
+            proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
             data.latitude = latitude;
             data.longitude = longitude;
             data.altitude = altitude;
@@ -198,19 +312,26 @@ class RPAStateInfoWrapper {
                 ++it;
             }
         }
-        gauss_msgs::Waypoint target_point;
+
         if (prev.stamp == next.stamp) {
             // Last waypoint is reached
             running = false;
-            target_point = next;
+            tf.transform.translation.x = next.x;
+            tf.transform.translation.y = next.y;
+            tf.transform.translation.z = next.z;
         } else {
             running = true;
-            target_point = interpolate(prev, next, elapsed);
+            double target_yaw;
+            gauss_msgs::Waypoint target_point;
+            target_point = interpolate(prev, next, elapsed, &target_yaw);
+            // TODO: Realism level as a parameter!
+            //copyTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            //simTarget(target_point, target_yaw, &tf.transform, &data.yaw);  // TODO: Merge copy, smooth and sim into one function?
         }
 
-        // TODO: Play with a current_point and target_point to add some memory and behave more realistically if flight_plan is changed
         // Cartesian to geographic conversion
-        proj.Reverse(target_point.x, target_point.y, target_point.z, latitude, longitude, altitude);
+        proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
         data.latitude = latitude;
         data.longitude = longitude;
         data.altitude = altitude;
@@ -258,8 +379,8 @@ class RPAStateInfoWrapper {
         } else if ((param_name == "val") && (param_type == "float")) {
             data.val = yaml_change["value"].as<float>();
 
-        } else if ((param_name == "solution_mode") && (param_type == "string")) {
-            data.solution_mode = yaml_change["value"].as<std::string>();
+        } else if ((param_name == "solution_mode") && (param_type == "int")) {
+            data.solution_mode = yaml_change["value"].as<int>();
 
         } else if ((param_name == "jamming") && (param_type == "float")) {
             data.jamming = yaml_change["value"].as<float>();
@@ -317,7 +438,7 @@ class LightSim {
 
     void start() {
         ROS_INFO("[Sim] Starting simulation at t = [%lf]s", ros::Time::now().toSec());
-        timer = n.createTimer(ros::Duration(1), &LightSim::updateCallback, this);
+        timer = n.createTimer(ros::Duration(0.1), &LightSim::updateCallback, this);
     }
 
     void setOperations(const std::vector<gauss_msgs::Operation> &operations) {
@@ -325,6 +446,7 @@ class LightSim {
             // There should be one operation for each icao_address
             icao_to_operation_map[operation.icao_address] = operation;
             icao_to_current_position_map[operation.icao_address] = operation.flight_plan.waypoints.front();
+            icao_to_state_info_map[operation.icao_address].initPhysics(operation.flight_plan);
             ROS_INFO("[Sim] Loaded operation for icao [%s]", operation.icao_address.c_str());
         }
     }
@@ -440,6 +562,7 @@ class LightSim {
                     // status_pub.publish(status_msg);
                 }
                 rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
+                tf_broadcaster.sendTransform(icao_to_state_info_map[icao].tf);
             }
         }
     }
@@ -449,6 +572,7 @@ class LightSim {
     std::map<std::string, gauss_msgs::Operation> icao_to_operation_map;
     std::map<std::string, RPAStateInfoWrapper> icao_to_state_info_map;
     std::map<std::string, gauss_msgs::Waypoint> icao_to_current_position_map;
+    // std::vector<geometry_msgs::TransformStamped> tf_vector;  // TODO?
 
     // Auxiliary variable for cartesian to geographic conversion
     GeographicLib::LocalCartesian proj_;
@@ -460,6 +584,7 @@ class LightSim {
     ros::Publisher rpa_state_info_pub, status_pub;
     ros::ServiceServer change_param_service;
     ros::ServiceServer change_flight_plan_service;
+    tf2_ros::TransformBroadcaster tf_broadcaster;
 };
 
 int main(int argc, char **argv) {
