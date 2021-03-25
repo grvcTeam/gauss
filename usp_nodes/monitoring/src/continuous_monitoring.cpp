@@ -455,6 +455,7 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     // ros::NodeHandle np("~");
     ROS_INFO("[Monitoring] Started monitoring node!");
+    double safety_distance_sq = 0;  // pow(350, 2);  // TODO: from param
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
@@ -512,8 +513,7 @@ int main(int argc, char **argv) {
             for (int j = i + 1; j < trajectories_count; j++) {
                 printf("[%d, %d]\n", i, j);
                 trajectories.second = estimated_trajectories[j];
-                //double s_threshold = 109000;  // TODO: param (330m)^2
-                double s_threshold = pow(operational_volumes[i] + operational_volumes[j], 2);
+                double s_threshold = std::max(safety_distance_sq, pow(operational_volumes[i] + operational_volumes[j], 2));
                 auto segments_loss_results = checkTrajectoriesLoss(trajectories, s_threshold);
                 if (segments_loss_results.size() > 0) {
                   LossResult loss_result(i, j);
