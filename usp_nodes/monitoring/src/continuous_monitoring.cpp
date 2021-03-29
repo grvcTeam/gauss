@@ -61,7 +61,7 @@ geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint& wp) {
 struct Segment {
   Segment() = default;
   Segment(gauss_msgs::Waypoint a, gauss_msgs::Waypoint b) {
-    if (a == b) { ROS_WARN("a == b == [%lf, %lf, %lf, %lf]", a.x, a.y, a.z, a.stamp.toSec()); }
+    // if (a == b) { ROS_WARN("a == b == [%lf, %lf, %lf, %lf]", a.x, a.y, a.z, a.stamp.toSec()); }
     point_a = a;
     point_b = b;
     t_a = a.stamp.toSec();
@@ -82,7 +82,7 @@ struct Segment {
       ROS_WARN("t_a == t_b == %lf", t_a);
       return point_a;
     }
-    if (isnan(t)) {
+    if (std::isnan(t)) {
       ROS_WARN("t is NaN");
       return point_a;
     }
