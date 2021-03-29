@@ -23,118 +23,118 @@ double length(const geometry_msgs::Vector3& u) {
 }
 
 // TODO: Use geometry_msgs/Point instead of Waypoint?
-geometry_msgs::Vector3 vector_from_point_to_point(const gauss_msgs::Waypoint& a, const gauss_msgs::Waypoint& b) {
-  geometry_msgs::Vector3 ab;
-  ab.x = b.x - a.x;
-  ab.y = b.y - a.y;
-  ab.z = b.z - a.z;
-  return ab;
+geometry_msgs::Vector3 vector_from_point_to_point(const gauss_msgs::Waypoint& A, const gauss_msgs::Waypoint& B) {
+  geometry_msgs::Vector3 AB;
+  AB.x = B.x - A.x;
+  AB.y = B.y - A.y;
+  AB.z = B.z - A.z;
+  return AB;
 }
 
 // Signed Distance Fucntion from P to:
-// a sphere centered in C with radius R
-double sdSphere(const gauss_msgs::Waypoint& p, const gauss_msgs::Waypoint& c, double r) {
-  return length(vector_from_point_to_point(c, p)) - r;
+// a sphere centered in C with radius r
+double sdSphere(const gauss_msgs::Waypoint& P, const gauss_msgs::Waypoint& C, double r) {
+  return length(vector_from_point_to_point(C, P)) - r;
 }
 
 // Signed Distance Fucntion from P to:
-// a segment (A,B) with some radius R
-double sdSegment(const gauss_msgs::Waypoint& p, const gauss_msgs::Waypoint& a, const gauss_msgs::Waypoint& b, double r = 0) {
-  geometry_msgs::Vector3 ap = vector_from_point_to_point(a, p);
-  geometry_msgs::Vector3 ab = vector_from_point_to_point(a, b);
-  double h = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0);
+// a segment (A,B) with some radius r
+double sdSegment(const gauss_msgs::Waypoint& P, const gauss_msgs::Waypoint& A, const gauss_msgs::Waypoint& B, double r = 0) {
+  geometry_msgs::Vector3 AP = vector_from_point_to_point(A, P);
+  geometry_msgs::Vector3 AB = vector_from_point_to_point(A, B);
+  double h = clamp(dot(AP, AB) / dot(AB, AB), 0.0, 1.0);
   geometry_msgs::Vector3 aux;
-  aux.x = ap.x - ab.x * h;  // TODO: Use eigen?
-  aux.y = ap.y - ab.y * h;
-  aux.z = ap.z - ab.z * h;
+  aux.x = AP.x - AB.x * h;  // TODO: Use eigen?
+  aux.y = AP.y - AB.y * h;
+  aux.z = AP.z - AB.z * h;
   return length(aux) - r;
 }
 
-geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint& wp) {
-  geometry_msgs::Point p;
-  p.x = wp.x;
-  p.y = wp.y;
-  p.z = wp.z;
-  return p;
+geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint& WP) {
+  geometry_msgs::Point P;
+  P.x = WP.x;
+  P.y = WP.y;
+  P.z = WP.z;
+  return P;
 }
 
 struct Segment {
   Segment() = default;
-  Segment(gauss_msgs::Waypoint a, gauss_msgs::Waypoint b) {
-    // if (a == b) { ROS_WARN("a == b == [%lf, %lf, %lf, %lf]", a.x, a.y, a.z, a.stamp.toSec()); }
-    point_a = a;
-    point_b = b;
-    t_a = a.stamp.toSec();
-    t_b = b.stamp.toSec();
-    if (t_a >= t_b) { ROS_WARN("t_a[%lf] >= t_b[%lf]", t_a, t_b); }
+  Segment(gauss_msgs::Waypoint A, gauss_msgs::Waypoint B) {
+    // if (A == B) { ROS_WARN("A == B == [%lf, %lf, %lf, %lf]", A.x, A.y, A.z, A.stamp.toSec()); }  // TODO: compare function
+    point_A = A;
+    point_B = B;
+    t_A = A.stamp.toSec();
+    t_B = B.stamp.toSec();
+    if (t_A >= t_B) { ROS_WARN("t_A[%lf] >= t_B[%lf]", t_A, t_B); }
   }
 
   gauss_msgs::Waypoint point_at_time(double t) const {
-    if (t < t_a) {
-      ROS_WARN("t[%lf] < t_a[%lf]", t, t_a);
-      return point_a;
+    if (t < t_A) {
+      ROS_WARN("t[%lf] < t_A[%lf]", t, t_A);
+      return point_A;
     }
-    if (t > t_b) {
-      ROS_WARN("t[%lf] > t_b[%lf]", t, t_b);
-      return point_b;
+    if (t > t_B) {
+      ROS_WARN("t[%lf] > t_B[%lf]", t, t_B);
+      return point_B;
     }
-    if (t_a == t_b) {
-      ROS_WARN("t_a == t_b == %lf", t_a);
-      return point_a;
+    if (t_A == t_B) {
+      ROS_WARN("t_A == t_B == %lf", t_A);
+      return point_A;
     }
     if (std::isnan(t)) {
       ROS_WARN("t is NaN");
-      return point_a;
+      return point_A;
     }
 
-    double u = (t - t_a) / (t_b - t_a);
+    double m = (t - t_A) / (t_B - t_A);
     gauss_msgs::Waypoint point;
-    point.x = point_a.x * (1.0 - u) + point_b.x * u;
-    point.y = point_a.y * (1.0 - u) + point_b.y * u;
-    point.z = point_a.z * (1.0 - u) + point_b.z * u;
+    point.x = point_A.x + m * (point_B.x - point_A.x);
+    point.y = point_A.y + m * (point_B.y - point_A.y);
+    point.z = point_A.z + m * (point_B.z - point_A.z);
     point.stamp.fromSec(t);
     return point;
   }
 
   friend std::ostream& operator<< (std::ostream& out, const Segment& s);
-  gauss_msgs::Waypoint point_a;
-  gauss_msgs::Waypoint point_b;
-  double t_a = 0;
-  double t_b = 0;
+  gauss_msgs::Waypoint point_A;
+  gauss_msgs::Waypoint point_B;
+  double t_A = 0;
+  double t_B = 0;
 };
 
 std::ostream& operator<< (std::ostream& out, const Segment& s) {
-  out << "[(" << s.point_a << "); (" << s.point_b << ")]";
+  out << "[(" << s.point_A << "); (" << s.point_B << ")]";
   return out;
 }
 
 std::pair<geometry_msgs::Vector3, geometry_msgs::Vector3> delta(const Segment& first, const Segment& second) {
-  geometry_msgs::Vector3 delta_a;
-  delta_a.x = second.point_a.x - first.point_a.x;
-  delta_a.y = second.point_a.y - first.point_a.y;
-  delta_a.z = second.point_a.z - first.point_a.z;
-  geometry_msgs::Vector3 delta_b;
-  delta_b.x = second.point_b.x - first.point_b.x;
-  delta_b.y = second.point_b.y - first.point_b.y;
-  delta_b.z = second.point_b.z - first.point_b.z;
-  return std::make_pair(delta_a, delta_b);
+  geometry_msgs::Vector3 delta_alpha;
+  delta_alpha.x = second.point_A.x - first.point_A.x;
+  delta_alpha.y = second.point_A.y - first.point_A.y;
+  delta_alpha.z = second.point_A.z - first.point_A.z;
+  geometry_msgs::Vector3 delta_beta;
+  delta_beta.x = second.point_B.x - first.point_B.x;
+  delta_beta.y = second.point_B.y - first.point_B.y;
+  delta_beta.z = second.point_B.z - first.point_B.z;
+  return std::make_pair(delta_alpha, delta_beta);
 }
 
-double sq_distance(const Segment& first, const Segment& second, double u) {
-  if (u < 0) {
-    ROS_WARN("u[%lf] < 0, clamping!", u);
-    u = 0;
+double sq_distance(const Segment& first, const Segment& second, double mu) {
+  if (mu < 0) {
+    ROS_WARN("mu[%lf] < 0, clamping!", mu);
+    mu = 0;
   }
 
-  if (u > 1) {
-    ROS_WARN("u[%lf] > 1, clamping!", u);
-    u = 1;
+  if (mu > 1) {
+    ROS_WARN("mu[%lf] > 1, clamping!", mu);
+    mu = 1;
   }
 
   auto d = delta(first, second);
-  double delta_x = d.first.x * (1 - u) + d.second.x * u;
-  double delta_y = d.first.y * (1 - u) + d.second.y * u;
-  double delta_z = d.first.z * (1 - u) + d.second.z * u;
+  double delta_x = d.first.x + mu * (d.second.x - d.first.x);
+  double delta_y = d.first.y + mu * (d.second.y - d.first.y);
+  double delta_z = d.first.z + mu * (d.second.z - d.first.z);
   return pow(delta_x, 2) + pow(delta_y, 2) + pow(delta_z, 2);
 }
 
@@ -188,49 +188,49 @@ std::ostream& operator<< (std::ostream& out, const CheckSegmentsLossResult& r) {
 
 CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, double s_threshold) {
   // print('checkUnifiedSegmentsLoss:')
-  // print(first.point_a)
-  // print(first.point_b)
+  // print(first.point_A)
+  // print(first.point_B)
   // print('___________')
-  // print(second.point_a)
-  // print(second.point_b)
+  // print(second.point_A)
+  // print(second.point_B)
   auto d = delta(first, second);
   // print(d)
-  double C_x = pow(d.first.x, 2);
-  double C_y = pow(d.first.y, 2);
-  double C_z = pow(d.first.z, 2);
-  double B_x = 2 * (d.first.x * d.second.x - C_x);
-  double B_y = 2 * (d.first.y * d.second.y - C_y);
-  double B_z = 2 * (d.first.z * d.second.z - C_z);
-  double A_x = pow(d.second.x - d.first.x, 2);
-  double A_y = pow(d.second.y - d.first.y, 2);
-  double A_z = pow(d.second.z - d.first.z, 2);
-  double A = A_x + A_y + A_z;
-  double B = B_x + B_y + B_z;
-  double C = C_x + C_y + C_z;
+  double c_x = pow(d.first.x, 2);
+  double c_y = pow(d.first.y, 2);
+  double c_z = pow(d.first.z, 2);
+  double b_x = 2 * (d.first.x * d.second.x - c_x);
+  double b_y = 2 * (d.first.y * d.second.y - c_y);
+  double b_z = 2 * (d.first.z * d.second.z - c_z);
+  double a_x = pow(d.second.x - d.first.x, 2);
+  double a_y = pow(d.second.y - d.first.y, 2);
+  double a_z = pow(d.second.z - d.first.z, 2);
+  double a = a_x + a_y + a_z;
+  double b = b_x + b_y + b_z;
+  double c = c_x + c_y + c_z;
 
-  double u_min, t_min, s_min;
-  if (A == 0) {
-    ROS_WARN("A = 0");
-    if (B >= 0) {
-      u_min = 0;
-      t_min = first.t_a;
-      s_min = C;
+  double mu_min, t_min, s_min;
+  if (a == 0) {
+    ROS_WARN("a = 0");
+    if (b >= 0) {
+      mu_min = 0;
+      t_min = first.t_A;
+      s_min = c;
     } else {
-      u_min = 1;
-      t_min = first.t_b;
-      s_min = B+C;
+      mu_min = 1;
+      t_min = first.t_B;
+      s_min = b + c;
     }
 
-  } else {  // A != 0
-    double u_star = -0.5 * B / A;
-    double t_star = first.t_a * (1-u_star) + first.t_b * u_star;
-    // print(u_star)
+  } else {  // a != 0
+    double mu_star = -0.5 * b / a;
+    double t_star = first.t_A + mu_star * (first.t_B - first.t_A);
+    // print(mu_star)
     // print(t_star)
-    // print(sq_distance(first, second, u_star))
-    u_min = clamp(u_star, 0, 1);
-    t_min = first.t_a * (1-u_min) + first.t_b * u_min;
-    s_min = sq_distance(first, second, u_min);
-    // print(u_min)
+    // print(sq_distance(first, second, mu_star))
+    mu_min = clamp(mu_star, 0, 1);
+    t_min = first.t_A + mu_min * (first.t_B - first.t_A);
+    s_min = sq_distance(first, second, mu_min);
+    // print(mu_min)
     // print(t_min)
     // print(s_min)
   }
@@ -244,16 +244,16 @@ CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, 
     return result;
   }
 
-  auto u_bar = quadratic_roots(A, B, C - s_threshold);
-  double t_bar_0 = first.t_a * (1-u_bar.first) + first.t_b * u_bar.first;
-  double t_bar_1 = first.t_a * (1-u_bar.second) + first.t_b * u_bar.second;
-  // print(u_bar)
+  auto mu_bar = quadratic_roots(a, b, c - s_threshold);
+  double t_bar_0 = first.t_A + mu_bar.first  * (first.t_B - first.t_A);
+  double t_bar_1 = first.t_A + mu_bar.second * (first.t_B - first.t_A);
+  // print(mu_bar)
   // print(t_bar_0, t_bar_1)
-  double u_crossing_0 = clamp(u_bar.first, 0, 1);
-  double u_crossing_1 = clamp(u_bar.second, 0, 1);
-  double t_crossing_0 = first.t_a * (1-u_crossing_0) + first.t_b * u_crossing_0;
-  double t_crossing_1 = first.t_a * (1-u_crossing_1) + first.t_b * u_crossing_1;
-  // print(u_crossing_0, u_crossing_1)
+  double mu_crossing_0 = clamp(mu_bar.first, 0, 1);
+  double mu_crossing_1 = clamp(mu_bar.second, 0, 1);
+  double t_crossing_0 = first.t_A + mu_crossing_0 * (first.t_B - first.t_A);
+  double t_crossing_1 = first.t_A + mu_crossing_1 * (first.t_B - first.t_A);
+  // print(mu_crossing_0, mu_crossing_1)
   // print(t_crossing_0, t_crossing_1)
   auto first_in_conflict = Segment(first.point_at_time(t_crossing_0), first.point_at_time(t_crossing_1));
   auto second_in_conflict = Segment(second.point_at_time(t_crossing_0), second.point_at_time(t_crossing_1));
@@ -268,27 +268,27 @@ CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, 
 
 CheckSegmentsLossResult checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold) {
   // print('checkSegmentsLoss:')
-  // print(first.point_a)
-  // print(first.point_b)
+  // print(first.point_A)
+  // print(first.point_B)
   // print('___________')
-  // print(second.point_a)
-  // print(second.point_b)
-  double t_a1 = segments.first.t_a;
-  double t_b1 = segments.first.t_b;
-  double t_a2 = segments.second.t_a;
-  double t_b2 = segments.second.t_b;
-  double t_alpha = std::max(t_a1, t_a2);
-  double t_beta  = std::min(t_b1, t_b2);
+  // print(second.point_A)
+  // print(second.point_B)
+  double t_A1 = segments.first.t_A;
+  double t_B1 = segments.first.t_B;
+  double t_A2 = segments.second.t_A;
+  double t_B2 = segments.second.t_B;
+  double t_alpha = std::max(t_A1, t_A2);
+  double t_beta  = std::min(t_B1, t_B2);
   if (t_alpha > t_beta) {
     ROS_INFO("t_alpha[%lf] > t_beta[%lf]", t_alpha, t_beta);
     return CheckSegmentsLossResult(segments.first, segments.second);
   }
 
-  auto p_alpha1 = segments.first.point_at_time(t_alpha);
-  auto p_beta1 = segments.first.point_at_time(t_beta);
-  auto p_alpha2 = segments.second.point_at_time(t_alpha);
-  auto p_beta2 = segments.second.point_at_time(t_beta);
-  return checkUnifiedSegmentsLoss(Segment(p_alpha1, p_beta1), Segment(p_alpha2, p_beta2), s_threshold);
+  auto P_alpha1 = segments.first.point_at_time(t_alpha);
+  auto P_beta1 = segments.first.point_at_time(t_beta);
+  auto P_alpha2 = segments.second.point_at_time(t_alpha);
+  auto P_beta2 = segments.second.point_at_time(t_beta);
+  return checkUnifiedSegmentsLoss(Segment(P_alpha1, P_beta1), Segment(P_alpha2, P_beta2), s_threshold);
 }
 
 std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories, double s_threshold) {
@@ -308,11 +308,11 @@ std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss
         std::pair<Segment, Segment> segments;
         printf("First segment, i = %d\n", i);
         segments.first = Segment(trajectories.first.waypoints[i], trajectories.first.waypoints[i+1]);
-        // std::cout << segments.first.point_a << "_____________\n" << segments.first.point_b << '\n';
+        // std::cout << segments.first.point_A << "_____________\n" << segments.first.point_B << '\n';
         for (int j = 0; j < trajectories.second.waypoints.size() - 1; j++) {
             printf("Second segment, j = %d\n", j);
             segments.second = Segment(trajectories.second.waypoints[j], trajectories.second.waypoints[j+1]);
-            // std::cout << segments.second.point_a << "_____________\n" << segments.second.point_b << '\n';
+            // std::cout << segments.second.point_A << "_____________\n" << segments.second.point_B << '\n';
             auto loss_check = checkSegmentsLoss(segments, s_threshold);
             if (loss_check.threshold_is_violated) {
                 ROS_ERROR("Loss of separation!");
@@ -372,25 +372,25 @@ std::pair<LossExtreme, LossExtreme> calculateExtremes(const LossResult& result) 
   }
 
   // In points are for sure A's from segment 0
-  extremes.first.in_point = result.segments_loss_results[0].first.point_a;
-  extremes.second.in_point = result.segments_loss_results[0].second.point_a;
+  extremes.first.in_point = result.segments_loss_results[0].first.point_A;
+  extremes.second.in_point = result.segments_loss_results[0].second.point_A;
 
   // Initialize out points as B's from segment 0...
-  extremes.first.out_point = result.segments_loss_results[0].first.point_b;
-  extremes.second.out_point = result.segments_loss_results[0].second.point_b;
+  extremes.first.out_point = result.segments_loss_results[0].first.point_B;
+  extremes.second.out_point = result.segments_loss_results[0].second.point_B;
   //  ...but update if more contiguous segments are available
   float t_gap_threshold = 1.0;  // [s]
   // Check for first
   for (int i = 1; i < result.segments_loss_results.size(); i++) {
-    double t_gap = fabs(result.segments_loss_results[i].first.t_a - result.segments_loss_results[i-1].first.t_b);
+    double t_gap = fabs(result.segments_loss_results[i].first.t_A - result.segments_loss_results[i-1].first.t_B);
     if (t_gap > t_gap_threshold) { break; }
-    extremes.first.out_point = result.segments_loss_results[i].first.point_b;
+    extremes.first.out_point = result.segments_loss_results[i].first.point_B;
   }
   // Check for second
   for (int i = 1; i < result.segments_loss_results.size(); i++) {
-    double t_gap = fabs(result.segments_loss_results[i].second.t_a - result.segments_loss_results[i-1].second.t_b);
+    double t_gap = fabs(result.segments_loss_results[i].second.t_A - result.segments_loss_results[i-1].second.t_B);
     if (t_gap > t_gap_threshold) { break; }
-    extremes.second.out_point = result.segments_loss_results[i].second.point_b;
+    extremes.second.out_point = result.segments_loss_results[i].second.point_B;
   }
 
   return extremes;
@@ -409,10 +409,10 @@ visualization_msgs::Marker translateToMarker(const LossResult& result) {
   marker.color.a = 1.0;
   marker.lifetime = ros::Duration(1.0);  // TODO: pair with frequency
   for (auto segments_loss: result.segments_loss_results) {
-    marker.points.push_back(translateToPoint(segments_loss.first.point_a));
-    marker.points.push_back(translateToPoint(segments_loss.first.point_b));
-    marker.points.push_back(translateToPoint(segments_loss.second.point_a));
-    marker.points.push_back(translateToPoint(segments_loss.second.point_b));
+    marker.points.push_back(translateToPoint(segments_loss.first.point_A));
+    marker.points.push_back(translateToPoint(segments_loss.first.point_B));
+    marker.points.push_back(translateToPoint(segments_loss.second.point_A));
+    marker.points.push_back(translateToPoint(segments_loss.second.point_B));
   }
 /*
   double t_min = std::nan("");
