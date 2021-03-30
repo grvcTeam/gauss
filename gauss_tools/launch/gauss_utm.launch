@@ -11,6 +11,6 @@
     <node pkg="tracking" type="tracking" name="tracking" output="screen" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
     <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
-    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
+    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction1" output="screen" required="true"/>
     <node pkg="monitoring" type="monitoring" name="monitoring" required="true" output="screen"/>
 </launch>

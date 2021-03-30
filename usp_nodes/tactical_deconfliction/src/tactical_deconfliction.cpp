@@ -120,7 +120,7 @@ visualization_msgs::Marker createMarkerLines(const std::vector<geometry_msgs::Po
     marker_lines.points.push_back(_p_extremes_0.back());
     marker_lines.points.push_back(_p_extremes_1.front());
     marker_lines.points.push_back(_p_extremes_1.back());
-    
+
     return marker_lines;
 }
 
@@ -150,10 +150,6 @@ int main(int argc, char **argv) {
     ros::Subscriber monitoring_vis_sub = nh.subscribe("/gauss/visualize_monitoring", 1, monitoringVisCb);
 
     ros::Rate rate(1);  // [Hz]
-    while (ros::ok() && monitoring_array_.markers.size() == 0) {
-        ros::spinOnce();
-        rate.sleep();
-    }
     while (ros::ok()) {
         geometry_msgs::Point p_middle_0, p_middle_1;
         std::vector<geometry_msgs::Point> p_extremes_0, p_extremes_1;
@@ -173,16 +169,16 @@ int main(int argc, char **argv) {
                 p_middle_1.z = (marker.points.front().z + marker.points.back().z) / 2;
             }
         }
-
-        std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(p_middle_0, p_middle_1, safety_distance);
-        applySeparation(p_extremes_0, p_extremes_1, avoid_vectors);
-        visualization_msgs::MarkerArray marker_array;
-        visualization_msgs::Marker marker_spheres = createMarkerSpheres(p_extremes_0, p_extremes_1, p_middle_0, p_middle_1);
-        marker_array.markers.push_back(marker_spheres);
-        visualization_msgs::Marker marker_lines = createMarkerLines(p_extremes_0, p_extremes_1);
-        marker_array.markers.push_back(marker_lines);
-
-        visualization_pub.publish(marker_array);
+        if (p_extremes_0.size() > 0 && p_extremes_1.size() > 0) {
+            std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(p_middle_0, p_middle_1, safety_distance);
+            applySeparation(p_extremes_0, p_extremes_1, avoid_vectors);
+            visualization_msgs::MarkerArray marker_array;
+            visualization_msgs::Marker marker_spheres = createMarkerSpheres(p_extremes_0, p_extremes_1, p_middle_0, p_middle_1);
+            marker_array.markers.push_back(marker_spheres);
+            visualization_msgs::Marker marker_lines = createMarkerLines(p_extremes_0, p_extremes_1);
+            marker_array.markers.push_back(marker_lines);
+            visualization_pub.publish(marker_array);
+        }
 
         ros::spinOnce();
         rate.sleep();
