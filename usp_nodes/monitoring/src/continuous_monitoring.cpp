@@ -455,7 +455,9 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     // ros::NodeHandle np("~");
     ROS_INFO("[Monitoring] Started monitoring node!");
-    double safety_distance_sq = 0;  // pow(350, 2);  // TODO: from param
+    double safety_distance;
+    n.param("safetyDistance", safety_distance, 10.0);
+    double safety_distance_sq = pow(safety_distance, 2);
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";

@@ -200,6 +200,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
             }
 
             alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
+            ROS_INFO("[USPM] Alternative flight plan proposed.");
 
             ThreatFlightPlan threat_flight_plan;
             threat_flight_plan.threat_id = msg.threat.threat_id;

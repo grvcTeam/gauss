@@ -146,6 +146,10 @@ add_executable(ConflictSolver src/ConflictSolver.cpp)
 target_link_libraries(ConflictSolver path_finder ${catkin_LIBRARIES})
 add_dependencies(ConflictSolver ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
+add_executable(tactical_deconfliction src/tactical_deconfliction.cpp)
+target_link_libraries(tactical_deconfliction path_finder ${catkin_LIBRARIES})
+add_dependencies(tactical_deconfliction ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
 # add_library(path_planner src/path_planner.cpp)
 # add_dependencies(path_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 

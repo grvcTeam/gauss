@@ -12,4 +12,8 @@
     <node pkg="gauss_light_sim" type="gauss_light_sim_node" name="gauss_light_sim_node" output="screen" required="true">
         <param name="timing_file" value="$(find usp_testers)/config/$(arg use_case_yaml)"/>
     </node>
+    <!-- TEST CONTINUOUS -->
+    <node pkg="monitoring" type="continuous_monitoring" name="continuous_monitoring" required="true"/>
+    <node pkg="tactical_deconfliction" type="tactical_deconfliction" name="tactical" output="screen" required="true"/>
+
 </launch>
