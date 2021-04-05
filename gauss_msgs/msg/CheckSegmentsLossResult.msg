@@ -1,0 +1,8 @@
+Waypoint[] segment_first
+Waypoint[] segment_second
+Waypoint point_at_t_min_segment_first
+Waypoint point_at_t_min_segment_second
+float64 t_min
+float64 s_min
+float64 t_crossing_0
+float64 t_crossing_1

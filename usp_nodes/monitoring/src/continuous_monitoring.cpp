@@ -5,6 +5,7 @@
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
+#include <gauss_msgs/NewDeconfliction.h>
 
 double clamp(double x, double min_x, double max_x) {
   if (min_x > max_x) {
@@ -239,7 +240,7 @@ CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, 
   result.s_min = s_min;
 
   if (s_min > s_threshold) {
-    ROS_INFO("s_min[%lf] > s_threshold[%lf]", s_min, s_threshold);
+    // ROS_INFO("s_min[%lf] > s_threshold[%lf]", s_min, s_threshold);
     result.threshold_is_violated = false;
     return result;
   }
@@ -280,7 +281,7 @@ CheckSegmentsLossResult checkSegmentsLoss(const std::pair<Segment, Segment>& seg
   double t_alpha = std::max(t_A1, t_A2);
   double t_beta  = std::min(t_B1, t_B2);
   if (t_alpha > t_beta) {
-    ROS_INFO("t_alpha[%lf] > t_beta[%lf]", t_alpha, t_beta);
+    // ROS_INFO("t_alpha[%lf] > t_beta[%lf]", t_alpha, t_beta);
     return CheckSegmentsLossResult(segments.first, segments.second);
   }
 
@@ -306,17 +307,17 @@ std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss
 
     for (int i = 0; i < trajectories.first.waypoints.size() - 1; i++) {
         std::pair<Segment, Segment> segments;
-        printf("First segment, i = %d\n", i);
+        // printf("First segment, i = %d\n", i);
         segments.first = Segment(trajectories.first.waypoints[i], trajectories.first.waypoints[i+1]);
         // std::cout << segments.first.point_A << "_____________\n" << segments.first.point_B << '\n';
         for (int j = 0; j < trajectories.second.waypoints.size() - 1; j++) {
-            printf("Second segment, j = %d\n", j);
+            // printf("Second segment, j = %d\n", j);
             segments.second = Segment(trajectories.second.waypoints[j], trajectories.second.waypoints[j+1]);
             // std::cout << segments.second.point_A << "_____________\n" << segments.second.point_B << '\n';
             auto loss_check = checkSegmentsLoss(segments, s_threshold);
             if (loss_check.threshold_is_violated) {
                 ROS_ERROR("Loss of separation!");
-                std::cout << loss_check << '\n';
+                // std::cout << loss_check << '\n';
                 segment_loss_results.push_back(loss_check);
             }
         }
@@ -448,9 +449,47 @@ bool happensBefore(const LossResult& a, const LossResult& b) {
   return a.segments_loss_results[0].t_crossing_0 < b.segments_loss_results[0].t_crossing_0;
 }
 
+gauss_msgs::ConflictiveOperation fillConflictiveOperation(const int &_trajectory_index, const std::map<int, gauss_msgs::Operation> &_index_to_operation_map){
+  gauss_msgs::ConflictiveOperation out_msg;
+  out_msg.actual_wp = _index_to_operation_map.at(_trajectory_index).track.waypoints.back();
+  out_msg.current_wp = _index_to_operation_map.at(_trajectory_index).current_wp;
+  out_msg.estimated_trajectory = _index_to_operation_map.at(_trajectory_index).estimated_trajectory;
+  out_msg.flight_plan = _index_to_operation_map.at(_trajectory_index).flight_plan;
+  out_msg.flight_plan_updated = _index_to_operation_map.at(_trajectory_index).flight_plan_updated;
+  out_msg.landing_spots = _index_to_operation_map.at(_trajectory_index).landing_spots;
+  out_msg.operational_volume = _index_to_operation_map.at(_trajectory_index).operational_volume;
+  out_msg.uav_id = _index_to_operation_map.at(_trajectory_index).uav_id;
+
+  return out_msg;
+}
+
+gauss_msgs::NewDeconfliction fillDeconflictionMsg(const std::vector<LossResult> &_loss_result_list, const std::map<int, gauss_msgs::Operation> &_index_to_operation_map){
+  gauss_msgs::NewDeconfliction out_msg;
+  out_msg.request.threat.threat_type = out_msg.request.threat.LOSS_OF_SEPARATION;
+  for (auto i : _loss_result_list){
+    out_msg.request.threat.priority_ops.push_back(_index_to_operation_map.at(i.first_trajectory_index).priority);
+    out_msg.request.threat.priority_ops.push_back(_index_to_operation_map.at(i.second_trajectory_index).priority);
+    out_msg.request.conflictive_operations.push_back(fillConflictiveOperation(i.first_trajectory_index, _index_to_operation_map));
+    out_msg.request.conflictive_operations.push_back(fillConflictiveOperation(i.first_trajectory_index, _index_to_operation_map));
+    for (auto j : i.segments_loss_results){
+      out_msg.request.conflictive_segments.segment_first.push_back(j.first.point_A);
+      out_msg.request.conflictive_segments.segment_first.push_back(j.first.point_B);
+      out_msg.request.conflictive_segments.segment_second.push_back(j.second.point_A);
+      out_msg.request.conflictive_segments.segment_second.push_back(j.second.point_B);
+      out_msg.request.conflictive_segments.t_min = j.t_min;
+      out_msg.request.conflictive_segments.s_min = j.s_min;
+      out_msg.request.conflictive_segments.t_crossing_0 = j.t_crossing_0;
+      out_msg.request.conflictive_segments.t_crossing_1 = j.t_crossing_1;
+      out_msg.request.conflictive_segments.point_at_t_min_segment_first = j.first.point_at_time(j.t_min);
+      out_msg.request.conflictive_segments.point_at_t_min_segment_second = j.second.point_at_time(j.t_min);
+    }
+  }
+
+  return out_msg;
+}
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "continuous_monitoring");
-
 
     ros::NodeHandle n;
     // ros::NodeHandle np("~");
@@ -461,10 +500,12 @@ int main(int argc, char **argv) {
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
+    auto tactical_srv_url = "/gauss/new_tactical_deconfliction";
     auto visualization_topic_url = "/gauss/visualize_monitoring";
 
     ros::ServiceClient icao_client = n.serviceClient<gauss_msgs::ReadIcao>(read_icao_srv_url);
     ros::ServiceClient operation_client = n.serviceClient<gauss_msgs::ReadOperation>(read_operation_srv_url);
+    ros::ServiceClient tactical_client = n.serviceClient<gauss_msgs::NewDeconfliction>(tactical_srv_url);
     ros::Publisher visualization_pub = n.advertise<visualization_msgs::MarkerArray>(visualization_topic_url, 1);
 
     ROS_INFO("[Monitoring] Waiting for required services...");
@@ -472,7 +513,8 @@ int main(int argc, char **argv) {
     ROS_INFO("[Monitoring] %s: ok", read_icao_srv_url);
     ros::service::waitForService(read_operation_srv_url, -1);
     ROS_INFO("[Monitoring] %s: ok", read_operation_srv_url);
-
+    ros::service::waitForService(tactical_srv_url, -1);
+    ROS_INFO("[Monitoring] %s: ok", tactical_srv_url);
     ros::Rate rate(1);  // [Hz]
     while (ros::ok()) {
 
@@ -495,12 +537,14 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        std::map<std::string, int> icao_to_index_map;
+        std::map<std::string, int> icao_to_index_map;  
+        std::map<int, gauss_msgs::Operation> index_to_operation_map; 
         std::vector<gauss_msgs::WaypointList> estimated_trajectories;
         std::vector<double> operational_volumes;
         for (auto operation: read_operation.response.operation) {
             // std::cout << operation << '\n';
             icao_to_index_map[operation.icao_address] = estimated_trajectories.size();
+            index_to_operation_map[estimated_trajectories.size()] = operation;
             estimated_trajectories.push_back(operation.estimated_trajectory);
             operational_volumes.push_back(operation.operational_volume);
         }
@@ -513,7 +557,7 @@ int main(int argc, char **argv) {
             std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList> trajectories;
             trajectories.first = estimated_trajectories[i];
             for (int j = i + 1; j < trajectories_count; j++) {
-                printf("[%d, %d]\n", i, j);
+                // printf("[%d, %d]\n", i, j);
                 trajectories.second = estimated_trajectories[j];
                 double s_threshold = std::max(safety_distance_sq, pow(operational_volumes[i] + operational_volumes[j], 2));
                 auto segments_loss_results = checkTrajectoriesLoss(trajectories, s_threshold);
@@ -526,9 +570,19 @@ int main(int argc, char **argv) {
         }
 
         std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
+        if (loss_results_list.size() > 0) {
+          gauss_msgs::NewDeconfliction deconfliction_msg = fillDeconflictionMsg(loss_results_list, index_to_operation_map); 
+          if (tactical_client.call(deconfliction_msg)) {
+            // ROS_INFO("[Monitoring] Call tactical... ok");
+          } else {
+            ROS_ERROR("[Monitoring] Failed to call service: [%s]", tactical_srv_url);
+            return 1;
+          }
+        }
+
         visualization_msgs::MarkerArray marker_array;
         for (int i = 0; i < loss_results_list.size(); i++) {
-          //std::cout << loss_results_list[i] << '\n';
+          // std::cout << loss_results_list[i] << '\n';
           marker_array.markers.push_back(translateToMarker(loss_results_list[i]));
           auto extremes = calculateExtremes(loss_results_list[i]);
           marker_array.markers.push_back(translateToMarker(extremes.first, 10*i));

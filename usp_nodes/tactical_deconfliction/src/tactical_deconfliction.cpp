@@ -1,5 +1,5 @@
 #include <gauss_msgs/CheckConflicts.h>
-#include <gauss_msgs/Deconfliction.h>
+#include <gauss_msgs/NewDeconfliction.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/Waypoint.h>
@@ -10,19 +10,18 @@
 
 #include <Eigen/Eigen>
 
-visualization_msgs::MarkerArray monitoring_array_;
+double safety_distance_;
+ros::Publisher visualization_pub_;
 
-bool deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res) {
-    if (req.tactical && req.threat.threat_type == req.threat.LOSS_OF_SEPARATION) {
-    }
-    return res.success;
+geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint &wp) {
+    geometry_msgs::Point p;
+    p.x = wp.x;
+    p.y = wp.y;
+    p.z = wp.z;
+    return p;
 }
 
-void monitoringVisCb(const visualization_msgs::MarkerArray &_msg) {
-    monitoring_array_ = _msg;
-}
-
-std::vector<Eigen::Vector3f> perpendicularSeparationVector(const geometry_msgs::Point &_pA, const geometry_msgs::Point &_pB, const double &_safety_distance) {
+std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Waypoint &_pA, const gauss_msgs::Waypoint &_pB, const double &_safety_distance) {
     std::vector<Eigen::Vector3f> out_avoid_vector;
     Eigen::Vector3f p_a, p_b, unit_vec_ab, unit_vec_ba;
     p_a = Eigen::Vector3f(_pA.x, _pA.y, _pA.z);
@@ -53,7 +52,7 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const geometry_msgs::
     return out_avoid_vector;
 }
 
-void applySeparation(std::vector<geometry_msgs::Point> &_p_extremes_0, std::vector<geometry_msgs::Point> &_p_extremes_1, const std::vector<Eigen::Vector3f> &_avoid_vectors) {
+void applySeparation(std::vector<gauss_msgs::Waypoint> &_p_extremes_0, std::vector<gauss_msgs::Waypoint> &_p_extremes_1, const std::vector<Eigen::Vector3f> &_avoid_vectors) {
     _p_extremes_0.front().x = _p_extremes_0.front().x + _avoid_vectors.front()[0];
     _p_extremes_0.front().y = _p_extremes_0.front().y + _avoid_vectors.front()[1];
     _p_extremes_0.front().z = _p_extremes_0.front().z + _avoid_vectors.front()[2];
@@ -68,7 +67,7 @@ void applySeparation(std::vector<geometry_msgs::Point> &_p_extremes_0, std::vect
     _p_extremes_1.back().z = _p_extremes_1.back().z + _avoid_vectors.back()[2];
 }
 
-visualization_msgs::Marker createMarkerSpheres(const std::vector<geometry_msgs::Point> &_p_extremes_0, const std::vector<geometry_msgs::Point> &_p_extremes_1, const geometry_msgs::Point &_p_middle_0, const geometry_msgs::Point &_p_middle_1) {
+visualization_msgs::Marker createMarkerSpheres(const std::vector<gauss_msgs::Waypoint> &_p_extremes_0, const std::vector<gauss_msgs::Waypoint> &_p_extremes_1, const gauss_msgs::Waypoint &_p_min_dist_0, const gauss_msgs::Waypoint &_p_min_dist_1) {
     std_msgs::ColorRGBA blue;
     blue.b = 1.0;
     blue.a = 1.0;
@@ -85,22 +84,22 @@ visualization_msgs::Marker createMarkerSpheres(const std::vector<geometry_msgs::
     marker_spheres.scale.y = 2.0;
     marker_spheres.scale.z = 2.0;
     marker_spheres.lifetime = ros::Duration(1.0);
-    marker_spheres.points.push_back(_p_extremes_0.front());
+    marker_spheres.points.push_back(translateToPoint(_p_extremes_0.front()));
     marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(_p_extremes_0.back());
+    marker_spheres.points.push_back(translateToPoint(_p_extremes_0.back()));
     marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(_p_extremes_1.front());
+    marker_spheres.points.push_back(translateToPoint(_p_extremes_1.front()));
     marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(_p_extremes_1.back());
+    marker_spheres.points.push_back(translateToPoint(_p_extremes_1.back()));
     marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(_p_middle_0);
+    marker_spheres.points.push_back(translateToPoint(_p_min_dist_0));
     marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(_p_middle_1);
+    marker_spheres.points.push_back(translateToPoint(_p_min_dist_1));
     marker_spheres.colors.push_back(blue);
     return marker_spheres;
 }
 
-visualization_msgs::Marker createMarkerLines(const std::vector<geometry_msgs::Point> &_p_extremes_0, const std::vector<geometry_msgs::Point> &_p_extremes_1) {
+visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypoint> &_p_extremes_0, const std::vector<gauss_msgs::Waypoint> &_p_extremes_1) {
     std_msgs::ColorRGBA blue;
     blue.b = 1.0;
     blue.a = 1.0;
@@ -116,70 +115,64 @@ visualization_msgs::Marker createMarkerLines(const std::vector<geometry_msgs::Po
     marker_lines.scale.x = 1.0;
     marker_lines.color = blue;
     marker_lines.lifetime = ros::Duration(1.0);
-    marker_lines.points.push_back(_p_extremes_0.front());
-    marker_lines.points.push_back(_p_extremes_0.back());
-    marker_lines.points.push_back(_p_extremes_1.front());
-    marker_lines.points.push_back(_p_extremes_1.back());
+    marker_lines.points.push_back(translateToPoint(_p_extremes_0.front()));
+    marker_lines.points.push_back(translateToPoint(_p_extremes_0.back()));
+    marker_lines.points.push_back(translateToPoint(_p_extremes_1.front()));
+    marker_lines.points.push_back(translateToPoint(_p_extremes_1.back()));
 
     return marker_lines;
 }
 
-geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint &wp) {
-    geometry_msgs::Point p;
-    p.x = wp.x;
-    p.y = wp.y;
-    p.z = wp.z;
-    return p;
+bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDeconfliction::Response &res) {
+    switch (req.threat.threat_type) {
+        case req.threat.LOSS_OF_SEPARATION: {
+            std::vector<gauss_msgs::Waypoint> p_extremes_0, p_extremes_1;
+            p_extremes_0 = req.conflictive_segments.segment_first;
+            p_extremes_1 = req.conflictive_segments.segment_second;
+            std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
+            applySeparation(p_extremes_0, p_extremes_1, avoid_vectors);
+
+            visualization_msgs::MarkerArray marker_array;
+            visualization_msgs::Marker marker_spheres = createMarkerSpheres(p_extremes_0, p_extremes_1, req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
+            marker_array.markers.push_back(marker_spheres);
+            visualization_msgs::Marker marker_lines = createMarkerLines(p_extremes_0, p_extremes_1);
+            marker_array.markers.push_back(marker_lines);
+
+            visualization_pub_.publish(marker_array);
+
+        } break;
+        case req.threat.GEOFENCE_CONFLICT:
+            break;
+        case req.threat.GEOFENCE_INTRUSION:
+            break;
+        case req.threat.UAS_OUT_OV:
+            break;
+        case req.threat.GNSS_DEGRADATION:
+            break;
+        case req.threat.LACK_OF_BATTERY:
+            break;
+        default:
+            break;
+    }
+    res.success = true;
+    return res.success;
 }
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "tactical_deconfliction");
 
     ros::NodeHandle nh;
-    // Read parameters
-    double safety_distance;
-    nh.param("safetyDistance", safety_distance, 10.0);
-    // Server
-    ros::ServiceServer deconflict_server = nh.advertiseService("/gauss/tactical_deconfliction", deconflictCB);
-    // Cient
+    nh.param("safetyDistance", safety_distance_, 10.0);
+
+    ros::ServiceServer deconflict_server = nh.advertiseService("/gauss/new_tactical_deconfliction", deconflictCB);
     ros::ServiceClient check_client = nh.serviceClient<gauss_msgs::CheckConflicts>("/gauss/check_conflicts");
 
     auto visualization_topic_url = "/gauss/visualize_tactical";
 
-    ros::Publisher visualization_pub = nh.advertise<visualization_msgs::MarkerArray>(visualization_topic_url, 1);
-    ros::Subscriber monitoring_vis_sub = nh.subscribe("/gauss/visualize_monitoring", 1, monitoringVisCb);
+    visualization_pub_ = nh.advertise<visualization_msgs::MarkerArray>(visualization_topic_url, 1);
 
     ros::Rate rate(1);  // [Hz]
     while (ros::ok()) {
-        geometry_msgs::Point p_middle_0, p_middle_1;
-        std::vector<geometry_msgs::Point> p_extremes_0, p_extremes_1;
-        for (auto marker : monitoring_array_.markers) {
-            if (marker.ns == "extremes" && marker.id == 0) {
-                p_extremes_0.push_back(marker.points.front());
-                p_extremes_0.push_back(marker.points.back());
-                p_middle_0.x = (marker.points.front().x + marker.points.back().x) / 2;
-                p_middle_0.y = (marker.points.front().y + marker.points.back().y) / 2;
-                p_middle_0.z = (marker.points.front().z + marker.points.back().z) / 2;
-            }
-            if (marker.ns == "extremes" && marker.id == 1) {
-                p_extremes_1.push_back(marker.points.front());
-                p_extremes_1.push_back(marker.points.back());
-                p_middle_1.x = (marker.points.front().x + marker.points.back().x) / 2;
-                p_middle_1.y = (marker.points.front().y + marker.points.back().y) / 2;
-                p_middle_1.z = (marker.points.front().z + marker.points.back().z) / 2;
-            }
-        }
-        if (p_extremes_0.size() > 0 && p_extremes_1.size() > 0) {
-            std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(p_middle_0, p_middle_1, safety_distance);
-            applySeparation(p_extremes_0, p_extremes_1, avoid_vectors);
-            visualization_msgs::MarkerArray marker_array;
-            visualization_msgs::Marker marker_spheres = createMarkerSpheres(p_extremes_0, p_extremes_1, p_middle_0, p_middle_1);
-            marker_array.markers.push_back(marker_spheres);
-            visualization_msgs::Marker marker_lines = createMarkerLines(p_extremes_0, p_extremes_1);
-            marker_array.markers.push_back(marker_lines);
-            visualization_pub.publish(marker_array);
-        }
-
         ros::spinOnce();
         rate.sleep();
     }

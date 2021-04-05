@@ -1,0 +1,8 @@
+Threat threat
+Geofence[] geofences
+ConflictiveOperation[] conflictive_operations
+CheckSegmentsLossResult conflictive_segments
+---
+bool success
+string message
+DeconflictionPlan[] deconfliction_plans

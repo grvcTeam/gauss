@@ -5,9 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /MarkerArray1/Namespaces1
+        - /Visualize1/Namespaces1
       Splitter Ratio: 0.5
-    Tree Height: 359
+    Tree Height: 406
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -77,11 +77,29 @@ Visualization Manager:
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /visualization_marker_array
-      Name: MarkerArray
+      Name: Visualize
       Namespaces:
         {}
       Queue Size: 100
       Value: false
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /gauss/visualize_monitoring
+      Name: Monitoring
+      Namespaces:
+        extremes: true
+        loss_0_1: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /gauss/visualize_tactical
+      Name: Tactical
+      Namespaces:
+        avoid_points: true
+        lines: true
+      Queue Size: 100
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -266,24 +284,6 @@ Visualization Manager:
       Topic: /sol8
       Unreliable: false
       Value: false
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /gauss/visualize_monitoring
-      Name: MarkerArray
-      Namespaces:
-        extremes: true
-        loss_0_1: true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /gauss/visualize_tactical
-      Name: MarkerArray
-      Namespaces:
-        avoid_points: true
-        lines: true
-      Queue Size: 100
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 60; 60; 60
