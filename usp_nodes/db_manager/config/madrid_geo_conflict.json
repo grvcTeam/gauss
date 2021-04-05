@@ -35,10 +35,10 @@
 					},
 					{
 						"mandatory" : 0,
-						"stamp" : 665.63857836254238,
-						"x" : 28.507690699381946,
-						"y" : -44.14466615521232,
-						"z" : 69.999783241408835
+						"stamp" : 765.63857836254238,
+						"x" : -76.365524292,
+						"y" : -70.9775848389,
+						"z" : 69.99
 					}
                 ]
             },
@@ -70,7 +70,7 @@
         }, 
         {
             "uav_id": 1,
-			"icao_address": "3434007",
+			"icao_address": "3434009",
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,
@@ -174,8 +174,8 @@
                     }
 				]
 			},
-			"flight_geometry": 15.0,
-			"operational_volume": 30.0,
+			"flight_geometry": 80.0,
+			"operational_volume": 100.0,
 			"conop": "Wind turbine inspection"
         }
     ]

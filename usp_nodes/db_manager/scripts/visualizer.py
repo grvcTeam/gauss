@@ -549,7 +549,7 @@ def main():
                 frame_marker.scale.x = 4  # TODO: Param!
                 frame_marker.scale.y = 4
                 frame_marker.scale.z = 4
-                frame_marker.color = palette.get_color(id_to_color[operation.uav_id % 10])
+                frame_marker.color = palette.get_color('black')
                 if operation.frame == Operation.FRAME_ROTOR:
                     frame_marker.mesh_resource = 'package://db_manager/config/rotor.dae'
                 elif operation.frame == Operation.FRAME_FIXEDWING:
