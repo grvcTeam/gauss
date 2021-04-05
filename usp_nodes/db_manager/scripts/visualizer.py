@@ -162,7 +162,7 @@ class WaypointListViz(object):
             text_point.y += self.stamp_offset.y
             text_point.z += self.stamp_offset.z
             stamp_marker.pose.position = text_point
-            stamp_marker.text = 't = {}s'.format(waypoint.stamp.to_sec())
+            stamp_marker.text = 't = {:.0f}s'.format(waypoint.stamp.to_sec())
             stamp_marker_array.markers.append(copy.deepcopy(stamp_marker))
 
         markerarray = MarkerArray()
@@ -375,6 +375,29 @@ class VolumeViz(object):
             operational_volume_marker.scale = Vector3(operational_volume, operational_volume, 0.01)
             operational_volume_marker_array.markers.append(copy.deepcopy(operational_volume_marker))
 
+        flight_geometry_spheres = copy.deepcopy(marker_common)
+        flight_geometry_spheres.type = Marker.SPHERE_LIST
+        flight_geometry_spheres.ns = ns + '/flight_geometry_spheres'
+        flight_geometry_spheres.color = fg_color
+        # flight_geometry_spheres.color.a *= 2.0
+        flight_geometry_spheres.id = 1
+        flight_geometry_spheres.scale = Vector3(flight_geometry, flight_geometry, flight_geometry)
+
+        operational_volume_spheres = copy.deepcopy(marker_common)
+        operational_volume_spheres.type = Marker.SPHERE_LIST
+        operational_volume_spheres.ns = ns + '/operational_volume_spheres'
+        operational_volume_spheres.color = ov_color
+        # operational_volume_spheres.color.a *= 2.0
+        operational_volume_spheres.id = 1
+        operational_volume_spheres.scale = Vector3(operational_volume, operational_volume, operational_volume)
+
+        for current in waypointlist:
+            point = Point(current.x, current.y, current.z)
+            flight_geometry_spheres.points.append(point)
+            operational_volume_spheres.points.append(point)
+        flight_geometry_marker_array.markers.append(flight_geometry_spheres)
+        operational_volume_marker_array.markers.append(operational_volume_spheres)
+
         markerarray = MarkerArray()
         markerarray.markers.extend(flight_geometry_marker_array.markers)
         markerarray.markers.extend(operational_volume_marker_array.markers)
@@ -453,6 +476,24 @@ def main():
         volume_viz = VolumeViz(global_frame_id, rospy.Duration(1.0/update_rate))
 
         marker_array = MarkerArray()
+
+        # Add map marker
+        map_marker = Marker()
+        map_marker.header.stamp = rospy.Time.now()
+        map_marker.header.frame_id = global_frame_id
+        map_marker.ns = 'map'
+        map_marker.lifetime = rospy.Duration()
+        map_marker.id = 0
+        map_marker.type = Marker.MESH_RESOURCE
+        map_marker.mesh_resource = 'package://db_manager/maps/loring.dae'
+        map_marker.action = Marker.ADD
+        map_marker.pose.position.y = -30  # TODO: visual correction
+        map_marker.scale.x = 3048
+        map_marker.scale.y = 3048
+        map_marker.scale.z = 3048
+        map_marker.mesh_use_embedded_materials = True
+        marker_array.markers.append(map_marker)
+
         for operation in read_operation_response.operation:
             operation_ns = operation.icao_address
 
@@ -508,7 +549,7 @@ def main():
                 frame_marker.scale.x = 4  # TODO: Param!
                 frame_marker.scale.y = 4
                 frame_marker.scale.z = 4
-                frame_marker.color = palette.get_color(id_to_color[operation.uav_id % 10])
+                frame_marker.color = palette.get_color('black')
                 if operation.frame == Operation.FRAME_ROTOR:
                     frame_marker.mesh_resource = 'package://db_manager/config/rotor.dae'
                 elif operation.frame == Operation.FRAME_FIXEDWING:
@@ -547,6 +588,7 @@ def main():
             ns = operation_ns + '/flight_plan'
             color = palette.get_color(id_to_color[operation.uav_id % 10])
             color_scheme = WaypointListColorScheme(color, color, color, color)
+            flight_plan_viz.path_scale = Vector3(1, 0, 0)
             flight_plan = flight_plan_viz.get_markerarray(operation.flight_plan.waypoints, ns, color_scheme)
             marker_array.markers.extend(flight_plan.markers)
 
@@ -580,8 +622,8 @@ def main():
 
             # Visualize volumes (flight geometry, operational volume)
             ns = operation_ns + '/volumes'
-            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.5)
-            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.2)
+            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.7)
+            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.5)
             volume = volume_viz.get_markerarray(operation, ns, fg_color, ov_color)
             marker_array.markers.extend(volume.markers)
 

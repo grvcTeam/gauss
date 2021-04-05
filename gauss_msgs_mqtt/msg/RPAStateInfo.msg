@@ -12,7 +12,7 @@ float32 hpl
 float32 hal
 float32 vpl
 float32 val
-string solution_mode
+uint32 solution_mode
 uint64 timestamp # UTC in ms
 float32 jamming
 float32 spoofing

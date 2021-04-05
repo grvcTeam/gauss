@@ -1,86 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
 <Document>
-	<name>Loring_conflict Use case.kml</name>
+	<name>roborder_loring.kml</name>
 	<open>1</open>
-	<StyleMap id="inline4">
+	<Style id="default">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>3</width>
+		</LineStyle>
+	</Style>
+	<StyleMap id="default0">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#inline0</styleUrl>
+			<styleUrl>#default</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#inline1</styleUrl>
+			<styleUrl>#hl</styleUrl>
 		</Pair>
 	</StyleMap>
-	<Style id="inline0">
+	<Style id="hl">
+		<IconStyle>
+			<scale>1.2</scale>
+		</IconStyle>
 		<LineStyle>
 			<color>ff00ffff</color>
-			<width>2</width>
+			<width>3</width>
 		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline1">
-		<LineStyle>
-			<color>ff00ffff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline2">
-		<LineStyle>
-			<color>ff0000ff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<StyleMap id="inline">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#inline2</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#inline3</styleUrl>
-		</Pair>
-	</StyleMap>
-	<Style id="inline3">
-		<LineStyle>
-			<color>ff0000ff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
 	</Style>
 	<Folder>
-		<name>Sitios temporales</name>
+		<name>roborder_loring</name>
 		<open>1</open>
 		<Placemark>
-			<name>M600 OP 1.1</name>
-			<styleUrl>#inline</styleUrl>
+			<name>FlightPlan</name>
+			<styleUrl>#default0</styleUrl>
 			<LineString>
 				<tessellate>1</tessellate>
 				<altitudeMode>relativeToGround</altitudeMode>
 				<coordinates>
-					-3.592450343226171,40.66064373784966,70 -3.591339299276539,40.65910271724152,70 -3.591966218920967,40.65894854942518,70 -3.593074550731166,40.66049323845071,70 -3.593807864005979,40.66031515748237,70 -3.592818779048942,40.65875018583948,70 -3.593536111079527,40.65858161911211,70 -3.594549723982908,40.66015796104696,70 -3.597031030385994,40.65956668189179,70 
-				</coordinates>
-			</LineString>
-		</Placemark>
-		<Placemark>
-			<name>Atlantic OP1.2</name>
-			<styleUrl>#inline4</styleUrl>
-			<LineString>
-				<tessellate>1</tessellate>
-				<altitudeMode>relativeToGround</altitudeMode>
-				<coordinates>
-					-3.639035,40.748907,400.0000000000001 -3.593348031984799,40.65485331945293,400.0000000000001 
+					-3.598695,40.650662,400.0000000000001 -3.593367699999999,40.6576276,400.0000000000001 -3.6023113,40.6617742,400.0000000000001 -3.6111871,40.6501661,400.0000000000001 -3.608206,40.6487813,400.0000000000001 -3.601105899999999,40.6580701,400.0000000000001 -3.5981247,40.6566892,400.0000000000001 -3.6052257,40.6474004,400.0000000000001 -3.6022445,40.6460195,400.0000000000001 -3.598695,40.650662,400.0000000000001 
 				</coordinates>
 			</LineString>
 		</Placemark>
