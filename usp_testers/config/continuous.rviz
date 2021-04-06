@@ -7,7 +7,7 @@ Panels:
         - /Global Options1
         - /Visualize1/Namespaces1
       Splitter Ratio: 0.5
-    Tree Height: 406
+    Tree Height: 359
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -96,7 +96,6 @@ Visualization Manager:
       Marker Topic: /gauss/visualize_tactical
       Name: Tactical
       Namespaces:
-        avoid_points: true
         lines: true
       Queue Size: 100
       Value: true
@@ -309,7 +308,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 259.126923
+      Distance: 804.80896
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1

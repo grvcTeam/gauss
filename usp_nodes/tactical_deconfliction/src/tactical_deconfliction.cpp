@@ -52,19 +52,34 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
     return out_avoid_vector;
 }
 
-void applySeparation(std::vector<gauss_msgs::Waypoint> &_p_extremes_0, std::vector<gauss_msgs::Waypoint> &_p_extremes_1, const std::vector<Eigen::Vector3f> &_avoid_vectors) {
-    _p_extremes_0.front().x = _p_extremes_0.front().x + _avoid_vectors.front()[0];
-    _p_extremes_0.front().y = _p_extremes_0.front().y + _avoid_vectors.front()[1];
-    _p_extremes_0.front().z = _p_extremes_0.front().z + _avoid_vectors.front()[2];
-    _p_extremes_0.back().x = _p_extremes_0.back().x + _avoid_vectors.front()[0];
-    _p_extremes_0.back().y = _p_extremes_0.back().y + _avoid_vectors.front()[1];
-    _p_extremes_0.back().z = _p_extremes_0.back().z + _avoid_vectors.front()[2];
-    _p_extremes_1.front().x = _p_extremes_1.front().x + _avoid_vectors.back()[0];
-    _p_extremes_1.front().y = _p_extremes_1.front().y + _avoid_vectors.back()[1];
-    _p_extremes_1.front().z = _p_extremes_1.front().z + _avoid_vectors.back()[2];
-    _p_extremes_1.back().x = _p_extremes_1.back().x + _avoid_vectors.back()[0];
-    _p_extremes_1.back().y = _p_extremes_1.back().y + _avoid_vectors.back()[1];
-    _p_extremes_1.back().z = _p_extremes_1.back().z + _avoid_vectors.back()[2];
+std::vector<gauss_msgs::Waypoint> applySeparation(const Eigen::Vector3f &_avoid_vector, const std::vector<gauss_msgs::Waypoint> &_extremes, const gauss_msgs::WaypointList &_estimated) {
+    // TODO: This function is applying separation to _extremes, but it should apply separation to _estimated!
+    // TODO: Check why _extremes has repeated elements.  
+    std::vector<gauss_msgs::Waypoint> out_waypoints;
+    gauss_msgs::Waypoint pA, pB;  // (pA) ------------------- (pB)
+    pA = _extremes.front();
+    pB = _extremes.back();
+
+    // pA.x = pA.x + _avoid_vector[0];
+    // pA.y = pA.y + _avoid_vector[1];
+    // pA.z = pA.z + _avoid_vector[2];
+    // out_waypoints.push_back(pA);
+
+    for (auto wp : _extremes) {
+        // if (pA.stamp < wp.stamp && wp.stamp < pB.stamp) {
+        wp.x = wp.x + _avoid_vector[0];
+        wp.y = wp.y + _avoid_vector[1];
+        wp.z = wp.z + _avoid_vector[2];
+        out_waypoints.push_back(wp);
+        // }
+    }
+
+    // pB.x = pB.x + _avoid_vector[0];
+    // pB.y = pB.y + _avoid_vector[1];
+    // pB.z = pB.z + _avoid_vector[2];
+    // out_waypoints.push_back(pB);
+
+    return out_waypoints;
 }
 
 visualization_msgs::Marker createMarkerSpheres(const std::vector<gauss_msgs::Waypoint> &_p_extremes_0, const std::vector<gauss_msgs::Waypoint> &_p_extremes_1, const gauss_msgs::Waypoint &_p_min_dist_0, const gauss_msgs::Waypoint &_p_min_dist_1) {
@@ -80,18 +95,18 @@ visualization_msgs::Marker createMarkerSpheres(const std::vector<gauss_msgs::Way
     marker_spheres.type = visualization_msgs::Marker::SPHERE_LIST;
     marker_spheres.action = visualization_msgs::Marker::ADD;
     marker_spheres.pose.orientation.w = 1;
-    marker_spheres.scale.x = 2.0;
-    marker_spheres.scale.y = 2.0;
-    marker_spheres.scale.z = 2.0;
+    marker_spheres.scale.x = 3.0;
+    marker_spheres.scale.y = 3.0;
+    marker_spheres.scale.z = 3.0;
     marker_spheres.lifetime = ros::Duration(1.0);
-    marker_spheres.points.push_back(translateToPoint(_p_extremes_0.front()));
-    marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(translateToPoint(_p_extremes_0.back()));
-    marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(translateToPoint(_p_extremes_1.front()));
-    marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(translateToPoint(_p_extremes_1.back()));
-    marker_spheres.colors.push_back(blue);
+    // marker_spheres.points.push_back(translateToPoint(_p_extremes_0.front()));
+    // marker_spheres.colors.push_back(blue);
+    // marker_spheres.points.push_back(translateToPoint(_p_extremes_0.back()));
+    // marker_spheres.colors.push_back(blue);
+    // marker_spheres.points.push_back(translateToPoint(_p_extremes_1.front()));
+    // marker_spheres.colors.push_back(blue);
+    // marker_spheres.points.push_back(translateToPoint(_p_extremes_1.back()));
+    // marker_spheres.colors.push_back(blue);
     marker_spheres.points.push_back(translateToPoint(_p_min_dist_0));
     marker_spheres.colors.push_back(blue);
     marker_spheres.points.push_back(translateToPoint(_p_min_dist_1));
@@ -99,26 +114,28 @@ visualization_msgs::Marker createMarkerSpheres(const std::vector<gauss_msgs::Way
     return marker_spheres;
 }
 
-visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypoint> &_p_extremes_0, const std::vector<gauss_msgs::Waypoint> &_p_extremes_1) {
+visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypoint> &_solution) {
     std_msgs::ColorRGBA blue;
     blue.b = 1.0;
     blue.a = 1.0;
+    static int sol_count = 0;
 
     visualization_msgs::Marker marker_lines;
     marker_lines.header.stamp = ros::Time::now();
     marker_lines.header.frame_id = "map";
-    marker_lines.ns = "lines";
+    marker_lines.ns = "lines_" + std::to_string(sol_count);
+    sol_count++;
     marker_lines.id = 1;
     marker_lines.type = visualization_msgs::Marker::LINE_LIST;
     marker_lines.action = visualization_msgs::Marker::ADD;
     marker_lines.pose.orientation.w = 1;
-    marker_lines.scale.x = 1.0;
+    marker_lines.scale.x = 2.0;
     marker_lines.color = blue;
     marker_lines.lifetime = ros::Duration(1.0);
-    marker_lines.points.push_back(translateToPoint(_p_extremes_0.front()));
-    marker_lines.points.push_back(translateToPoint(_p_extremes_0.back()));
-    marker_lines.points.push_back(translateToPoint(_p_extremes_1.front()));
-    marker_lines.points.push_back(translateToPoint(_p_extremes_1.back()));
+
+    for (auto wp : _solution) {
+        marker_lines.points.push_back(translateToPoint(wp));
+    }
 
     return marker_lines;
 }
@@ -129,15 +146,23 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             std::vector<gauss_msgs::Waypoint> p_extremes_0, p_extremes_1;
             p_extremes_0 = req.conflictive_segments.segment_first;
             p_extremes_1 = req.conflictive_segments.segment_second;
+
             std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
-            applySeparation(p_extremes_0, p_extremes_1, avoid_vectors);
+
+            std::vector<std::vector<gauss_msgs::Waypoint>> solution_list;
+            std::vector<gauss_msgs::Waypoint> temp_solution;
+            temp_solution = applySeparation(avoid_vectors.front(), p_extremes_0, req.conflictive_operations.front().estimated_trajectory);
+            solution_list.push_back(temp_solution);
+            temp_solution.clear();
+            temp_solution = applySeparation(avoid_vectors.back(), p_extremes_1, req.conflictive_operations.back().estimated_trajectory);
+            solution_list.push_back(temp_solution);
 
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(p_extremes_0, p_extremes_1, req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
-            visualization_msgs::Marker marker_lines = createMarkerLines(p_extremes_0, p_extremes_1);
-            marker_array.markers.push_back(marker_lines);
-
+            for (auto solution : solution_list) {
+                marker_array.markers.push_back(createMarkerLines(solution));
+            }
             visualization_pub_.publish(marker_array);
 
         } break;
