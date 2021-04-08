@@ -82,10 +82,12 @@ std::vector<gauss_msgs::Waypoint> applySeparation(const Eigen::Vector3f &_avoid_
     return out_waypoints;
 }
 
-visualization_msgs::Marker createMarkerSpheres(const std::vector<gauss_msgs::Waypoint> &_p_extremes_0, const std::vector<gauss_msgs::Waypoint> &_p_extremes_1, const gauss_msgs::Waypoint &_p_min_dist_0, const gauss_msgs::Waypoint &_p_min_dist_1) {
-    std_msgs::ColorRGBA blue;
-    blue.b = 1.0;
-    blue.a = 1.0;
+visualization_msgs::Marker createMarkerSpheres(const gauss_msgs::Waypoint &_p_at_t_min_first, const gauss_msgs::Waypoint &_p_at_t_min_second) {
+    std_msgs::ColorRGBA white;
+    white.r = 1.0;
+    white.g = 1.0;
+    white.b = 1.0;
+    white.a = 1.0;
 
     visualization_msgs::Marker marker_spheres;
     marker_spheres.header.stamp = ros::Time::now();
@@ -95,22 +97,14 @@ visualization_msgs::Marker createMarkerSpheres(const std::vector<gauss_msgs::Way
     marker_spheres.type = visualization_msgs::Marker::SPHERE_LIST;
     marker_spheres.action = visualization_msgs::Marker::ADD;
     marker_spheres.pose.orientation.w = 1;
-    marker_spheres.scale.x = 3.0;
-    marker_spheres.scale.y = 3.0;
-    marker_spheres.scale.z = 3.0;
+    marker_spheres.scale.x = 2.0;
+    marker_spheres.scale.y = 2.0;
+    marker_spheres.scale.z = 2.0;
     marker_spheres.lifetime = ros::Duration(1.0);
-    // marker_spheres.points.push_back(translateToPoint(_p_extremes_0.front()));
-    // marker_spheres.colors.push_back(blue);
-    // marker_spheres.points.push_back(translateToPoint(_p_extremes_0.back()));
-    // marker_spheres.colors.push_back(blue);
-    // marker_spheres.points.push_back(translateToPoint(_p_extremes_1.front()));
-    // marker_spheres.colors.push_back(blue);
-    // marker_spheres.points.push_back(translateToPoint(_p_extremes_1.back()));
-    // marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(translateToPoint(_p_min_dist_0));
-    marker_spheres.colors.push_back(blue);
-    marker_spheres.points.push_back(translateToPoint(_p_min_dist_1));
-    marker_spheres.colors.push_back(blue);
+    marker_spheres.points.push_back(translateToPoint(_p_at_t_min_first));
+    marker_spheres.colors.push_back(white);
+    marker_spheres.points.push_back(translateToPoint(_p_at_t_min_second));
+    marker_spheres.colors.push_back(white);
     return marker_spheres;
 }
 
@@ -143,22 +137,14 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
 bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDeconfliction::Response &res) {
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
-            std::vector<gauss_msgs::Waypoint> p_extremes_0, p_extremes_1;
-            p_extremes_0 = req.conflictive_segments.segment_first;
-            p_extremes_1 = req.conflictive_segments.segment_second;
-
+            // Calculate a vector to separate perpendiculary one trajectory
             std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
-
             std::vector<std::vector<gauss_msgs::Waypoint>> solution_list;
-            std::vector<gauss_msgs::Waypoint> temp_solution;
-            temp_solution = applySeparation(avoid_vectors.front(), p_extremes_0, req.conflictive_operations.front().estimated_trajectory);
-            solution_list.push_back(temp_solution);
-            temp_solution.clear();
-            temp_solution = applySeparation(avoid_vectors.back(), p_extremes_1, req.conflictive_operations.back().estimated_trajectory);
-            solution_list.push_back(temp_solution);
-
+            solution_list.push_back(applySeparation(avoid_vectors.front(), req.conflictive_segments.segment_first, req.conflictive_operations.front().estimated_trajectory));
+            solution_list.push_back(applySeparation(avoid_vectors.back(), req.conflictive_segments.segment_second, req.conflictive_operations.back().estimated_trajectory));
+            // Visualize results
             visualization_msgs::MarkerArray marker_array;
-            visualization_msgs::Marker marker_spheres = createMarkerSpheres(p_extremes_0, p_extremes_1, req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
+            visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
             for (auto solution : solution_list) {
                 marker_array.markers.push_back(createMarkerLines(solution));
