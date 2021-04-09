@@ -54,7 +54,7 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
 
 std::vector<gauss_msgs::Waypoint> applySeparation(const Eigen::Vector3f &_avoid_vector, const std::vector<gauss_msgs::Waypoint> &_extremes, const gauss_msgs::WaypointList &_estimated) {
     // TODO: This function is applying separation to _extremes, but it should apply separation to _estimated!
-    // TODO: Check why _extremes has repeated elements.  
+    // TODO: Check why _extremes has repeated elements.
     std::vector<gauss_msgs::Waypoint> out_waypoints;
     gauss_msgs::Waypoint pA, pB;  // (pA) ------------------- (pB)
     pA = _extremes.front();
@@ -134,23 +134,46 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
     return marker_lines;
 }
 
+std::vector<gauss_msgs::Waypoint> delayOperation(const gauss_msgs::ConflictiveOperation &_operation, const gauss_msgs::CheckSegmentsLossResult &_segments) {
+    std::vector<gauss_msgs::Waypoint> out_solution;
+    double dtime = _segments.segment_first.back().stamp.sec - _segments.segment_first.front().stamp.sec;
+    for (int itx = _operation.current_wp; itx < _operation.estimated_trajectory.waypoints.size(); itx++) {
+        if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.back().stamp && out_solution.size() == 0) {
+            gauss_msgs::Waypoint temp_wp;
+            temp_wp = _segments.point_at_t_min_segment_first;
+            temp_wp.stamp = _segments.segment_first.back().stamp;
+            out_solution.push_back(temp_wp);
+        } else if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.front().stamp) {
+            gauss_msgs::Waypoint temp_wp;
+            temp_wp = _operation.estimated_trajectory.waypoints.at(itx);
+            temp_wp.stamp.fromSec(temp_wp.stamp.toSec() + dtime);
+            out_solution.push_back(temp_wp);
+        }
+    }
+
+    return out_solution;
+}
+
 bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDeconfliction::Response &res) {
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
+            std::vector<std::vector<gauss_msgs::Waypoint>> solution_list;
             // Calculate a vector to separate perpendiculary one trajectory
             std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
-            std::vector<std::vector<gauss_msgs::Waypoint>> solution_list;
+            // Solution applying separation to one operation
             solution_list.push_back(applySeparation(avoid_vectors.front(), req.conflictive_segments.segment_first, req.conflictive_operations.front().estimated_trajectory));
             solution_list.push_back(applySeparation(avoid_vectors.back(), req.conflictive_segments.segment_second, req.conflictive_operations.back().estimated_trajectory));
-            // Visualize results
+            // Visualize "space" results
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
             for (auto solution : solution_list) {
                 marker_array.markers.push_back(createMarkerLines(solution));
             }
+            // Solution delaying one operation
+            solution_list.push_back(delayOperation(req.conflictive_operations.front(), req.conflictive_segments));
+            solution_list.push_back(delayOperation(req.conflictive_operations.back(), req.conflictive_segments));
             visualization_pub_.publish(marker_array);
-
         } break;
         case req.threat.GEOFENCE_CONFLICT:
             break;
