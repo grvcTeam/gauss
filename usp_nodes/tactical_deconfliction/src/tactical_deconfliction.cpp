@@ -1,10 +1,13 @@
 #include <gauss_msgs/CheckConflicts.h>
+#include <gauss_msgs/Circle.h>
 #include <gauss_msgs/NewDeconfliction.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/Waypoint.h>
+#include <geometry_msgs/Polygon.h>
 #include <geometry_msgs/Vector3.h>
 #include <ros/ros.h>
+#include <tactical_deconfliction/path_finder.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -12,14 +15,6 @@
 
 double safety_distance_;
 ros::Publisher visualization_pub_;
-
-geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint &wp) {
-    geometry_msgs::Point p;
-    p.x = wp.x;
-    p.y = wp.y;
-    p.z = wp.z;
-    return p;
-}
 
 std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Waypoint &_pA, const gauss_msgs::Waypoint &_pB, const double &_safety_distance) {
     std::vector<Eigen::Vector3f> out_avoid_vector;
@@ -82,6 +77,178 @@ std::vector<gauss_msgs::Waypoint> applySeparation(const Eigen::Vector3f &_avoid_
     return out_waypoints;
 }
 
+std::vector<gauss_msgs::Waypoint> delayOperation(const gauss_msgs::ConflictiveOperation &_operation, const gauss_msgs::CheckSegmentsLossResult &_segments) {
+    std::vector<gauss_msgs::Waypoint> out_solution;
+    double dtime = _segments.segment_first.back().stamp.sec - _segments.segment_first.front().stamp.sec;
+    for (int itx = _operation.current_wp; itx < _operation.estimated_trajectory.waypoints.size(); itx++) {
+        if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.back().stamp && out_solution.size() == 0) {
+            gauss_msgs::Waypoint temp_wp;
+            temp_wp = _segments.point_at_t_min_segment_first;
+            temp_wp.stamp = _segments.segment_first.back().stamp;
+            out_solution.push_back(temp_wp);
+        } else if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.front().stamp) {
+            gauss_msgs::Waypoint temp_wp;
+            temp_wp = _operation.estimated_trajectory.waypoints.at(itx);
+            temp_wp.stamp.fromSec(temp_wp.stamp.toSec() + dtime);
+            out_solution.push_back(temp_wp);
+        }
+    }
+
+    return out_solution;
+}
+
+geometry_msgs::Polygon circleToPolygon(double &_x, double &_y, double &_radius, double _nVertices = 9) {
+    geometry_msgs::Polygon out_polygon;
+    Eigen::Vector2d centerToVertex(_radius, 0.0), centerToVertexTemp;
+    for (int i = 0; i < _nVertices; i++) {
+        double theta = i * 2 * M_PI / (_nVertices - 1);
+        Eigen::Rotation2D<double> rot2d(theta);
+        centerToVertexTemp = rot2d.toRotationMatrix() * centerToVertex;
+        geometry_msgs::Point32 temp_point;
+        temp_point.x = _x + centerToVertexTemp[0];
+        temp_point.y = _y + centerToVertexTemp[1];
+        out_polygon.points.push_back(temp_point);
+    }
+
+    return out_polygon;
+}
+
+double signedArea(const geometry_msgs::Polygon &p) {
+    double A = 0;
+    //========================================================//
+    // Assumes:                                               //
+    //    N+1 vertices:   p[0], p[1], ... , p[N-1], p[N]      //
+    //    Closed polygon: p[0] = p[N]                         //
+    // Returns:                                               //
+    //    Signed area: +ve if anticlockwise, -ve if clockwise //
+    //========================================================//
+    int N = p.points.size() - 1;
+    for (int i = 0; i < N; i++) A += p.points.at(i).x * p.points.at(i + 1).y - p.points.at(i + 1).x * p.points.at(i).y;
+    A *= 0.5;
+    return A;
+}
+
+geometry_msgs::Polygon decreasePolygon(const geometry_msgs::Polygon &p, double thickness) {
+    //=====================================================//
+    // Assumes:                                            //
+    //    N+1 vertices:   p[0], p[1], ... , p[N-1], p[N]   //
+    //    Closed polygon: p[0] = p[N]                      //
+    //    No zero-length sides                             //
+    // Returns (by reference, as a parameter):             //
+    //    Internal poly:  q[0], q[1], ... , q[N-1], q[N]   //
+    //=====================================================//
+    geometry_msgs::Polygon q;
+    int N = p.points.size() - 1;
+    q.points.resize(N + 1);
+    double a, b, A, B, d, cross;
+    double displacement = thickness;
+    if (signedArea(p) < 0) displacement = -displacement;  // Detects clockwise order
+    // Unit vector (a,b) along last edge
+    a = p.points.at(N).x - p.points.at(N - 1).x;
+    b = p.points.at(N).y - p.points.at(N - 1).y;
+    d = sqrt(a * a + b * b);
+    a /= d;
+    b /= d;
+    for (int i = 0; i < N; i++) {  // Loop round the polygon, dealing with successive intersections of lines
+        // Unit vector (A,B) along previous edge
+        A = a;
+        B = b;
+        // Unit vector (a,b) along next edge
+        a = p.points.at(i + 1).x - p.points.at(i).x;
+        b = p.points.at(i + 1).y - p.points.at(i).y;
+        d = sqrt(a * a + b * b);
+        a /= d;
+        b /= d;
+        // New vertex
+        cross = A * b - a * B;
+        const double SMALL = 1.0e-10;
+        if (abs(cross) < SMALL) {  // Degenerate cases: 0 or 180 degrees at vertex
+            q.points.at(i).x = p.points.at(i).x - displacement * b;
+            q.points.at(i).y = p.points.at(i).y + displacement * a;
+        } else {  // Usual case
+            q.points.at(i).x = p.points.at(i).x + displacement * (a - A) / cross;
+            q.points.at(i).y = p.points.at(i).y + displacement * (b - B) / cross;
+        }
+    }
+    // Close the inside polygon
+    q.points.at(N) = q.points.at(0);
+
+    return q;
+}
+
+std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, geometry_msgs::Point _init_point, geometry_msgs::Point _goal_point, double _operational_volume) {
+    geometry_msgs::Point obs_min, obs_max, out_point;
+    std::vector<float> vert_x, vert_y;
+    for (int i = 0; i < _polygon.points.size(); i++) {
+        vert_x.push_back(_polygon.points.at(i).x);
+        vert_y.push_back(_polygon.points.at(i).y);
+    }
+    vert_x.push_back(_polygon.points.front().x);
+    vert_y.push_back(_polygon.points.front().y);
+    obs_min.x = *std::min_element(vert_x.begin(), vert_x.end());
+    obs_min.y = *std::min_element(vert_y.begin(), vert_y.end());
+    obs_max.x = *std::max_element(vert_x.begin(), vert_x.end());
+    obs_max.y = *std::max_element(vert_y.begin(), vert_y.end());
+
+    std::vector<double> out_grid_borders, temp_x, temp_y;
+    temp_x.push_back(_init_point.x);
+    temp_x.push_back(_goal_point.x);
+    temp_y.push_back(_init_point.y);
+    temp_y.push_back(_goal_point.y);
+    double min_x = *std::min_element(temp_x.begin(), temp_x.end());
+    double min_y = *std::min_element(temp_y.begin(), temp_y.end());
+    double max_x = *std::max_element(temp_x.begin(), temp_x.end());
+    double max_y = *std::max_element(temp_y.begin(), temp_y.end());
+
+    while (min_x >= obs_min.x || min_y >= obs_min.y || max_x <= obs_max.x || max_y <= obs_max.y) {
+        if (min_x >= obs_min.x) min_x = _operational_volume * 2 - min_x;
+        if (min_y >= obs_min.y) min_y = _operational_volume * 2 - min_y;
+        if (max_x <= obs_max.x) max_x = _operational_volume * 2 + max_x;
+        if (max_y <= obs_max.y) max_y = _operational_volume * 2 + max_y;
+    }
+
+    out_grid_borders.push_back(min_x);
+    out_grid_borders.push_back(min_y);
+    out_grid_borders.push_back(max_x);
+    out_grid_borders.push_back(max_y);
+
+    return out_grid_borders;
+}
+
+geometry_msgs::Point translateToPoint(const gauss_msgs::Waypoint &wp) {
+    geometry_msgs::Point p;
+    p.x = wp.x;
+    p.y = wp.y;
+    p.z = wp.z;
+    return p;
+}
+
+nav_msgs::Path translateToPath(const gauss_msgs::WaypointList &_wp_list) {
+    nav_msgs::Path out_path;
+    for (auto wp : _wp_list.waypoints) {
+        geometry_msgs::PoseStamped temp_wp;
+        temp_wp.pose.position.x = wp.x;
+        temp_wp.pose.position.y = wp.y;
+        temp_wp.pose.position.z = wp.z;
+        temp_wp.header.stamp = wp.stamp;
+    }
+    return out_path;
+}
+
+std::vector<gauss_msgs::Waypoint> pathAStartToWPVector(const nav_msgs::Path &_path, const std::vector<double> &_times) {
+    std::vector<gauss_msgs::Waypoint> out_wp_vector;
+    ROS_ERROR_COND(_path.poses.size() != _times.size(), "[Tactical] A Start solution must have the same amount of waypoints (space and time)!");
+    for (int i = 0; i < _path.poses.size(); i++) {
+        gauss_msgs::Waypoint temp_wp;
+        temp_wp.x = _path.poses.at(i).pose.position.x;
+        temp_wp.y = _path.poses.at(i).pose.position.y;
+        temp_wp.z = _path.poses.at(i).pose.position.z;
+        temp_wp.stamp = ros::Time(_times.at(i));  // !Careful
+        out_wp_vector.push_back(temp_wp);
+    }
+    return out_wp_vector;
+}
+
 visualization_msgs::Marker createMarkerSpheres(const gauss_msgs::Waypoint &_p_at_t_min_first, const gauss_msgs::Waypoint &_p_at_t_min_second) {
     std_msgs::ColorRGBA white;
     white.r = 1.0;
@@ -134,30 +301,11 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
     return marker_lines;
 }
 
-std::vector<gauss_msgs::Waypoint> delayOperation(const gauss_msgs::ConflictiveOperation &_operation, const gauss_msgs::CheckSegmentsLossResult &_segments) {
-    std::vector<gauss_msgs::Waypoint> out_solution;
-    double dtime = _segments.segment_first.back().stamp.sec - _segments.segment_first.front().stamp.sec;
-    for (int itx = _operation.current_wp; itx < _operation.estimated_trajectory.waypoints.size(); itx++) {
-        if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.back().stamp && out_solution.size() == 0) {
-            gauss_msgs::Waypoint temp_wp;
-            temp_wp = _segments.point_at_t_min_segment_first;
-            temp_wp.stamp = _segments.segment_first.back().stamp;
-            out_solution.push_back(temp_wp);
-        } else if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.front().stamp) {
-            gauss_msgs::Waypoint temp_wp;
-            temp_wp = _operation.estimated_trajectory.waypoints.at(itx);
-            temp_wp.stamp.fromSec(temp_wp.stamp.toSec() + dtime);
-            out_solution.push_back(temp_wp);
-        }
-    }
-
-    return out_solution;
-}
-
 bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDeconfliction::Response &res) {
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
             std::vector<std::vector<gauss_msgs::Waypoint>> solution_list;
+            ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 2 conflictive operations to solve LOSS OF SEPARATION!");
             // Calculate a vector to separate perpendiculary one trajectory
             std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
             // Solution applying separation to one operation
@@ -175,8 +323,68 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             solution_list.push_back(delayOperation(req.conflictive_operations.back(), req.conflictive_segments));
             visualization_pub_.publish(marker_array);
         } break;
-        case req.threat.GEOFENCE_CONFLICT:
-            break;
+        case req.threat.GEOFENCE_CONFLICT: {
+            ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE CONFLICT!");
+            // Setup polygon geofence according on its shape
+            geometry_msgs::Polygon polygon_geofence;
+            if (req.geofences.front().cylinder_shape) {
+                polygon_geofence = circleToPolygon(req.geofences.front().circle.x_center,
+                                                   req.geofences.front().circle.y_center,
+                                                   req.geofences.front().circle.radius);
+            } else {
+                for (int i = 0; i < req.geofences.front().polygon.x.size(); i++) {
+                    geometry_msgs::Point32 temp_points;
+                    temp_points.x = req.geofences.front().polygon.x.at(i);
+                    temp_points.y = req.geofences.front().polygon.y.at(i);
+                    polygon_geofence.points.push_back(temp_points);
+                }
+            }
+
+            // * Assume inputs from monitoring
+            // TODO: Check if init and end points have to be further apart from the geofence!
+            geometry_msgs::Point p_init_conflict, p_end_conflict, p_min_local_grid, p_max_local_grid;
+            p_init_conflict = translateToPoint(req.conflictive_segments.segment_first.front());
+            p_end_conflict = translateToPoint(req.conflictive_segments.segment_first.back());
+            ros::Time t_init_conflict = req.conflictive_segments.segment_first.front().stamp;
+            ros::Time t_end_conflict = req.conflictive_segments.segment_first.front().stamp;
+
+            // [1] Ruta a mi destino evitando una geofence
+            // Inflate polygon to take operational volume into account
+            if (!req.geofences.front().cylinder_shape) polygon_geofence.points.push_back(polygon_geofence.points.front());
+            geometry_msgs::Polygon inflated_geofence = decreasePolygon(polygon_geofence, -req.conflictive_operations.front().operational_volume * 1.1);
+            if (!req.geofences.front().cylinder_shape) inflated_geofence.points.pop_back();
+            // Get borders of a local greed for the A* path finder
+            std::vector<double> grid_borders = findGridBorders(inflated_geofence, p_init_conflict, p_end_conflict, req.conflictive_operations.front().operational_volume);
+            p_min_local_grid.x = grid_borders[0];
+            p_min_local_grid.y = grid_borders[1];
+            p_max_local_grid.x = grid_borders[2];
+            p_max_local_grid.y = grid_borders[3];
+            nav_msgs::Path estimated_traj_path = translateToPath(req.conflictive_operations.front().estimated_trajectory);
+            // Use A* path finder to get an alternative path
+            PathFinder path_finder(estimated_traj_path, p_init_conflict, p_end_conflict, inflated_geofence, p_min_local_grid, p_max_local_grid);
+            nav_msgs::Path a_star_path = path_finder.findNewPath();
+            // Fix times
+            std::vector<double> interp_times, a_star_times;
+            interp_times.push_back(t_init_conflict.toSec());
+            interp_times.push_back(t_end_conflict.toSec());
+            a_star_times = path_finder.interpWaypointList(interp_times, a_star_path.poses.size() - 1);
+            a_star_times.push_back(t_end_conflict.toSec());
+
+            gauss_msgs::DeconflictionPlan possible_solution;
+            possible_solution.waypoint_list = pathAStartToWPVector(a_star_path, a_star_times);
+            possible_solution.maneuver_type = 1;
+            res.deconfliction_plans.push_back(possible_solution);
+
+            // [3] Ruta que me manda devuelta a casa
+            possible_solution.maneuver_type = 3;
+            possible_solution.waypoint_list.clear();
+            possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
+            possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.front());
+            res.deconfliction_plans.push_back(possible_solution);
+
+            res.message = "Conflict solved";
+            res.success = true;
+        } break;
         case req.threat.GEOFENCE_INTRUSION:
             break;
         case req.threat.UAS_OUT_OV:
