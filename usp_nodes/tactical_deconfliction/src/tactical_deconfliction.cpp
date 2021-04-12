@@ -113,6 +113,20 @@ geometry_msgs::Polygon circleToPolygon(double &_x, double &_y, double &_radius, 
     return out_polygon;
 }
 
+// nvert        - Number of vertices in the polygon. Whether to repeat the first vertex at the end is discussed below.
+// vertx, verty	- Arrays containing the x- and y-coordinates of the polygon's vertices.
+// testx, testy	- X&Y coordinate of the test point.
+// [https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html]
+int pointInPolygon(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy) {
+    int i, j, c = 0;
+    for (i = 0, j = nvert - 1; i < nvert; j = i++) {
+        if (((verty.at(i) > testy) != (verty.at(j) > testy)) &&
+            (testx < (vertx.at(j) - vertx.at(i)) * (testy - verty.at(i)) / (verty.at(j) - verty.at(i)) + vertx.at(i)))
+            c = !c;
+    }
+    return c;
+}
+
 double signedArea(const geometry_msgs::Polygon &p) {
     double A = 0;
     //========================================================//
