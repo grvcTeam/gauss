@@ -325,26 +325,35 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // Solution applying separation to one operation
             solution_list.push_back(applySeparation(avoid_vectors.front(), req.conflictive_segments.segment_first, req.conflictive_operations.front().estimated_trajectory));
             solution_list.push_back(applySeparation(avoid_vectors.back(), req.conflictive_segments.segment_second, req.conflictive_operations.back().estimated_trajectory));
+            // Solution delaying one operation
+            solution_list.push_back(delayOperation(req.conflictive_operations.front(), req.conflictive_segments));
+            solution_list.push_back(delayOperation(req.conflictive_operations.back(), req.conflictive_segments));
             // Visualize "space" results
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
-            for (auto solution : solution_list) {
-                marker_array.markers.push_back(createMarkerLines(solution));
+            // Visualize just "space" results (solution 0 and 1)
+            for (int i = 0; i < 2; i++) { 
+                marker_array.markers.push_back(createMarkerLines(solution_list.at(i)));
             }
-            // Solution delaying one operation
-            solution_list.push_back(delayOperation(req.conflictive_operations.front(), req.conflictive_segments));
-            solution_list.push_back(delayOperation(req.conflictive_operations.back(), req.conflictive_segments));
             visualization_pub_.publish(marker_array);
+            // Fill server response
+            for (auto solution : solution_list){
+                gauss_msgs::DeconflictionPlan possible_solution;
+                // possible_solution.maneuver_type = 1;
+                possible_solution.waypoint_list = solution;
+                res.deconfliction_plans.push_back(possible_solution);
+            }
+            res.message = "Conflict solved";
+            res.success = true;
+
         } break;
         case req.threat.GEOFENCE_CONFLICT: {
             ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE CONFLICT!");
             // Setup polygon geofence according on its shape
             geometry_msgs::Polygon polygon_geofence;
             if (req.geofences.front().cylinder_shape) {
-                polygon_geofence = circleToPolygon(req.geofences.front().circle.x_center,
-                                                   req.geofences.front().circle.y_center,
-                                                   req.geofences.front().circle.radius);
+                polygon_geofence = circleToPolygon(req.geofences.front().circle.x_center, req.geofences.front().circle.y_center, req.geofences.front().circle.radius);
             } else {
                 for (int i = 0; i < req.geofences.front().polygon.x.size(); i++) {
                     geometry_msgs::Point32 temp_points;
@@ -394,8 +403,8 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             possible_solution.waypoint_list.clear();
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.front());
+            
             res.deconfliction_plans.push_back(possible_solution);
-
             res.message = "Conflict solved";
             res.success = true;
         } break;
