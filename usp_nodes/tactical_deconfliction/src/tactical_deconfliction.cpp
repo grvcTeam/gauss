@@ -263,6 +263,45 @@ std::vector<gauss_msgs::Waypoint> pathAStartToWPVector(const nav_msgs::Path &_pa
     return out_wp_vector;
 }
 
+std::vector<gauss_msgs::Waypoint> findAlternativePathAStar(geometry_msgs::Point &_p_init, geometry_msgs::Point &_p_end, ros::Time &_t_init, ros::Time &_t_end, gauss_msgs::Geofence &_geofence, gauss_msgs::ConflictiveOperation &_conflictive_operation) {
+    // Setup polygon geofence according on its shape
+    geometry_msgs::Polygon polygon_geofence;
+    if (_geofence.cylinder_shape) {
+        polygon_geofence = circleToPolygon(_geofence.circle.x_center, _geofence.circle.y_center, _geofence.circle.radius);
+    } else {
+        for (int i = 0; i < _geofence.polygon.x.size(); i++) {
+            geometry_msgs::Point32 temp_points;
+            temp_points.x = _geofence.polygon.x.at(i);
+            temp_points.y = _geofence.polygon.y.at(i);
+            polygon_geofence.points.push_back(temp_points);
+        }
+    }
+    // Inflate polygon to take operational volume into account
+    if (!_geofence.cylinder_shape) polygon_geofence.points.push_back(polygon_geofence.points.front());
+    geometry_msgs::Polygon inflated_geofence = decreasePolygon(polygon_geofence, -_conflictive_operation.operational_volume * 1.1);
+    if (!_geofence.cylinder_shape) inflated_geofence.points.pop_back();
+    // Get borders of a local greed for the A* path finder
+    geometry_msgs::Point p_min_local_grid, p_max_local_grid;
+    std::vector<double> grid_borders = findGridBorders(inflated_geofence, _p_init, _p_end, _conflictive_operation.operational_volume);
+    p_min_local_grid.x = grid_borders[0];
+    p_min_local_grid.y = grid_borders[1];
+    p_max_local_grid.x = grid_borders[2];
+    p_max_local_grid.y = grid_borders[3];
+    nav_msgs::Path estimated_traj_path = translateToPath(_conflictive_operation.estimated_trajectory);
+    // Use A* path finder to get an alternative path
+    PathFinder path_finder(estimated_traj_path, _p_init, _p_end, inflated_geofence, p_min_local_grid, p_max_local_grid);
+    nav_msgs::Path a_star_path = path_finder.findNewPath();
+    // Fix times
+    std::vector<double> interp_times, a_star_times;
+    interp_times.push_back(_t_init.toSec());
+    interp_times.push_back(_t_end.toSec());
+    a_star_times = path_finder.interpWaypointList(interp_times, a_star_path.poses.size() - 1);
+    a_star_times.push_back(_t_end.toSec());
+
+    return pathAStartToWPVector(a_star_path, a_star_times);
+}
+
+
 visualization_msgs::Marker createMarkerSpheres(const gauss_msgs::Waypoint &_p_at_t_min_first, const gauss_msgs::Waypoint &_p_at_t_min_second) {
     std_msgs::ColorRGBA white;
     white.r = 1.0;
@@ -349,20 +388,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
 
         } break;
         case req.threat.GEOFENCE_CONFLICT: {
-            ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE CONFLICT!");
-            // Setup polygon geofence according on its shape
-            geometry_msgs::Polygon polygon_geofence;
-            if (req.geofences.front().cylinder_shape) {
-                polygon_geofence = circleToPolygon(req.geofences.front().circle.x_center, req.geofences.front().circle.y_center, req.geofences.front().circle.radius);
-            } else {
-                for (int i = 0; i < req.geofences.front().polygon.x.size(); i++) {
-                    geometry_msgs::Point32 temp_points;
-                    temp_points.x = req.geofences.front().polygon.x.at(i);
-                    temp_points.y = req.geofences.front().polygon.y.at(i);
-                    polygon_geofence.points.push_back(temp_points);
-                }
-            }
-
+            ROS_ERROR_COND(req.geofences.size() != 1, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE CONFLICT!");
             // * Assume inputs from monitoring
             // TODO: Check if init and end points have to be further apart from the geofence!
             geometry_msgs::Point p_init_conflict, p_end_conflict, p_min_local_grid, p_max_local_grid;
@@ -371,45 +397,52 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             ros::Time t_init_conflict = req.conflictive_segments.segment_first.front().stamp;
             ros::Time t_end_conflict = req.conflictive_segments.segment_first.front().stamp;
 
-            // [1] Ruta a mi destino evitando una geofence
-            // Inflate polygon to take operational volume into account
-            if (!req.geofences.front().cylinder_shape) polygon_geofence.points.push_back(polygon_geofence.points.front());
-            geometry_msgs::Polygon inflated_geofence = decreasePolygon(polygon_geofence, -req.conflictive_operations.front().operational_volume * 1.1);
-            if (!req.geofences.front().cylinder_shape) inflated_geofence.points.pop_back();
-            // Get borders of a local greed for the A* path finder
-            std::vector<double> grid_borders = findGridBorders(inflated_geofence, p_init_conflict, p_end_conflict, req.conflictive_operations.front().operational_volume);
-            p_min_local_grid.x = grid_borders[0];
-            p_min_local_grid.y = grid_borders[1];
-            p_max_local_grid.x = grid_borders[2];
-            p_max_local_grid.y = grid_borders[3];
-            nav_msgs::Path estimated_traj_path = translateToPath(req.conflictive_operations.front().estimated_trajectory);
-            // Use A* path finder to get an alternative path
-            PathFinder path_finder(estimated_traj_path, p_init_conflict, p_end_conflict, inflated_geofence, p_min_local_grid, p_max_local_grid);
-            nav_msgs::Path a_star_path = path_finder.findNewPath();
-            // Fix times
-            std::vector<double> interp_times, a_star_times;
-            interp_times.push_back(t_init_conflict.toSec());
-            interp_times.push_back(t_end_conflict.toSec());
-            a_star_times = path_finder.interpWaypointList(interp_times, a_star_path.poses.size() - 1);
-            a_star_times.push_back(t_end_conflict.toSec());
-
             gauss_msgs::DeconflictionPlan possible_solution;
-            possible_solution.waypoint_list = pathAStartToWPVector(a_star_path, a_star_times);
+            // [1] Ruta a mi destino evitando una geofence
             possible_solution.maneuver_type = 1;
+            possible_solution.waypoint_list = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.geofences.front(), req.conflictive_operations.front());
             res.deconfliction_plans.push_back(possible_solution);
-
             // [3] Ruta que me manda devuelta a casa
             possible_solution.maneuver_type = 3;
             possible_solution.waypoint_list.clear();
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.front());
-            
             res.deconfliction_plans.push_back(possible_solution);
+
             res.message = "Conflict solved";
             res.success = true;
         } break;
-        case req.threat.GEOFENCE_INTRUSION:
-            break;
+        case req.threat.GEOFENCE_INTRUSION: {
+            ROS_ERROR_COND(req.geofences.size() != 1, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE INTRUSION!");
+            // * Assume inputs from monitoring
+            // TODO: Check if init and end points have to be further apart from the geofence!
+            geometry_msgs::Point p_init_conflict, p_end_conflict, p_min_local_grid, p_max_local_grid;
+            p_init_conflict = translateToPoint(req.conflictive_segments.segment_first.front()); // * Should we assume that this is the escape point?
+            p_end_conflict = translateToPoint(req.conflictive_segments.segment_first.back());
+            ros::Time t_init_conflict = req.conflictive_segments.segment_first.front().stamp;
+            ros::Time t_end_conflict = req.conflictive_segments.segment_first.front().stamp;
+
+            gauss_msgs::DeconflictionPlan possible_solution;
+            // [6] Ruta a mi destino saliendo lo antes posible de la geofence
+            possible_solution.maneuver_type = 1;
+            possible_solution.waypoint_list = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.geofences.front(), req.conflictive_operations.front());
+            res.deconfliction_plans.push_back(possible_solution);
+            // [2] Ruta a mi destino por el camino mas corto
+            possible_solution.maneuver_type = 2;
+            possible_solution.waypoint_list.clear();
+            possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
+            possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.back());
+            res.deconfliction_plans.push_back(possible_solution);
+            // [3] Ruta que me manda de vuelta a casa
+            possible_solution.maneuver_type = 3;
+            possible_solution.waypoint_list.clear();
+            possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
+            possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.front());
+            res.deconfliction_plans.push_back(possible_solution);
+
+            res.message = "Conflict solved";
+            res.success = true;
+        } break;
         case req.threat.UAS_OUT_OV:
             break;
         case req.threat.GNSS_DEGRADATION:
