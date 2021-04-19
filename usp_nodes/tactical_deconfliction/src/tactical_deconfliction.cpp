@@ -301,6 +301,26 @@ std::vector<gauss_msgs::Waypoint> findAlternativePathAStar(geometry_msgs::Point 
     return pathAStartToWPVector(a_star_path, a_star_times);
 }
 
+std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_msgs::Waypoint> &_solution, gauss_msgs::WaypointList &_flight_plan, int &_current_wp) {
+    std::vector<gauss_msgs::Waypoint> out_merged_solution;
+    bool do_once = true;
+    for (auto fp_wp : _flight_plan.waypoints) {
+        if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) { // Do nothing before current wp
+            if (fp_wp.stamp <= _solution.front().stamp) { // Between current wp and first wp of the solution
+                out_merged_solution.push_back(fp_wp);
+            } else if (do_once && _solution.front().stamp < fp_wp.stamp && fp_wp.stamp <= _solution.back().stamp) { // Insert all the solution wps
+                for (auto solution_wp : _solution) {
+                    out_merged_solution.push_back(solution_wp);
+                }
+                do_once = false;
+            } else if (_solution.back().stamp < fp_wp.stamp) { // Insert the remaining wps of the flight plan
+                out_merged_solution.push_back(fp_wp);
+            }
+        } 
+    }
+
+    return out_merged_solution;
+}
 
 visualization_msgs::Marker createMarkerSpheres(const gauss_msgs::Waypoint &_p_at_t_min_first, const gauss_msgs::Waypoint &_p_at_t_min_second) {
     std_msgs::ColorRGBA white;
@@ -340,7 +360,7 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
     marker_lines.ns = "lines_" + std::to_string(sol_count);
     sol_count++;
     marker_lines.id = 1;
-    marker_lines.type = visualization_msgs::Marker::LINE_LIST;
+    marker_lines.type = visualization_msgs::Marker::LINE_STRIP;
     marker_lines.action = visualization_msgs::Marker::ADD;
     marker_lines.pose.orientation.w = 1;
     marker_lines.scale.x = 2.0;
@@ -357,7 +377,7 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
 bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDeconfliction::Response &res) {
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
-            std::vector<std::vector<gauss_msgs::Waypoint>> solution_list;
+            std::vector<std::vector<gauss_msgs::Waypoint>> solution_list, merged_solution_list;
             ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 2 conflictive operations to solve LOSS OF SEPARATION!");
             // Calculate a vector to separate perpendiculary one trajectory
             std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
@@ -367,14 +387,16 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // Solution delaying one operation
             solution_list.push_back(delayOperation(req.conflictive_operations.front(), req.conflictive_segments));
             solution_list.push_back(delayOperation(req.conflictive_operations.back(), req.conflictive_segments));
+            // TODO: Who should do the merge?
+            merged_solution_list.push_back(mergeSolutionWithFlightPlan(solution_list.front(), req.conflictive_operations.front().flight_plan_updated, req.conflictive_operations.front().current_wp));
+            merged_solution_list.push_back(mergeSolutionWithFlightPlan(solution_list.back(), req.conflictive_operations.back().flight_plan_updated, req.conflictive_operations.back().current_wp));
             // Visualize "space" results
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
             // Visualize just "space" results (solution 0 and 1)
-            for (int i = 0; i < 2; i++) { 
-                marker_array.markers.push_back(createMarkerLines(solution_list.at(i)));
-            }
+            marker_array.markers.push_back(createMarkerLines(merged_solution_list.front()));
+            marker_array.markers.push_back(createMarkerLines(merged_solution_list.back()));
             visualization_pub_.publish(marker_array);
             // Fill server response
             for (auto solution : solution_list){
@@ -491,7 +513,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
         default:
             break;
     }
-    res.success = true;
+
     return res.success;
 }
 

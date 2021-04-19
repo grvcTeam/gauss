@@ -470,7 +470,7 @@ gauss_msgs::NewDeconfliction fillDeconflictionMsg(const std::vector<LossResult> 
     out_msg.request.threat.priority_ops.push_back(_index_to_operation_map.at(i.first_trajectory_index).priority);
     out_msg.request.threat.priority_ops.push_back(_index_to_operation_map.at(i.second_trajectory_index).priority);
     out_msg.request.conflictive_operations.push_back(fillConflictiveOperation(i.first_trajectory_index, _index_to_operation_map));
-    out_msg.request.conflictive_operations.push_back(fillConflictiveOperation(i.first_trajectory_index, _index_to_operation_map));
+    out_msg.request.conflictive_operations.push_back(fillConflictiveOperation(i.second_trajectory_index, _index_to_operation_map));
     for (auto j : i.segments_loss_results){
       out_msg.request.conflictive_segments.segment_first.push_back(j.first.point_A);
       out_msg.request.conflictive_segments.segment_first.push_back(j.first.point_B);
