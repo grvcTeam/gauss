@@ -884,6 +884,28 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
+            // [?] Ruta que me manda a un landing spot
+            if (conflictive_operations.front().landing_spots.waypoints.size() > 0) {
+                temp_wp_list.waypoint_list.clear();
+                temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+                temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+                temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+                temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+                temp_wp.x = conflictive_operations.front().landing_spots.waypoints.front().x;
+                temp_wp.y = conflictive_operations.front().landing_spots.waypoints.front().y;
+                temp_wp.z = conflictive_operations.front().landing_spots.waypoints.front().z;
+                temp_wp.stamp = conflictive_operations.front().landing_spots.waypoints.front().stamp;
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+                // temp_wp_list.maneuver_type = 3;
+                // temp_wp_list.cost = pathDistance(temp_wp_list);
+                // intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
+                // temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
+                temp_wp_list.cost = 0.0;        // ! Forcing this solution to be the one of choice
+                temp_wp_list.riskiness = 0.0;   // ! Forcing this solution to be the one of choice
+                temp_wp_list.uav_id = req.threat.uav_ids.front();
+                res.deconfliction_plans.push_back(temp_wp_list);
+            }
 
             res.message = "Conflict solved";
             res.success = true;
