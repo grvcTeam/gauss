@@ -305,18 +305,18 @@ std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_
     std::vector<gauss_msgs::Waypoint> out_merged_solution;
     bool do_once = true;
     for (auto fp_wp : _flight_plan.waypoints) {
-        if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) { // Do nothing before current wp
-            if (fp_wp.stamp <= _solution.front().stamp) { // Between current wp and first wp of the solution
+        if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) {  // Do nothing before current wp
+            if (fp_wp.stamp <= _solution.front().stamp) {                   // Between current wp and first wp of the solution
                 out_merged_solution.push_back(fp_wp);
-            } else if (do_once && _solution.front().stamp < fp_wp.stamp && fp_wp.stamp <= _solution.back().stamp) { // Insert all the solution wps
+            } else if (do_once && _solution.front().stamp < fp_wp.stamp && fp_wp.stamp <= _solution.back().stamp) {  // Insert all the solution wps
                 for (auto solution_wp : _solution) {
                     out_merged_solution.push_back(solution_wp);
                 }
                 do_once = false;
-            } else if (_solution.back().stamp < fp_wp.stamp) { // Insert the remaining wps of the flight plan
+            } else if (_solution.back().stamp < fp_wp.stamp) {  // Insert the remaining wps of the flight plan
                 out_merged_solution.push_back(fp_wp);
             }
-        } 
+        }
     }
 
     return out_merged_solution;
@@ -378,33 +378,35 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
             std::vector<std::vector<gauss_msgs::Waypoint>> solution_list, merged_solution_list;
+            gauss_msgs::DeconflictionPlan possible_solution;
+            std::vector<std::vector<gauss_msgs::Waypoint>> segments_first_second;
+            segments_first_second.push_back(req.conflictive_segments.segment_first);
+            segments_first_second.push_back(req.conflictive_segments.segment_second);
             ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 2 conflictive operations to solve LOSS OF SEPARATION!");
             // Calculate a vector to separate perpendiculary one trajectory
             std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
             // Solution applying separation to one operation
-            solution_list.push_back(applySeparation(avoid_vectors.front(), req.conflictive_segments.segment_first, req.conflictive_operations.front().estimated_trajectory));
-            solution_list.push_back(applySeparation(avoid_vectors.back(), req.conflictive_segments.segment_second, req.conflictive_operations.back().estimated_trajectory));
-            // Solution delaying one operation
+            double fake_value = 0.0;
+            for (int i = 0; i < 2; i++) {
+                possible_solution.waypoint_list.clear();
+                possible_solution.cost = possible_solution.riskiness = fake_value;
+                possible_solution.uav_id = req.conflictive_operations.at(i).uav_id;
+                std::vector<gauss_msgs::Waypoint> temp_solution = applySeparation(avoid_vectors.at(i), segments_first_second.at(i), req.conflictive_operations.at(i).estimated_trajectory);
+                // TODO: Who should do the merge?
+                possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.conflictive_operations.at(i).flight_plan_updated, req.conflictive_operations.at(i).current_wp);
+                res.deconfliction_plans.push_back(possible_solution);
+            }
+            // !Solution delaying one operation
             solution_list.push_back(delayOperation(req.conflictive_operations.front(), req.conflictive_segments));
             solution_list.push_back(delayOperation(req.conflictive_operations.back(), req.conflictive_segments));
-            // TODO: Who should do the merge?
-            merged_solution_list.push_back(mergeSolutionWithFlightPlan(solution_list.front(), req.conflictive_operations.front().flight_plan_updated, req.conflictive_operations.front().current_wp));
-            merged_solution_list.push_back(mergeSolutionWithFlightPlan(solution_list.back(), req.conflictive_operations.back().flight_plan_updated, req.conflictive_operations.back().current_wp));
             // Visualize "space" results
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
-            // Visualize just "space" results (solution 0 and 1)
-            marker_array.markers.push_back(createMarkerLines(merged_solution_list.front()));
-            marker_array.markers.push_back(createMarkerLines(merged_solution_list.back()));
+            // Visualize results
+            for (auto i : res.deconfliction_plans) marker_array.markers.push_back(createMarkerLines(i.waypoint_list));
             visualization_pub_.publish(marker_array);
-            // Fill server response
-            for (auto solution : solution_list){
-                gauss_msgs::DeconflictionPlan possible_solution;
-                possible_solution.maneuver_type = 8;
-                possible_solution.waypoint_list = solution;
-                res.deconfliction_plans.push_back(possible_solution);
-            }
+
             res.message = "Conflict solved";
             res.success = true;
 
@@ -439,12 +441,13 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // * Assume inputs from monitoring
             // TODO: Check if init and end points have to be further apart from the geofence!
             geometry_msgs::Point p_init_conflict, p_end_conflict;
-            p_init_conflict = translateToPoint(req.conflictive_segments.segment_first.front()); // * Should we assume that this is the escape point?
+            p_init_conflict = translateToPoint(req.conflictive_segments.segment_first.front());  // * Should we assume that this is the escape point?
             p_end_conflict = translateToPoint(req.conflictive_segments.segment_first.back());
             ros::Time t_init_conflict = req.conflictive_segments.segment_first.front().stamp;
             ros::Time t_end_conflict = req.conflictive_segments.segment_first.front().stamp;
 
             gauss_msgs::DeconflictionPlan possible_solution;
+            possible_solution.uav_id = req.conflictive_operations.front().uav_id;
             // [6] Ruta a mi destino saliendo lo antes posible de la geofence
             possible_solution.maneuver_type = 1;
             possible_solution.waypoint_list = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.geofences.front(), req.conflictive_operations.front());
@@ -468,6 +471,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
         case req.threat.UAS_OUT_OV: {
             ROS_ERROR_COND(req.conflictive_operations.size() != 1, "[Tactical] Deconflictive server should receive 1 conflictive operations to solve UAS OUT OV!");
             gauss_msgs::DeconflictionPlan possible_solution;
+            possible_solution.uav_id = req.conflictive_operations.front().uav_id;
             // [9] Ruta para volver lo antes posible al flight geometry y seguir el plan de vuelo.
             // TODO: Should we use the same strategy described in ConflictSolver.cpp?
 
@@ -487,6 +491,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // [5] Ruta que aterrice en un landing spot
             for (auto landing_wp : req.conflictive_operations.front().landing_spots.waypoints) {
                 gauss_msgs::DeconflictionPlan possible_solution;
+                possible_solution.uav_id = req.conflictive_operations.front().uav_id;
                 possible_solution.maneuver_type = 5;
                 possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
                 possible_solution.waypoint_list.push_back(landing_wp);
@@ -501,12 +506,13 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // [5] Ruta que aterrice en un landing spot
             for (auto landing_wp : req.conflictive_operations.front().landing_spots.waypoints) {
                 gauss_msgs::DeconflictionPlan possible_solution;
+                possible_solution.uav_id = req.conflictive_operations.front().uav_id;
                 possible_solution.maneuver_type = 5;
                 possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
                 possible_solution.waypoint_list.push_back(landing_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }
-            
+
             res.message = "Conflict solved";
             res.success = true;
         } break;
