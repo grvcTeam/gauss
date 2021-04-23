@@ -8,6 +8,7 @@
 #include <gauss_msgs_mqtt/ADSBSurveillance.h>
 #include <gauss_msgs_mqtt/RPAStateInfo.h>
 #include <gauss_msgs_mqtt/UTMAlert.h>
+#include <gauss_msgs_mqtt/AirspaceUpdate.h>
 #include <gauss_msgs_mqtt/UTMAlternativeFlightPlan.h>
 #include <gauss_msgs_mqtt/RPSFlightPlanAccept.h>
 #include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
@@ -16,6 +17,7 @@
 #include <gauss_msgs/PositionReport.h>
 #include <gauss_msgs/Notifications.h>
 // #include <gauss_msgs/Alert.h>
+#include <gauss_msgs/AirspaceUpdate.h>
 #include <gauss_msgs/Operation.h>
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/WaypointList.h>
@@ -68,6 +70,7 @@ private:
     // Server Callbacks
     bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res); // UTM -> RPS
     void RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg); // RPS -> UTM
+    void airspaceUpdateCB(const gauss_msgs_mqtt::AirspaceUpdate::ConstPtr& msg); // RPS -> UTM
 
     // TODO: Think how to implement this
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
@@ -106,6 +109,7 @@ private:
     ros::Subscriber adsb_sub_;
     ros::Subscriber flight_plan_accept_sub_;
     ros::Subscriber flight_status_sub_;
+    ros::Subscriber airspace_update_sub_;
 
     // Server 
     ros::ServiceServer notification_server_;
@@ -124,6 +128,7 @@ private:
     ros::Publisher position_report_pub_;
     ros::Publisher alternative_flight_plan_pub_;
     ros::Publisher alert_pub_;
+    ros::Publisher airspace_alert_pub_;
     ros::Publisher flight_status_pub_;
 
 
@@ -148,12 +153,14 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 10);
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
+    airspace_alert_pub_ = nh_.advertise<gauss_msgs_mqtt::AirspaceUpdate>("/gauss/airspace_alert", 1);
     flight_status_pub_ = nh_.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10);
 
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo",10,&USPManager::RPAStateCB,this);
     adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
     flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 10, &USPManager::RPSFlightPlanAcceptCB, this);
     flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10, &USPManager::RPSChangeFlightStatusCB, this);
+    airspace_update_sub_ = nh_.subscribe<gauss_msgs_mqtt::AirspaceUpdate>("/gauss/airspace_update", 10, &USPManager::airspaceUpdateCB, this);
     // Server 
     notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
 
@@ -388,6 +395,12 @@ void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightS
     else if(msg->status == "stop")
         change_flight_status_msg.request.is_started = false;
     change_flight_status_client_.call(change_flight_status_msg);
+}
+
+void USPManager::airspaceUpdateCB(const gauss_msgs_mqtt::AirspaceUpdate::ConstPtr& msg) {
+    gauss_msgs::AirspaceUpdate alert_msg;
+    // Convert
+    airspace_alert_pub_.publish(alert_msg);
 }
 
 bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat, const gauss_msgs::PositionReport &pos_report){
