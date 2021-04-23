@@ -177,7 +177,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
 {
     for (auto msg : req.notifications){
         // TODO: Treat all possible notifications properly
-        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_CONFLICT)
+        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_CONFLICT || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_INTRUSION)
         {
             gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
             std::string uav_id_string = std::to_string(msg.uav_id);

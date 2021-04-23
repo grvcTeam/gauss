@@ -124,6 +124,9 @@ class EmergencyManagement():
             elif maneuver == 3: # Route for going back home.
                 merge2end = False
                 flighplansection = 2
+            elif maneuver == 5: # Route to a landing spot.
+                merge2end = False
+                flighplansection = 2   
             elif maneuver == 6: # Route to my destination leaving the geofence asap.
                 merge2end = True
                 flighplansection = 2   
