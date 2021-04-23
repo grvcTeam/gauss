@@ -153,7 +153,7 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 10);
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
-    airspace_alert_pub_ = nh_.advertise<gauss_msgs_mqtt::AirspaceUpdate>("/gauss/airspace_alert", 1);
+    airspace_alert_pub_ = nh_.advertise<gauss_msgs::AirspaceUpdate>("/gauss/airspace_alert", 1);
     flight_status_pub_ = nh_.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10);
 
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo",10,&USPManager::RPAStateCB,this);

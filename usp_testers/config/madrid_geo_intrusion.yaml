@@ -17,6 +17,7 @@ deltaX: 10.0
 deltaY: 10.0
 deltaZ: 10.0
 safetyDistance: 10
+just_one_threat: true
 
 simulation:
   auto_start:

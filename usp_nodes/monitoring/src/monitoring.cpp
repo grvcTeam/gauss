@@ -49,6 +49,7 @@ private:
     bool posIndicesAreInRange(int x, int y, int z, int t);
 
     // Auxilary variables
+    bool just_one_threat;
     double monitoring_timer;
     int X,Y,Z,T;
     double dX,dY,dZ,dT;
@@ -98,6 +99,7 @@ Monitoring::Monitoring()
     nh_.param("deltaX",dX,10.0);
     nh_.param("deltaY",dY,10.0);
     nh_.param("deltaZ",dZ,10.0);
+    nh_.param("just_one_threat",just_one_threat, false);
 
     double cell_diagonal = sqrt(pow(dX, 2) + pow(dY, 2) + pow(dZ, 2));
 
@@ -205,6 +207,7 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
                 }
                 threat_list_id_++;
             }
+            if (just_one_threat) break;
         }
     } 
 
