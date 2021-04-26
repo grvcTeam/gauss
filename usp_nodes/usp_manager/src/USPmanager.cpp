@@ -153,7 +153,7 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 10);
     alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
-    airspace_alert_pub_ = nh_.advertise<gauss_msgs_mqtt::AirspaceUpdate>("/gauss/airspace_alert", 1);
+    airspace_alert_pub_ = nh_.advertise<gauss_msgs::AirspaceUpdate>("/gauss/airspace_alert", 1);
     flight_status_pub_ = nh_.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10);
 
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo",10,&USPManager::RPAStateCB,this);
@@ -397,9 +397,81 @@ void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightS
     change_flight_status_client_.call(change_flight_status_msg);
 }
 
-void USPManager::airspaceUpdateCB(const gauss_msgs_mqtt::AirspaceUpdate::ConstPtr& msg) {
+void USPManager::airspaceUpdateCB(const gauss_msgs_mqtt::AirspaceUpdate::ConstPtr& msg) 
+{
     gauss_msgs::AirspaceUpdate alert_msg;
     // Convert
+    alert_msg.id = msg->id;
+    alert_msg.name = msg->name;
+    alert_msg.type = msg->type;
+    alert_msg.country = msg->country;
+    alert_msg.state = msg->state;
+    alert_msg.city = msg->city;
+    alert_msg.last_updated = msg->last_updated;
+    alert_msg.date_effective = msg->date_effective;
+
+    geometry_msgs::Point cartesian_translation;
+    double latitude, longitude;
+
+    std::string geometry;
+    geometry = msg->geometry;
+    geometry.pop_back();
+    std::stringstream reading_strstream;
+
+    if(geometry.substr(0, std::string("CIRCLE").size()) == "CIRCLE")
+    {
+        geometry = geometry.substr(std::string("CIRCLE").size()+1, geometry.size() - std::string("CIRCLE").size() - 1);
+        reading_strstream << geometry;
+        double latitude, longitude, radius;
+        sscanf(geometry.c_str(), "%lf,%lf,%lf", &latitude, &longitude, &radius);
+        proj_.Forward(latitude, longitude, ellipsoidal_height_, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
+        alert_msg.circle.radius = radius;
+        alert_msg.circle.x_center = cartesian_translation.x;
+        alert_msg.circle.y_center = cartesian_translation.y;
+        alert_msg.cylinder_shape = true;
+    }
+    else if(geometry.substr(0, std::string("POLYGON").size()) == "POLYGON")
+    {
+        geometry = geometry.substr(std::string("POLYGON").size()+1, geometry.size() - std::string("POLYGON").size() - 1);
+        std::vector<std::string> comma_separated_strings;
+        comma_separated_strings.push_back("");
+        int comma_counter = 0;
+        for(int i=0; i<geometry.size(); i++)
+        {
+            if(geometry[i] == ' ')
+            {
+                // Do nothing
+            }
+            else if(geometry[i] == ',')
+            {
+                comma_counter++;
+                comma_separated_strings.push_back("");
+            } else {
+                comma_separated_strings.at(comma_counter) += geometry[i];
+            }
+        }
+
+        uint8_t pair_counter = 0;
+        double vertex_latitude, vertex_longitude;
+        for(auto it = comma_separated_strings.begin(); it != comma_separated_strings.end(); it++)
+        {
+            if(pair_counter == 0)
+            {
+                vertex_latitude = atof((*it).c_str());
+                pair_counter++;
+            }
+            else
+            {
+                vertex_longitude = atof((*it).c_str());
+                pair_counter = 0;
+                proj_.Forward(vertex_latitude, vertex_longitude, ellipsoidal_height_, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
+                alert_msg.polygon.x.push_back(cartesian_translation.x);
+                alert_msg.polygon.y.push_back(cartesian_translation.y);
+            }
+        }
+        alert_msg.cylinder_shape = false;
+    }
+ 
     airspace_alert_pub_.publish(alert_msg);
 }
 
