@@ -6,7 +6,7 @@
 			"cylinder_shape": true,
 			"min_altitude": 0,
 			"max_altitude": 200,
-			"start_time": 100,
+			"start_time": 20,
 			"end_time": 1000,
 			"circle": {
 				"x_center": -1816.9692483674621,
