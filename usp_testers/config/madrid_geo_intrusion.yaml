@@ -1,6 +1,6 @@
 # Old madrid_large_geo_light_sim.launch
 operations_json: "madrid_geo_intrusion"
-geofences_json: "madrid_geofence_intrusion"
+geofences_json: "no_geofences" # madrid_geofence_intrusion
 origin_latitude: 40.65974645776713
 origin_longitude: -3.59689676974471
 origin_ellipsoidal_height: 675.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point

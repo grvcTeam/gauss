@@ -508,13 +508,14 @@ class EmergencyManagement():
         geofence_base.y_center = alert.circle.y_center
         geofence_base.radius = alert.circle.radius
         geofence = Geofence()
-        geofence.id = alert.id
+        geofence.id = int(alert.id)
         geofence.min_altitude = 0.0
         geofence.max_altitude = 500.0
         geofence.circle = geofence_base
         geofence.cylinder_shape = True
         geofence.start_time = rospy.Time().from_sec(alert.date_effective)
         geofence.end_time = rospy.Time().from_sec(alert.last_updated + 600.0)
+
         req = WriteGeofencesRequest()
         req.geofence_ids = [geofence.id]
         req.geofences = [geofence]
