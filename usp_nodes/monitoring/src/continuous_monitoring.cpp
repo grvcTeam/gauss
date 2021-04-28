@@ -543,10 +543,12 @@ int main(int argc, char **argv) {
         std::vector<double> operational_volumes;
         for (auto operation: read_operation.response.operation) {
             // std::cout << operation << '\n';
-            icao_to_index_map[operation.icao_address] = estimated_trajectories.size();
-            index_to_operation_map[estimated_trajectories.size()] = operation;
-            estimated_trajectories.push_back(operation.estimated_trajectory);
-            operational_volumes.push_back(operation.operational_volume);
+            if (operation.is_started) {
+              icao_to_index_map[operation.icao_address] = estimated_trajectories.size();
+              index_to_operation_map[estimated_trajectories.size()] = operation;
+              estimated_trajectories.push_back(operation.estimated_trajectory);
+              operational_volumes.push_back(operation.operational_volume);
+            }
         }
 
         auto trajectories_count = estimated_trajectories.size();
