@@ -16,7 +16,7 @@ dT: 10
 # deltaX: 100.0
 # deltaY: 100.0
 # deltaZ: 500.0
-safetyDistance: 15
+safetyDistance: 60
 
 simulation:
   auto_start:

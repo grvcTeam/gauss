@@ -349,9 +349,9 @@ visualization_msgs::Marker translateToMarker(const LossExtreme& extremes, int id
     marker.type = visualization_msgs::Marker::SPHERE_LIST;
     marker.action = visualization_msgs::Marker::ADD;
     marker.pose.orientation.w = 1;
-    marker.scale.x = 2.0;
-    marker.scale.y = 2.0;
-    marker.scale.z = 2.0;
+    marker.scale.x = 5.0;
+    marker.scale.y = 5.0;
+    marker.scale.z = 5.0;
     marker.lifetime = ros::Duration(1.0);  // TODO: pair with frequency
     marker.points.push_back(translateToPoint(extremes.in_point));
     marker.colors.push_back(red);
@@ -578,7 +578,7 @@ int main(int argc, char** argv) {
         // Eigen::Vector3f p_a, p_b, unit_vec_ab, unit_vec_ba;
         // p_a = Eigen::Vector3f(read_operation.response.operation.front().track.waypoints.back().x, read_operation.response.operation.front().track.waypoints.back().y, read_operation.response.operation.front().track.waypoints.back().z);
         // p_b = Eigen::Vector3f(read_operation.response.operation.back().track.waypoints.back().x, read_operation.response.operation.back().track.waypoints.back().y, read_operation.response.operation.back().track.waypoints.back().z);
-        // ROS_INFO_STREAM("[Monitoring] Actual distance between UAVs: " << (p_a - p_b).norm());
+        // ROS_INFO_STREAM("[Monitoring] Actual distance between UAVs [" << (p_a - p_b).norm() << " > " << std::max(std::sqrt(safety_distance_sq), (operational_volumes[0] + operational_volumes[1])) << "] should be bigger than safety distance");
 
         std::vector<LossResult> loss_results_list;
         for (int i = 0; i < trajectories_count - 1; i++) {
@@ -608,7 +608,7 @@ int main(int argc, char** argv) {
                     for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
                     cout_threats = cout_threats + "]";
                 }
-                ROS_INFO_STREAM("[Monitoring] Threats received: [id type | uav] " + cout_threats);
+                ROS_INFO_STREAM("[Monitoring] Threats detected: [id type | uav] " + cout_threats);
                 if (new_threats_client.call(threats_msg)) {
                     // ROS_INFO("[Monitoring] Call tactical... ok");
                 } else {
