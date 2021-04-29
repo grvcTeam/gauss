@@ -16,7 +16,7 @@
 double safety_distance_;
 ros::Publisher visualization_pub_;
 
-std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Waypoint &_pA, const gauss_msgs::Waypoint &_pB, const double &_safety_distance) {
+std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Waypoint &_pA, const gauss_msgs::Waypoint &_pB, const double &_op_vol_A, const double &_op_vol_B) {
     std::vector<Eigen::Vector3f> out_avoid_vector;
     Eigen::Vector3f p_a, p_b, unit_vec_ab, unit_vec_ba;
     p_a = Eigen::Vector3f(_pA.x, _pA.y, _pA.z);
@@ -25,24 +25,22 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
     unit_vec_ab = (p_a - p_b) / (p_a - p_b).norm();
     unit_vec_ba = (p_b - p_a) / (p_b - p_a).norm();
 
-    double distance_to_check, distance_between_points, distance_operational_volumes;
-    distance_between_points = (p_a - p_b).norm();
-    distance_operational_volumes = 2.0;
-    if (distance_between_points >= distance_operational_volumes) {
-        distance_to_check = distance_between_points;
+    double distance_to_avoid;
+    double distance_between_points = (p_a - p_b).norm();
+    double distance_operational_volumes = _op_vol_A + _op_vol_B;
+    if (safety_distance_ >= distance_operational_volumes) {
+        distance_to_avoid = safety_distance_;
     } else {
-        distance_to_check = distance_operational_volumes;
+        distance_to_avoid = distance_operational_volumes;
     }
-    double distance_to_avoid = _safety_distance;
-    if (distance_to_check > _safety_distance) {
-        distance_to_avoid = distance_to_check;
-    }
+    distance_to_avoid *= 1.2;  // Increase 20% the distance
+    distance_to_avoid -= distance_between_points;
 
-    unit_vec_ab = unit_vec_ab * distance_to_avoid;
-    unit_vec_ba = unit_vec_ba * distance_to_avoid;
+    unit_vec_ab = -unit_vec_ab * distance_to_avoid;
+    unit_vec_ba = -unit_vec_ba * distance_to_avoid;
 
-    out_avoid_vector.push_back(unit_vec_ab);
     out_avoid_vector.push_back(unit_vec_ba);
+    out_avoid_vector.push_back(unit_vec_ab);
 
     return out_avoid_vector;
 }
@@ -384,10 +382,11 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             segments_first_second.push_back(req.conflictive_segments.segment_second);
             ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 2 conflictive operations to solve LOSS OF SEPARATION!");
             // Calculate a vector to separate perpendiculary one trajectory
-            std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, safety_distance_);
+            std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, req.conflictive_operations.front().operational_volume, req.conflictive_operations.back().operational_volume);
             // Solution applying separation to one operation
             double fake_value = 0.0;
             for (int i = 0; i < 2; i++) {
+                possible_solution.maneuver_type = 8;
                 possible_solution.waypoint_list.clear();
                 possible_solution.cost = possible_solution.riskiness = fake_value;
                 possible_solution.uav_id = req.conflictive_operations.at(i).uav_id;
@@ -406,10 +405,6 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // Visualize results
             for (auto i : res.deconfliction_plans) marker_array.markers.push_back(createMarkerLines(i.waypoint_list));
             visualization_pub_.publish(marker_array);
-
-            res.message = "Conflict solved";
-            res.success = true;
-
         } break;
         case req.threat.GEOFENCE_CONFLICT: {
             ROS_ERROR_COND(req.geofences.size() != 1, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE CONFLICT!");
@@ -432,9 +427,6 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.front());
             res.deconfliction_plans.push_back(possible_solution);
-
-            res.message = "Conflict solved";
-            res.success = true;
         } break;
         case req.threat.GEOFENCE_INTRUSION: {
             ROS_ERROR_COND(req.geofences.size() != 1, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE INTRUSION!");
@@ -464,9 +456,6 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.front());
             res.deconfliction_plans.push_back(possible_solution);
-
-            res.message = "Conflict solved";
-            res.success = true;
         } break;
         case req.threat.UAS_OUT_OV: {
             ROS_ERROR_COND(req.conflictive_operations.size() != 1, "[Tactical] Deconflictive server should receive 1 conflictive operations to solve UAS OUT OV!");
@@ -482,9 +471,6 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // ! current wp + 1 or just current wp?
             possible_solution.waypoint_list.push_back(req.conflictive_operations.front().flight_plan.waypoints.at(req.conflictive_operations.front().current_wp + 1));
             res.deconfliction_plans.push_back(possible_solution);
-
-            res.message = "Conflict solved";
-            res.success = true;
         } break;
         case req.threat.GNSS_DEGRADATION: {
             ROS_ERROR_COND(req.conflictive_operations.size() != 1, "[Tactical] Deconflictive server should receive 1 conflictive operations to solve GNSS DEGRADATION!");
@@ -497,9 +483,6 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 possible_solution.waypoint_list.push_back(landing_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }
-
-            res.message = "Conflict solved";
-            res.success = true;
         } break;
         case req.threat.LACK_OF_BATTERY: {
             ROS_ERROR_COND(req.conflictive_operations.size() != 1, "[Tactical] Deconflictive server should receive 1 conflictive operations to solve LACK OF BATTERY!");
@@ -512,14 +495,13 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 possible_solution.waypoint_list.push_back(landing_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }
-
-            res.message = "Conflict solved";
-            res.success = true;
         } break;
         default:
             break;
     }
 
+    res.message = "Conflict solved";
+    res.success = true;
     return res.success;
 }
 
