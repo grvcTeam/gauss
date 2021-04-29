@@ -1,7 +1,7 @@
 <launch>
     <!-- Arguments -->
     <arg name="use_case_yaml" default="arenosillo.yaml"/>
-    <arg name="rviz_name"  default="arenosillo"/>
+    <arg name="rviz_name" default="arenosillo"/>
     <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml)" />
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/$(arg rviz_name).rviz" required="true"/>

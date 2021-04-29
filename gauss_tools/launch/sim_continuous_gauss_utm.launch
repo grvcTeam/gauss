@@ -1,0 +1,22 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="use_case_yaml" default="continuous_loss_separation.yaml"/>
+    <arg name="rviz_name" default="continuous"/>
+    <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml)" />
+    <!-- RVIZ -->
+    <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/$(arg rviz_name).rviz" required="true"/>
+    <!-- GAUSS -->
+    <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true"/>
+    <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
+    <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
+    <node pkg="tracking" type="tracking" name="tracking" output="screen" required="true"/>
+    <!-- New continuous nodes -->
+    <node pkg="monitoring" type="continuous_monitoring" name="continuous_monitoring" output="screen" required="true"/>
+    <node pkg="tactical_deconfliction" type="tactical_deconfliction" name="new_tactical" output="screen" required="true"/>
+    <node pkg="emergency_management" type="emergency_management" name="new_emergency_management" output="screen" required="true"/>
+    <!-- GAUSS LIGHT SIM -->
+    <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>
+    <node pkg="gauss_light_sim" type="gauss_light_sim_node" name="gauss_light_sim_node" output="screen" required="true">
+        <param name="timing_file" value="$(find usp_testers)/config/$(arg use_case_yaml)"/>
+    </node>
+</launch>
