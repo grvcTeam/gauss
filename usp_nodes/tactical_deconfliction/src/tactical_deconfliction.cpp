@@ -373,6 +373,7 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
 }
 
 bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDeconfliction::Response &res) {
+    ROS_INFO("[Tactical] Threat to solve [%d, %d]", req.threat.threat_id, req.threat.threat_type);
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
             std::vector<std::vector<gauss_msgs::Waypoint>> solution_list, merged_solution_list;

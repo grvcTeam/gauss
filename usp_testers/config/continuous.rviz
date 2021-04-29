@@ -6,8 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /Visualize1/Namespaces1
-      Splitter Ratio: 0.5
-    Tree Height: 359
+      Splitter Ratio: 0.792507231
+    Tree Height: 406
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -75,13 +75,33 @@ Visualization Manager:
       Update Interval: 0
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /visualization_marker_array
       Name: Visualize
       Namespaces:
-        {}
+        3434000/estimated_trajectory: true
+        3434000/flight_plan: true
+        3434000/flight_plan_updated: false
+        3434000/landing_spots: true
+        3434000/operation_info: true
+        3434000/track: true
+        3434000/volumes/flight_geometry: false
+        3434000/volumes/flight_geometry_spheres: false
+        3434000/volumes/operational_volume: true
+        3434000/volumes/operational_volume_spheres: false
+        3434009/estimated_trajectory: true
+        3434009/flight_plan: true
+        3434009/flight_plan_updated: false
+        3434009/landing_spots: true
+        3434009/operation_info: true
+        3434009/track: true
+        3434009/volumes/flight_geometry: false
+        3434009/volumes/flight_geometry_spheres: false
+        3434009/volumes/operational_volume: true
+        3434009/volumes/operational_volume_spheres: false
+        map: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /gauss/visualize_monitoring
@@ -96,193 +116,18 @@ Visualization Manager:
       Marker Topic: /gauss/visualize_tactical
       Name: Tactical
       Namespaces:
-        lines: true
+        arrow_1: true
+        avoid_points: true
+        lines_0: true
+        lines_1: true
+        lines_2: true
+        lines_3: true
+        lines_4: true
+        lines_5: true
+        lines_6: true
+        lines_7: true
       Queue Size: 100
       Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 0; 255; 255
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution1
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol1
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 0; 255; 255
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution2
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol2
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 0; 255; 255
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution3
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol3
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 0; 255; 255
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution4
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol4
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution5
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol5
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution6
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol6
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution7
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol7
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: false
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Solution8
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /sol8
-      Unreliable: false
-      Value: false
   Enabled: true
   Global Options:
     Background Color: 60; 60; 60
@@ -308,25 +153,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 804.80896
+      Distance: 545.491516
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 150.258026
+        Y: -121.540451
+        Z: 3.47771456e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.335398674
+      Pitch: 0.215398625
       Target Frame: <Fixed Frame>
       Value: ThirdPersonFollower (rviz)
-      Yaw: 5.90857553
+      Yaw: 5.80857944
     Saved: ~
 Window Geometry:
   Displays:

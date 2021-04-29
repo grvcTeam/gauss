@@ -20,7 +20,7 @@ safetyDistance: 15
 
 simulation:
   auto_start:
-    - {icao: 3434009, delay: 2.0}
+    - {icao: 3434009, delay: 5.0}
     - {icao: 3434000, delay: 5.0}
 
   # change_param:
