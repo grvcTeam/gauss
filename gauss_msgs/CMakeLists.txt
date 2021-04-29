@@ -86,6 +86,7 @@ find_package(catkin REQUIRED COMPONENTS
    CheckConflicts.srv
    ChangeFlightStatus.srv
    NewDeconfliction.srv
+   NewThreats.srv
 #   Service2.srv
  )
 
