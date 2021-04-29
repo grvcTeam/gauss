@@ -8,6 +8,8 @@
 #include <gauss_msgs/NewDeconfliction.h>
 #include <gauss_msgs/NewThreats.h>
 
+#include <Eigen/Eigen>
+
 double clamp(double x, double min_x, double max_x) {
   if (min_x > max_x) {
     ROS_ERROR("min_x[%lf] > max_x[%lf], swapping!", min_x, max_x);
@@ -527,7 +529,7 @@ int main(int argc, char **argv) {
     ROS_INFO("[Monitoring] %s: ok", tactical_srv_url);
     ros::service::waitForService(new_threats_srv_url, -1);
     ROS_INFO("[Monitoring] %s: ok", new_threats_srv_url);
-    ros::Rate rate(0.05);  // [Hz]
+    ros::Rate rate(1);  // [Hz]
     while (ros::ok()) {
         gauss_msgs::ReadIcao read_icao;
         if (icao_client.call(read_icao)) {
@@ -565,6 +567,12 @@ int main(int argc, char **argv) {
         auto trajectories_count = estimated_trajectories.size();
         if (trajectories_count < 2) { continue; }
 
+        // Uncomment to see the distance between UAVs
+        // Eigen::Vector3f p_a, p_b, unit_vec_ab, unit_vec_ba;
+        // p_a = Eigen::Vector3f(read_operation.response.operation.front().track.waypoints.back().x, read_operation.response.operation.front().track.waypoints.back().y, read_operation.response.operation.front().track.waypoints.back().z);
+        // p_b = Eigen::Vector3f(read_operation.response.operation.back().track.waypoints.back().x, read_operation.response.operation.back().track.waypoints.back().y, read_operation.response.operation.back().track.waypoints.back().z);
+        // ROS_INFO_STREAM("[Monitoring] Actual distance between UAVs: " << (p_a - p_b).norm());
+
         std::vector<LossResult> loss_results_list;
         for (int i = 0; i < trajectories_count - 1; i++) {
             std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList> trajectories;
@@ -584,19 +592,23 @@ int main(int argc, char **argv) {
 
         std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
         if (loss_results_list.size() > 0) {
-          gauss_msgs::NewThreats threats_msg = fillDeconflictionMsg(loss_results_list, index_to_operation_map); 
-          std::string cout_threats;
-          for (auto threat : threats_msg.request.threats) {
-              cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
-              for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
-              cout_threats = cout_threats + "]";
-          } 
-          ROS_INFO_STREAM("[Monitoring] Threats received: [id type | uav] " + cout_threats);
-          if (new_threats_client.call(threats_msg)) {
-            // ROS_INFO("[Monitoring] Call tactical... ok");
-          } else {
-            ROS_ERROR("[Monitoring] Failed to call service: [%s]", tactical_srv_url);
-            return 1;
+          static ros::Time time_send_threat = ros::Time::now();
+          if (ros::Time::now().toSec() - time_send_threat.toSec() >= 10.0) {
+            gauss_msgs::NewThreats threats_msg = fillDeconflictionMsg(loss_results_list, index_to_operation_map); 
+            std::string cout_threats;
+            for (auto threat : threats_msg.request.threats) {
+                cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
+                for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
+                cout_threats = cout_threats + "]";
+            } 
+            ROS_INFO_STREAM("[Monitoring] Threats received: [id type | uav] " + cout_threats);
+            if (new_threats_client.call(threats_msg)) {
+              // ROS_INFO("[Monitoring] Call tactical... ok");
+            } else {
+              ROS_ERROR("[Monitoring] Failed to call service: [%s]", tactical_srv_url);
+              return 1;
+            }
+            time_send_threat = ros::Time::now();
           }
         }
 
