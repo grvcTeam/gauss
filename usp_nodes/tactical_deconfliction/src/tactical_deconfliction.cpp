@@ -18,7 +18,7 @@ ros::Publisher visualization_pub_;
 
 std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Waypoint &_pA, const gauss_msgs::Waypoint &_pB, const double &_op_vol_A, const double &_op_vol_B) {
     std::vector<Eigen::Vector3f> out_avoid_vector;
-    Eigen::Vector3f p_a, p_b, unit_vec_ab, unit_vec_ba;
+    Eigen::Vector3f p_a, p_b, unit_vec_ab, unit_vec_ba, avoid_vector_a, avoid_vector_b;
     p_a = Eigen::Vector3f(_pA.x, _pA.y, _pA.z);
     p_b = Eigen::Vector3f(_pB.x, _pB.y, _pB.z);
 
@@ -30,17 +30,17 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
     double distance_operational_volumes = _op_vol_A + _op_vol_B;
     if (safety_distance_ >= distance_operational_volumes) {
         distance_to_avoid = safety_distance_;
+        distance_to_avoid -= distance_between_points;
     } else {
-        distance_to_avoid = distance_operational_volumes;
+        distance_to_avoid = abs(_op_vol_A - _op_vol_B);
     }
     distance_to_avoid *= 1.2;  // Increase 20% the distance
-    distance_to_avoid -= distance_between_points;
 
-    unit_vec_ab = -unit_vec_ab * distance_to_avoid;
-    unit_vec_ba = -unit_vec_ba * distance_to_avoid;
+    avoid_vector_a = -unit_vec_ba * distance_to_avoid;
+    avoid_vector_b = -unit_vec_ab * distance_to_avoid;
 
-    out_avoid_vector.push_back(unit_vec_ba);
-    out_avoid_vector.push_back(unit_vec_ab);
+    out_avoid_vector.push_back(avoid_vector_a);
+    out_avoid_vector.push_back(avoid_vector_b);
 
     return out_avoid_vector;
 }
@@ -361,7 +361,7 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
     marker_lines.type = visualization_msgs::Marker::LINE_STRIP;
     marker_lines.action = visualization_msgs::Marker::ADD;
     marker_lines.pose.orientation.w = 1;
-    marker_lines.scale.x = 2.0;
+    marker_lines.scale.x = 5.0;
     marker_lines.color = blue;
     marker_lines.lifetime = ros::Duration(1.0);
 
