@@ -1015,6 +1015,11 @@ void Tracking::estimateTrajectory()
                     }
                 }
 
+                last_stamp = current_position.stamp;
+                flight_plan_wp_index = flight_plan_current_wp_index;
+                flight_plan_updated.waypoints.clear();
+                flight_plan_updated.waypoints.push_back(current_position);
+
                 while(flight_plan_wp_index < flight_plan_ref.waypoints.size())
                 {
                     wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
@@ -1025,6 +1030,9 @@ void Tracking::estimateTrajectory()
                     flight_plan_updated.waypoints.push_back(wp_aux);
                     flight_plan_wp_index++;
                 }
+
+                estimated_trajectory.waypoints.clear();
+                estimated_trajectory = flight_plan_updated;
 
                 #ifdef DEBUG
                 std::cout << "Estimated trajectory size " << estimated_trajectory.waypoints.size() << std::endl;

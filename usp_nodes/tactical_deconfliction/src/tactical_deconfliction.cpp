@@ -14,6 +14,7 @@
 #include <Eigen/Eigen>
 
 double safety_distance_;
+bool actual_wp_on_merge_;
 ros::Publisher visualization_pub_;
 
 std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Waypoint &_pA, const gauss_msgs::Waypoint &_pB, const double &_op_vol_A, const double &_op_vol_B) {
@@ -34,7 +35,8 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
     } else {
         distance_to_avoid = abs(_op_vol_A - _op_vol_B);
     }
-    distance_to_avoid *= 1.2;  // Increase 20% the distance
+    double extra_safety_margin = 1.1; // Increase 10% the distance 
+    distance_to_avoid *= extra_safety_margin;  
 
     avoid_vector_a = -unit_vec_ba * distance_to_avoid;
     avoid_vector_b = -unit_vec_ab * distance_to_avoid;
@@ -299,17 +301,19 @@ std::vector<gauss_msgs::Waypoint> findAlternativePathAStar(geometry_msgs::Point 
     return pathAStartToWPVector(a_star_path, a_star_times);
 }
 
-std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_msgs::Waypoint> &_solution, gauss_msgs::WaypointList &_flight_plan, int &_current_wp) {
+std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_msgs::Waypoint> &_solution, gauss_msgs::WaypointList &_flight_plan, int &_current_wp, gauss_msgs::Waypoint &_actual_wp) {
     std::vector<gauss_msgs::Waypoint> out_merged_solution;
     bool do_once = true;
+    if (actual_wp_on_merge_) out_merged_solution.push_back(_actual_wp);  // Insert the actual wp
     for (auto fp_wp : _flight_plan.waypoints) {
         if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) {  // Do nothing before current wp
             if (fp_wp.stamp <= _solution.front().stamp) {                   // Between current wp and first wp of the solution
                 out_merged_solution.push_back(fp_wp);
-            } else if (do_once && _solution.front().stamp < fp_wp.stamp && fp_wp.stamp <= _solution.back().stamp) {  // Insert all the solution wps
+            } else if (do_once && _solution.back().stamp < fp_wp.stamp) {  // Insert all the solution wps
                 for (auto solution_wp : _solution) {
                     out_merged_solution.push_back(solution_wp);
                 }
+                out_merged_solution.push_back(fp_wp);  // Insert the wp after the solution
                 do_once = false;
             } else if (_solution.back().stamp < fp_wp.stamp) {  // Insert the remaining wps of the flight plan
                 out_merged_solution.push_back(fp_wp);
@@ -335,9 +339,9 @@ visualization_msgs::Marker createMarkerSpheres(const gauss_msgs::Waypoint &_p_at
     marker_spheres.type = visualization_msgs::Marker::SPHERE_LIST;
     marker_spheres.action = visualization_msgs::Marker::ADD;
     marker_spheres.pose.orientation.w = 1;
-    marker_spheres.scale.x = 2.0;
-    marker_spheres.scale.y = 2.0;
-    marker_spheres.scale.z = 2.0;
+    marker_spheres.scale.x = 5.0;
+    marker_spheres.scale.y = 5.0;
+    marker_spheres.scale.z = 5.0;
     marker_spheres.lifetime = ros::Duration(1.0);
     marker_spheres.points.push_back(translateToPoint(_p_at_t_min_first));
     marker_spheres.colors.push_back(white);
@@ -393,7 +397,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 possible_solution.uav_id = req.conflictive_operations.at(i).uav_id;
                 std::vector<gauss_msgs::Waypoint> temp_solution = applySeparation(avoid_vectors.at(i), segments_first_second.at(i), req.conflictive_operations.at(i).estimated_trajectory);
                 // TODO: Who should do the merge?
-                possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.conflictive_operations.at(i).flight_plan_updated, req.conflictive_operations.at(i).current_wp);
+                possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.conflictive_operations.at(i).flight_plan_updated, req.conflictive_operations.at(i).current_wp, req.conflictive_operations.at(i).actual_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }
             // !Solution delaying one operation
@@ -511,6 +515,7 @@ int main(int argc, char **argv) {
 
     ros::NodeHandle nh;
     nh.param("safetyDistance", safety_distance_, 10.0);
+    nh.param("actual_wp_on_merge", actual_wp_on_merge_, true);
 
     ros::ServiceServer deconflict_server = nh.advertiseService("/gauss/new_tactical_deconfliction", deconflictCB);
     ros::ServiceClient check_client = nh.serviceClient<gauss_msgs::CheckConflicts>("/gauss/check_conflicts");
