@@ -8,11 +8,13 @@
 
 ros::ServiceClient tactical_client_, notification_client_;
 
-gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &_msg) {
+gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &_msg, const int &_uav_id) {
     gauss_msgs::Notification out_solution;
     double check_cost_risk = std::numeric_limits<double>::max();
     for (auto possible_solution : _msg.response.deconfliction_plans) {
-        if (check_cost_risk > (possible_solution.cost + possible_solution.riskiness)) {
+        // If both UAV have the same priority, uav_id value is -1. We should check all the solutions. 
+        // If not, just check solution for the UAV with less priority. 
+        if ((possible_solution.uav_id == _uav_id || _uav_id == -1) && check_cost_risk >= (possible_solution.cost + possible_solution.riskiness)) {
             out_solution.description = "";
             out_solution.threat = _msg.request.threat;
             out_solution.uav_id = possible_solution.uav_id;
@@ -60,8 +62,21 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
             tactical_msg.request.geofences = _req.geofences;
             tactical_msg.request.threat = threat;
             if (tactical_client_.call(tactical_msg)) {
+                // Get the UAV id with less priority
+                int uav_id_less_priority;
+                int smaller_priority = std::numeric_limits<int>::max();
+                ROS_ERROR_COND(threat.uav_ids.size() != threat.priority_ops.size(), "[EM] Threat uav_ids size [%zd] should match priority_ops size [%zd]!", threat.uav_ids.size(), threat.priority_ops.size());
+                for (int idx = 0; idx < threat.uav_ids.size(); idx++) {
+                    if (smaller_priority > threat.priority_ops.at(idx)) {
+                        smaller_priority = threat.priority_ops.at(idx);
+                        uav_id_less_priority = threat.uav_ids.at(idx);
+                    } else if (smaller_priority == threat.priority_ops.at(idx)) {
+                        smaller_priority = threat.priority_ops.at(idx);
+                        uav_id_less_priority = -1; // Both UAVs have the same priority, we should check all the posible solutions
+                    }
+                }
                 gauss_msgs::Notifications notifications_msg;
-                notifications_msg.request.notifications.push_back(selectBestSolution(tactical_msg));
+                notifications_msg.request.notifications.push_back(selectBestSolution(tactical_msg, uav_id_less_priority));
                 if (!notification_client_.call(notifications_msg)) ROS_WARN("[EM] Failed to call USP manager");
             } else {
                 ROS_WARN("[EM] Failed to call tactical deconfliction!");
