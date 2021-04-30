@@ -47,32 +47,19 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
     return out_avoid_vector;
 }
 
-std::vector<gauss_msgs::Waypoint> applySeparation(const Eigen::Vector3f &_avoid_vector, const std::vector<gauss_msgs::Waypoint> &_extremes, const gauss_msgs::WaypointList &_estimated) {
-    // TODO: This function is applying separation to _extremes, but it should apply separation to _estimated!
+std::vector<gauss_msgs::Waypoint> applySeparation(const Eigen::Vector3f &_avoid_vector, const std::vector<gauss_msgs::Waypoint> &_extremes) {
     // TODO: Check why _extremes has repeated elements.
     std::vector<gauss_msgs::Waypoint> out_waypoints;
     gauss_msgs::Waypoint pA, pB;  // (pA) ------------------- (pB)
     pA = _extremes.front();
     pB = _extremes.back();
 
-    // pA.x = pA.x + _avoid_vector[0];
-    // pA.y = pA.y + _avoid_vector[1];
-    // pA.z = pA.z + _avoid_vector[2];
-    // out_waypoints.push_back(pA);
-
     for (auto wp : _extremes) {
-        // if (pA.stamp < wp.stamp && wp.stamp < pB.stamp) {
         wp.x = wp.x + _avoid_vector[0];
         wp.y = wp.y + _avoid_vector[1];
         wp.z = wp.z + _avoid_vector[2];
         out_waypoints.push_back(wp);
-        // }
     }
-
-    // pB.x = pB.x + _avoid_vector[0];
-    // pB.y = pB.y + _avoid_vector[1];
-    // pB.z = pB.z + _avoid_vector[2];
-    // out_waypoints.push_back(pB);
 
     return out_waypoints;
 }
@@ -95,6 +82,12 @@ std::vector<gauss_msgs::Waypoint> delayOperation(const gauss_msgs::ConflictiveOp
     }
 
     return out_solution;
+}
+
+void checkGroundCollision(const std::vector<gauss_msgs::Waypoint> &_solution, const double &_operational_volume) {
+    for (auto wp : _solution) {
+        ROS_ERROR_COND(wp.z - _operational_volume <= 0.0, "[Tactical] Proposed solution hits the ground. Waypoint height is [%.2f].", wp.z);
+    }
 }
 
 geometry_msgs::Polygon circleToPolygon(double &_x, double &_y, double &_radius, double _nVertices = 9) {
@@ -395,7 +388,9 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 possible_solution.waypoint_list.clear();
                 possible_solution.cost = possible_solution.riskiness = fake_value;
                 possible_solution.uav_id = req.conflictive_operations.at(i).uav_id;
-                std::vector<gauss_msgs::Waypoint> temp_solution = applySeparation(avoid_vectors.at(i), segments_first_second.at(i), req.conflictive_operations.at(i).estimated_trajectory);
+                std::vector<gauss_msgs::Waypoint> temp_solution = applySeparation(avoid_vectors.at(i), segments_first_second.at(i));
+                // TODO: Should another alternative be proposed if the current one hits the ground?
+                checkGroundCollision(temp_solution, req.conflictive_operations.at(i).operational_volume);
                 // TODO: Who should do the merge?
                 possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.conflictive_operations.at(i).flight_plan_updated, req.conflictive_operations.at(i).current_wp, req.conflictive_operations.at(i).actual_wp);
                 res.deconfliction_plans.push_back(possible_solution);
