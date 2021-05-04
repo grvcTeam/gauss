@@ -35,8 +35,8 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
     } else {
         distance_to_avoid = abs(_op_vol_A - _op_vol_B);
     }
-    double extra_safety_margin = 1.1; // Increase 10% the distance 
-    distance_to_avoid *= extra_safety_margin;  
+    double extra_safety_margin = 1.1;  // Increase 10% the distance
+    distance_to_avoid *= extra_safety_margin;
 
     avoid_vector_a = -unit_vec_ba * distance_to_avoid;
     avoid_vector_b = -unit_vec_ab * distance_to_avoid;
@@ -62,26 +62,6 @@ std::vector<gauss_msgs::Waypoint> applySeparation(const Eigen::Vector3f &_avoid_
     }
 
     return out_waypoints;
-}
-
-std::vector<gauss_msgs::Waypoint> delayOperation(const gauss_msgs::ConflictiveOperation &_operation, const gauss_msgs::CheckSegmentsLossResult &_segments) {
-    std::vector<gauss_msgs::Waypoint> out_solution;
-    double dtime = _segments.segment_first.back().stamp.sec - _segments.segment_first.front().stamp.sec;
-    for (int itx = _operation.current_wp; itx < _operation.estimated_trajectory.waypoints.size(); itx++) {
-        if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.back().stamp && out_solution.size() == 0) {
-            gauss_msgs::Waypoint temp_wp;
-            temp_wp = _segments.point_at_t_min_segment_first;
-            temp_wp.stamp = _segments.segment_first.back().stamp;
-            out_solution.push_back(temp_wp);
-        } else if (_operation.estimated_trajectory.waypoints.at(itx).stamp > _segments.segment_first.front().stamp) {
-            gauss_msgs::Waypoint temp_wp;
-            temp_wp = _operation.estimated_trajectory.waypoints.at(itx);
-            temp_wp.stamp.fromSec(temp_wp.stamp.toSec() + dtime);
-            out_solution.push_back(temp_wp);
-        }
-    }
-
-    return out_solution;
 }
 
 void checkGroundCollision(const std::vector<gauss_msgs::Waypoint> &_solution, const double &_operational_volume) {
@@ -317,6 +297,33 @@ std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_
     return out_merged_solution;
 }
 
+std::vector<gauss_msgs::Waypoint> delayFlightPlan(std::vector<gauss_msgs::Waypoint> &_segment, gauss_msgs::WaypointList &_flight_plan, int &_current_wp, gauss_msgs::Waypoint &_actual_wp) {
+    std::vector<gauss_msgs::Waypoint> out_merged_solution;
+    bool do_once = true;
+    double dtime = _segment.back().stamp.sec - _segment.front().stamp.sec;
+    if (actual_wp_on_merge_) out_merged_solution.push_back(_actual_wp);  // Insert the actual wp
+    for (auto fp_wp : _flight_plan.waypoints) {
+        if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) {  // Do nothing before current wp
+            if (fp_wp.stamp <= _segment.front().stamp) {                   // Between current wp and first wp of the solution
+                out_merged_solution.push_back(fp_wp);
+            } else if (do_once && _segment.back().stamp < fp_wp.stamp) {  // Insert all the solution wps
+                for (auto segment_wp : _segment) {
+                    segment_wp.stamp.fromSec(segment_wp.stamp.toSec() + dtime);
+                    out_merged_solution.push_back(segment_wp);
+                }
+                fp_wp.stamp.fromSec(fp_wp.stamp.toSec() + dtime);
+                out_merged_solution.push_back(fp_wp);  // Insert the wp after the solution
+                do_once = false;
+            } else if (_segment.back().stamp < fp_wp.stamp) {  // Insert the remaining wps of the flight plan
+                fp_wp.stamp.fromSec(fp_wp.stamp.toSec() + dtime);
+                out_merged_solution.push_back(fp_wp);
+            }
+        }
+    }
+
+    return out_merged_solution;
+}
+
 visualization_msgs::Marker createMarkerSpheres(const gauss_msgs::Waypoint &_p_at_t_min_first, const gauss_msgs::Waypoint &_p_at_t_min_second) {
     std_msgs::ColorRGBA white;
     white.r = 1.0;
@@ -373,19 +380,20 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
     ROS_INFO("[Tactical] Threat to solve [%d, %d]", req.threat.threat_id, req.threat.threat_type);
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
-            std::vector<std::vector<gauss_msgs::Waypoint>> solution_list, merged_solution_list;
-            gauss_msgs::DeconflictionPlan possible_solution;
             std::vector<std::vector<gauss_msgs::Waypoint>> segments_first_second;
             segments_first_second.push_back(req.conflictive_segments.segment_first);
             segments_first_second.push_back(req.conflictive_segments.segment_second);
+            std::vector<gauss_msgs::Waypoint> points_at_t_min;
+            points_at_t_min.push_back(req.conflictive_segments.point_at_t_min_segment_first);
+            points_at_t_min.push_back(req.conflictive_segments.point_at_t_min_segment_second);
             ROS_ERROR_COND(req.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 2 conflictive operations to solve LOSS OF SEPARATION!");
             // Calculate a vector to separate perpendiculary one trajectory
-            std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second, req.conflictive_operations.front().operational_volume, req.conflictive_operations.back().operational_volume);
+            std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(points_at_t_min.front(), points_at_t_min.back(), req.conflictive_operations.front().operational_volume, req.conflictive_operations.back().operational_volume);
             // Solution applying separation to one operation
-            double fake_value = 0.0;
+            double fake_value = 1.0;
             for (int i = 0; i < 2; i++) {
+                gauss_msgs::DeconflictionPlan possible_solution;
                 possible_solution.maneuver_type = 8;
-                possible_solution.waypoint_list.clear();
                 possible_solution.cost = possible_solution.riskiness = fake_value;
                 possible_solution.uav_id = req.conflictive_operations.at(i).uav_id;
                 std::vector<gauss_msgs::Waypoint> temp_solution = applySeparation(avoid_vectors.at(i), segments_first_second.at(i));
@@ -396,8 +404,16 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 res.deconfliction_plans.push_back(possible_solution);
             }
             // !Solution delaying one operation
-            solution_list.push_back(delayOperation(req.conflictive_operations.front(), req.conflictive_segments));
-            solution_list.push_back(delayOperation(req.conflictive_operations.back(), req.conflictive_segments));
+            fake_value = 5.0;
+            for (int i = 0; i < 2; i++) {
+                gauss_msgs::DeconflictionPlan possible_solution;
+                possible_solution.maneuver_type = 8;  // !Should be another maneuver type?
+                possible_solution.cost = possible_solution.riskiness = fake_value;
+                possible_solution.uav_id = req.conflictive_operations.at(i).uav_id;
+                std::vector<gauss_msgs::Waypoint> temp_solution = segments_first_second.at(i);
+                possible_solution.waypoint_list = delayFlightPlan(segments_first_second.at(i), req.conflictive_operations.at(i).flight_plan_updated, req.conflictive_operations.at(i).current_wp, req.conflictive_operations.at(i).actual_wp);
+                res.deconfliction_plans.push_back(possible_solution);
+            }
             // Visualize "space" results
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.conflictive_segments.point_at_t_min_segment_first, req.conflictive_segments.point_at_t_min_segment_second);
