@@ -1,5 +1,5 @@
 # Old light_sim.launch
-operations_json: "arenosillo_loss_separation"
+operations_json: "arenosillo_short_loss_separation"
 geofences_json: "no_geofences"
 origin_latitude: 37.094930
 origin_longitude: -6.736467
@@ -20,8 +20,8 @@ safetyDistance: 450
 
 simulation:
   auto_start:
-    - {icao: 3434007, delay: 5.0}
-    - {icao: 3434009, delay: 288.0}
+    - {icao: 3434007, delay: 131.0}
+    - {icao: 3434009, delay: 5.0}
 
   # change_param:
   #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
