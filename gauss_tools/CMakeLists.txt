@@ -165,6 +165,10 @@ add_executable(multiple_flight_plans_kml_to_db_json src/multiple_flight_plans_km
 add_dependencies(multiple_flight_plans_kml_to_db_json ${catkin_EXPORTED_TARGETS})
 target_link_libraries(multiple_flight_plans_kml_to_db_json ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES} /usr/lib/x86_64-linux-gnu/libpugixml.so)
 
+add_executable(coordinate_conversion_tool src/coordinate_conversion_tool.cpp)
+add_dependencies(coordinate_conversion_tool ${catkin_EXPORTED_TARGETS})
+target_link_libraries(coordinate_conversion_tool ${GeographicLib_LIBRARIES})
+
 #############
 ## Install ##
 #############

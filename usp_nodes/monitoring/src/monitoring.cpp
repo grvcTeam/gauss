@@ -49,6 +49,7 @@ private:
     bool posIndicesAreInRange(int x, int y, int z, int t);
 
     // Auxilary variables
+    bool just_one_threat;
     double monitoring_timer;
     int X,Y,Z,T;
     double dX,dY,dZ,dT;
@@ -98,6 +99,7 @@ Monitoring::Monitoring()
     nh_.param("deltaX",dX,10.0);
     nh_.param("deltaY",dY,10.0);
     nh_.param("deltaZ",dZ,10.0);
+    nh_.param("just_one_threat",just_one_threat, false);
 
     double cell_diagonal = sqrt(pow(dX, 2) + pow(dY, 2) + pow(dZ, 2));
 
@@ -205,6 +207,7 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
                 }
                 threat_list_id_++;
             }
+            if (just_one_threat) break;
         }
     } 
 
@@ -222,14 +225,15 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
 gauss_msgs::Threats Monitoring::fillConflictiveFields(gauss_msgs::Threats &_in_threats, const gauss_msgs::ReadOperation &_msg_op, const gauss_msgs::ReadGeofences &_msg_geofence){
     for (int i = 0; i < _in_threats.request.uav_ids.size(); i++){
         gauss_msgs::ConflictiveOperation conflictive_operation;
-        conflictive_operation.uav_id = _msg_op.response.operation.at(i).uav_id;
-        conflictive_operation.current_wp = _msg_op.response.operation.at(i).current_wp;
-        conflictive_operation.flight_plan = _msg_op.response.operation.at(i).flight_plan;
-        conflictive_operation.landing_spots = _msg_op.response.operation.at(i).landing_spots;
-        conflictive_operation.actual_wp = _msg_op.response.operation.at(i).track.waypoints.back();
-        conflictive_operation.operational_volume = _msg_op.response.operation.at(i).operational_volume;
-        conflictive_operation.flight_plan_updated = _msg_op.response.operation.at(i).flight_plan_updated;
-        conflictive_operation.estimated_trajectory = _msg_op.response.operation.at(i).estimated_trajectory;
+        int j = _in_threats.request.uav_ids.at(i);
+        conflictive_operation.uav_id = _msg_op.response.operation.at(j).uav_id;
+        conflictive_operation.current_wp = _msg_op.response.operation.at(j).current_wp;
+        conflictive_operation.flight_plan = _msg_op.response.operation.at(j).flight_plan;
+        conflictive_operation.landing_spots = _msg_op.response.operation.at(j).landing_spots;
+        conflictive_operation.actual_wp = _msg_op.response.operation.at(j).track.waypoints.back();
+        conflictive_operation.operational_volume = _msg_op.response.operation.at(j).operational_volume;
+        conflictive_operation.flight_plan_updated = _msg_op.response.operation.at(j).flight_plan_updated;
+        conflictive_operation.estimated_trajectory = _msg_op.response.operation.at(j).estimated_trajectory;
         _in_threats.request.operations.push_back(conflictive_operation);
     }
     // Check which geofences are conflictive and do not repeat it
@@ -283,88 +287,90 @@ int Monitoring::checkGeofences(std::vector<gauss_msgs::Geofence> &_geofences, ga
 {
     for (int i=0; i<_geofences.size(); i++)
     {
-        if (position4D.stamp.toNSec()>=_geofences.at(i).start_time.toNSec() && position4D.stamp.toNSec()<=_geofences.at(i).end_time.toNSec()
-                && position4D.z>=_geofences.at(i).min_altitude && position4D.z<=_geofences.at(i).max_altitude)
-        {
-            if (_geofences.at(i).cylinder_shape)
+        if (_geofences.at(i).start_time < ros::Time::now() && ros::Time::now() < _geofences.at(i).end_time) {
+            if (position4D.stamp.toNSec()>=_geofences.at(i).start_time.toNSec() && position4D.stamp.toNSec()<=_geofences.at(i).end_time.toNSec()
+                    && position4D.z>=_geofences.at(i).min_altitude && position4D.z<=_geofences.at(i).max_altitude)
             {
-                if (sqrt((position4D.x-_geofences.at(i).circle.x_center)*(position4D.x-_geofences.at(i).circle.x_center)+
-                         (position4D.y-_geofences.at(i).circle.y_center)*(position4D.y-_geofences.at(i).circle.y_center))<=_geofences.at(i).circle.radius+safety_distance)
-                    return i;
-            }
-            else
-            {
-                double distance=100000;
-                int id_min=-1;
-                int vertexes=_geofences.at(i).polygon.x.size();
-                double angle_sum=0.0;
-                if (sqrt((_geofences.at(i).polygon.x[0]-position4D.x)*(_geofences.at(i).polygon.x[0]-position4D.x)+(_geofences.at(i).polygon.y[0]-position4D.y)*(_geofences.at(i).polygon.y[0]-position4D.y))<distance)
+                if (_geofences.at(i).cylinder_shape)
                 {
-                    id_min=i;
-                    distance=sqrt((_geofences.at(i).polygon.x[0]-position4D.x)*(_geofences.at(i).polygon.x[0]-position4D.x)+(_geofences.at(i).polygon.y[0]-position4D.y)*(_geofences.at(i).polygon.y[0]-position4D.y));
-                }
-                for (int j=1; j<vertexes; j++)
-                {
-                    geometry_msgs::Point v1, v2;
-                    v2.x=_geofences.at(i).polygon.x[j]-position4D.x;
-                    v2.y=_geofences.at(i).polygon.y[j]-position4D.y;
-                    v1.x=_geofences.at(i).polygon.x[j-1]-position4D.x;
-                    v1.y=_geofences.at(i).polygon.y[j-1]-position4D.y;
-                    angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
-                    if (sqrt((_geofences.at(i).polygon.x[j]-position4D.x)*(_geofences.at(i).polygon.x[j]-position4D.x)+(_geofences.at(i).polygon.y[j]-position4D.y)*(_geofences.at(i).polygon.y[j]-position4D.y))<distance)
-                    {
-                        id_min=j;
-                        distance=sqrt((_geofences.at(i).polygon.x[j]-position4D.x)*(_geofences.at(i).polygon.x[j]-position4D.x)+(_geofences.at(i).polygon.y[j]-position4D.y)*(_geofences.at(i).polygon.y[j]-position4D.y));
-                    }
-                }
-                geometry_msgs::Point v1, v2, v3;
-                v2.x=_geofences.at(i).polygon.x[0]-position4D.x;
-                v2.y=_geofences.at(i).polygon.y[0]-position4D.y;
-                v1.x=_geofences.at(i).polygon.x[vertexes-1]-position4D.x;
-                v1.y=_geofences.at(i).polygon.y[vertexes-1]-position4D.y;
-                angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
-
-                if (abs(angle_sum)>6)  // cercano a 2PI (algoritmo radial para deterinar si un punto está dentro de un polígono)
-                    return i;
-                else   //calculating distance to no cylindrical geofence
-                {
-                    v1.x=position4D.x-_geofences.at(i).polygon.x[id_min];
-                    v1.y=position4D.y-_geofences.at(i).polygon.y[id_min];
-                    double ang1,ang2;
-
-                    if (id_min==0)
-                    {
-                        v2.x=_geofences.at(i).polygon.x[id_min+1]-_geofences.at(i).polygon.x[id_min];
-                        v2.y=_geofences.at(i).polygon.y[id_min+1]-_geofences.at(i).polygon.x[id_min];
-                        v3.x=_geofences.at(i).polygon.x[vertexes]-_geofences.at(i).polygon.x[id_min];
-                        v3.y=_geofences.at(i).polygon.y[vertexes]-_geofences.at(i).polygon.x[id_min];
-
-                    }
-                    else if (id_min==vertexes)
-                    {
-                        v2.x=_geofences.at(i).polygon.x[0]-_geofences.at(i).polygon.x[id_min];
-                        v2.y=_geofences.at(i).polygon.y[0]-_geofences.at(i).polygon.x[id_min];
-                        v3.x=_geofences.at(i).polygon.x[id_min-1]-_geofences.at(i).polygon.x[id_min];
-                        v3.y=_geofences.at(i).polygon.y[id_min-1]-_geofences.at(i).polygon.x[id_min];
-
-                    }
-                    else
-                    {
-                        v2.x=_geofences.at(i).polygon.x[id_min+1]-_geofences.at(i).polygon.x[id_min];
-                        v2.y=_geofences.at(i).polygon.y[id_min+1]-_geofences.at(i).polygon.x[id_min];
-                        v3.x=_geofences.at(i).polygon.x[id_min-1]-_geofences.at(i).polygon.x[id_min];
-                        v3.y=_geofences.at(i).polygon.y[id_min-1]-_geofences.at(i).polygon.x[id_min];
-                    }
-                    ang1=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
-                    ang2=acos((v3.x*v1.x+v3.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v3.x*v3.x+v3.y*v3.y)));
-
-                    if (ang1<1.57)
-                        distance=distance*sin(ang1);
-                    else if (ang2<1.57)
-                        distance=distance*sin(ang2);
-
-                    if (distance<safety_distance)
+                    if (sqrt((position4D.x-_geofences.at(i).circle.x_center)*(position4D.x-_geofences.at(i).circle.x_center)+
+                            (position4D.y-_geofences.at(i).circle.y_center)*(position4D.y-_geofences.at(i).circle.y_center))<=_geofences.at(i).circle.radius+safety_distance)
                         return i;
+                }
+                else
+                {
+                    double distance=100000;
+                    int id_min=-1;
+                    int vertexes=_geofences.at(i).polygon.x.size();
+                    double angle_sum=0.0;
+                    if (sqrt((_geofences.at(i).polygon.x[0]-position4D.x)*(_geofences.at(i).polygon.x[0]-position4D.x)+(_geofences.at(i).polygon.y[0]-position4D.y)*(_geofences.at(i).polygon.y[0]-position4D.y))<distance)
+                    {
+                        id_min=i;
+                        distance=sqrt((_geofences.at(i).polygon.x[0]-position4D.x)*(_geofences.at(i).polygon.x[0]-position4D.x)+(_geofences.at(i).polygon.y[0]-position4D.y)*(_geofences.at(i).polygon.y[0]-position4D.y));
+                    }
+                    for (int j=1; j<vertexes; j++)
+                    {
+                        geometry_msgs::Point v1, v2;
+                        v2.x=_geofences.at(i).polygon.x[j]-position4D.x;
+                        v2.y=_geofences.at(i).polygon.y[j]-position4D.y;
+                        v1.x=_geofences.at(i).polygon.x[j-1]-position4D.x;
+                        v1.y=_geofences.at(i).polygon.y[j-1]-position4D.y;
+                        angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
+                        if (sqrt((_geofences.at(i).polygon.x[j]-position4D.x)*(_geofences.at(i).polygon.x[j]-position4D.x)+(_geofences.at(i).polygon.y[j]-position4D.y)*(_geofences.at(i).polygon.y[j]-position4D.y))<distance)
+                        {
+                            id_min=j;
+                            distance=sqrt((_geofences.at(i).polygon.x[j]-position4D.x)*(_geofences.at(i).polygon.x[j]-position4D.x)+(_geofences.at(i).polygon.y[j]-position4D.y)*(_geofences.at(i).polygon.y[j]-position4D.y));
+                        }
+                    }
+                    geometry_msgs::Point v1, v2, v3;
+                    v2.x=_geofences.at(i).polygon.x[0]-position4D.x;
+                    v2.y=_geofences.at(i).polygon.y[0]-position4D.y;
+                    v1.x=_geofences.at(i).polygon.x[vertexes-1]-position4D.x;
+                    v1.y=_geofences.at(i).polygon.y[vertexes-1]-position4D.y;
+                    angle_sum+=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
+
+                    if (abs(angle_sum)>6)  // cercano a 2PI (algoritmo radial para deterinar si un punto está dentro de un polígono)
+                        return i;
+                    else   //calculating distance to no cylindrical geofence
+                    {
+                        v1.x=position4D.x-_geofences.at(i).polygon.x[id_min];
+                        v1.y=position4D.y-_geofences.at(i).polygon.y[id_min];
+                        double ang1,ang2;
+
+                        if (id_min==0)
+                        {
+                            v2.x=_geofences.at(i).polygon.x[id_min+1]-_geofences.at(i).polygon.x[id_min];
+                            v2.y=_geofences.at(i).polygon.y[id_min+1]-_geofences.at(i).polygon.x[id_min];
+                            v3.x=_geofences.at(i).polygon.x[vertexes]-_geofences.at(i).polygon.x[id_min];
+                            v3.y=_geofences.at(i).polygon.y[vertexes]-_geofences.at(i).polygon.x[id_min];
+
+                        }
+                        else if (id_min==vertexes)
+                        {
+                            v2.x=_geofences.at(i).polygon.x[0]-_geofences.at(i).polygon.x[id_min];
+                            v2.y=_geofences.at(i).polygon.y[0]-_geofences.at(i).polygon.x[id_min];
+                            v3.x=_geofences.at(i).polygon.x[id_min-1]-_geofences.at(i).polygon.x[id_min];
+                            v3.y=_geofences.at(i).polygon.y[id_min-1]-_geofences.at(i).polygon.x[id_min];
+
+                        }
+                        else
+                        {
+                            v2.x=_geofences.at(i).polygon.x[id_min+1]-_geofences.at(i).polygon.x[id_min];
+                            v2.y=_geofences.at(i).polygon.y[id_min+1]-_geofences.at(i).polygon.x[id_min];
+                            v3.x=_geofences.at(i).polygon.x[id_min-1]-_geofences.at(i).polygon.x[id_min];
+                            v3.y=_geofences.at(i).polygon.y[id_min-1]-_geofences.at(i).polygon.x[id_min];
+                        }
+                        ang1=acos((v2.x*v1.x+v2.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v2.x*v2.x+v2.y*v2.y)));
+                        ang2=acos((v3.x*v1.x+v3.y*v1.y)/(sqrt(v1.x*v1.x+v1.y*v1.y)*sqrt(v3.x*v3.x+v3.y*v3.y)));
+
+                        if (ang1<1.57)
+                            distance=distance*sin(ang1);
+                        else if (ang2<1.57)
+                            distance=distance*sin(ang2);
+
+                        if (distance<safety_distance)
+                            return i;
+                    }
                 }
             }
         }

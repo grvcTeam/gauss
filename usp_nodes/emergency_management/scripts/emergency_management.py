@@ -16,6 +16,7 @@ from gauss_msgs.msg import Threat, Circle, Notification, Waypoint, WaypointList
 from gauss_msgs.msg import Operation, Geofence, DeconflictionPlan, ConflictiveOperation
 from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 from gauss_msgs.srv import UpdateThreats, UpdateThreatsRequest
+from gauss_msgs.msg import AirspaceUpdate
 
 class EmergencyManagement():
 
@@ -33,6 +34,9 @@ class EmergencyManagement():
         self._notifications_list = []   
         self._conflictive_operations = []
         self._conflictive_geofences = []    
+
+        # Subscriber
+        self._airspace_alert_sub = rospy.Subscriber('/gauss/airspace_alert', AirspaceUpdate, self.airspace_alert_cb)
         
         # Server     
 
@@ -124,6 +128,9 @@ class EmergencyManagement():
             elif maneuver == 3: # Route for going back home.
                 merge2end = False
                 flighplansection = 2
+            elif maneuver == 5: # Route to a landing spot.
+                merge2end = False
+                flighplansection = 2   
             elif maneuver == 6: # Route to my destination leaving the geofence asap.
                 merge2end = True
                 flighplansection = 2   
@@ -494,6 +501,26 @@ class EmergencyManagement():
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
         self.send_notifications(self._notifications_list)
+    
+    def airspace_alert_cb(self, alert): 
+        geofence_base = Circle()
+        geofence_base.x_center = alert.circle.x_center
+        geofence_base.y_center = alert.circle.y_center
+        geofence_base.radius = alert.circle.radius
+        geofence = Geofence()
+        geofence.id = int(alert.id)
+        geofence.min_altitude = 0.0
+        geofence.max_altitude = 500.0
+        geofence.circle = geofence_base
+        geofence.cylinder_shape = True
+        geofence.start_time = rospy.Time().from_sec(alert.date_effective)
+        geofence.end_time = rospy.Time().from_sec(alert.last_updated + 600.0)
+
+        req = WriteGeofencesRequest()
+        req.geofence_ids = [geofence.id]
+        req.geofences = [geofence]
+        res = self._writeGeofences_service_handle(req)
+        res.message = "Geofence stored in the Data Base."  
 
     def service_threats_cb(self, request):
         req = ThreatsRequest()
