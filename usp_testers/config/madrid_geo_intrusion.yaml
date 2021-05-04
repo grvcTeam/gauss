@@ -25,3 +25,6 @@ simulation:
 
   # change_param:
   #   - {icao: 3434009, delay: 23.5, yaml: {name: jamming, type: float, value: 0.6}}
+
+# Copy paste to test a wildfire (geofence). Check times. 
+# rostopic pub /gauss/airspace_update gauss_msgs_mqtt/AirspaceUpdate "{id: '0', name: '0', type: '0', country: '0', state: '0', city: '0', last_updated: 1620116200, date_effective: 1620116184, geometry: 'CIRCLE(40.656147,-3.618381,1968.57)'}" 
