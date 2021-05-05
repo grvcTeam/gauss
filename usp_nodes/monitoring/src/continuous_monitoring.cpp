@@ -320,7 +320,7 @@ std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss
             // std::cout << segments.second.point_A << "_____________\n" << segments.second.point_B << '\n';
             auto loss_check = checkSegmentsLoss(segments, s_threshold);
             if (loss_check.threshold_is_violated) {
-                // ROS_ERROR("Loss of separation!");
+                ROS_ERROR("Loss of separation!");
                 // std::cout << loss_check << '\n';
                 segment_loss_results.push_back(loss_check);
             }
