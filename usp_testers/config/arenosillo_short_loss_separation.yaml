@@ -13,10 +13,10 @@ minZ: 0
 maxX: 7000
 maxY: -7500
 maxZ: 1000
-deltaX: 200.0
-deltaY: 200.0
+deltaX: 500.0
+deltaY: 500.0
 deltaZ: 500.0
-safetyDistance: 450
+safetyDistance: 550
 
 simulation:
   auto_start:
