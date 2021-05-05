@@ -845,186 +845,19 @@ void Tracking::estimateTrajectory()
                 std::cout << "Time to next waypoint " << time_to_next_waypoint << "\n";
                 #endif
 
-                if(time_to_next_waypoint > dT_)
-                {
-                    // Estimate intermediate waypoints between current position and next waypoint
-                    wp_aux = current_position;
-
-                    speed_vector.x() = (flight_plan_ref.waypoints[b_waypoint_index].x - current_position.x)/time_to_next_waypoint;
-                    speed_vector.y() = (flight_plan_ref.waypoints[b_waypoint_index].y - current_position.y)/time_to_next_waypoint;
-                    speed_vector.z() = (flight_plan_ref.waypoints[b_waypoint_index].z - current_position.z)/time_to_next_waypoint;
-
-                    //double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
-                    double epsilon = time_to_next_waypoint - dT_*floor(time_to_next_waypoint/dT_);
-
-                    #ifdef DEBUG
-                    std::cout << "epsilon " << epsilon << "\n";
-                    #endif
-
-                    if (epsilon > 0)
-                    {
-                        wp_aux.x = wp_aux.x + speed_vector.x()*epsilon;
-                        wp_aux.y = wp_aux.y + speed_vector.y()*epsilon;
-                        wp_aux.z = wp_aux.z + speed_vector.z()*epsilon;
-                        last_stamp = last_stamp + ros::Duration(epsilon);
-                        wps_cumulative_time += ros::Duration(epsilon);
-                        wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < time_horizon_)
-                            estimated_trajectory.waypoints.push_back(wp_aux);
-                        flight_plan_updated.waypoints.push_back(wp_aux);
-                        estimated_wp_count++;
-
-                        #ifdef DEBUG
-                        std::cout << "epsilon waypoint \n" << wp_aux << "\n"; 
-                        #endif
-
-                    }
-
-                    wp_count_aux = floor(time_to_next_waypoint/dT_);
-
-                    #ifdef DEBUG
-                    std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
-                    std::cout << "Number of points to estimate: " << (wp_count_aux-1) << std::endl;
-                    #endif
-
-                    for(int index_1 = 0; (index_1 < (wp_count_aux - 1)); index_1++)
-                    {
-                        wp_aux.x = wp_aux.x + speed_vector.x()*dT_;
-                        wp_aux.y = wp_aux.y + speed_vector.y()*dT_;
-                        wp_aux.z = wp_aux.z + speed_vector.z()*dT_;
-                        last_stamp = last_stamp + ros::Duration(dT_);
-                        wps_cumulative_time += ros::Duration(dT_);
-                        wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < time_horizon_)
-                            estimated_trajectory.waypoints.push_back(wp_aux);
-                        flight_plan_updated.waypoints.push_back(wp_aux);
-                        estimated_wp_count++;
-
-                        #ifdef DEBUG
-                        std::cout << "intermediate waypoint " << index_1 << "\n";
-                        std::cout << wp_aux << "\n";
-                        #endif
-                    }
-                }
-                else if(time_to_next_waypoint <= dT_)
-                {
-                    closer_than_dt_flag = true;
-                }                
-
-                // Add next waypoint to estimated trajectory (if estimated waypoint count is less than the max number of estimated waypoints)
-                if (estimated_wp_count < number_estimated_wps)
-                {
-                    #ifdef DEBUG
-                    std::cout << "Adding next flight plan waypoint to estimated trajectory" << b_waypoint_index << "\n";
-                    #endif
-
-                    wp_aux = flight_plan_ref.waypoints[b_waypoint_index];
-                    if(closer_than_dt_flag)
-                    {
-                        last_stamp = last_stamp + ros::Duration(time_to_next_waypoint);
-                        wps_cumulative_time += ros::Duration(time_to_next_waypoint);
-                    }
-                    else
-                    {
-                        last_stamp = last_stamp + ros::Duration(dT_);
-                        wps_cumulative_time += ros::Duration(dT_);
-                    }
-                    wp_aux.stamp = last_stamp;
-                    if(wps_cumulative_time.toSec() < time_horizon_)
-                        estimated_trajectory.waypoints.push_back(wp_aux);
-                    flight_plan_updated.waypoints.push_back(wp_aux);
-                    estimated_wp_count++;
-                    #ifdef DEBUG
-                    std::cout << wp_aux << "\n";
-                    #endif
-                }
-
-                int flight_plan_wp_index = flight_plan_current_wp_index + 1;
-
-                while(estimated_wp_count < number_estimated_wps && flight_plan_wp_index < flight_plan_ref.waypoints.size())
-                {
-                    time_to_next_waypoint = (flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp).toSec();
-
-                    speed_vector.x() = (flight_plan_ref.waypoints[flight_plan_wp_index].x - flight_plan_ref.waypoints[flight_plan_wp_index-1].x)/time_to_next_waypoint;
-                    speed_vector.y() = (flight_plan_ref.waypoints[flight_plan_wp_index].y - flight_plan_ref.waypoints[flight_plan_wp_index-1].y)/time_to_next_waypoint;
-                    speed_vector.z() = (flight_plan_ref.waypoints[flight_plan_wp_index].z - flight_plan_ref.waypoints[flight_plan_wp_index-1].z)/time_to_next_waypoint;
-
-                    //double epsilon = time_to_next_waypoint - (int) time_to_next_waypoint;
-                    double epsilon = time_to_next_waypoint - dT_*floor(time_to_next_waypoint/dT_);
-
-                    if (epsilon > 0)
-                    {
-                        wp_aux.x = wp_aux.x + speed_vector.x()*epsilon;
-                        wp_aux.y = wp_aux.y + speed_vector.y()*epsilon;
-                        wp_aux.z = wp_aux.z + speed_vector.z()*epsilon;
-                        last_stamp = last_stamp + ros::Duration(epsilon);
-                        wps_cumulative_time += ros::Duration(epsilon);
-                        wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < time_horizon_)
-                            estimated_trajectory.waypoints.push_back(wp_aux);
-                        flight_plan_updated.waypoints.push_back(wp_aux);
-                        estimated_wp_count++;
-                        #ifdef DEBUG
-                        std::cout << "epsilon waypoint \n" << wp_aux << "\n";
-                        #endif
-                    }
-
-                    wp_count_aux = floor(time_to_next_waypoint/dT_);
-
-                    #ifdef DEBUG
-                    std::cout << "Estimating intermediate points between current position and next waypoint" << "\n";
-                    std::cout << "Number of points to estimate: " << (wp_count_aux-1) << std::endl;
-                    #endif
-                    for(int index_1 = 0; (index_1 < (wp_count_aux - 1)) && (estimated_wp_count < number_estimated_wps); index_1++)
-                    {
-                        wp_aux.x = wp_aux.x + speed_vector.x()*dT_;
-                        wp_aux.y = wp_aux.y + speed_vector.y()*dT_;
-                        wp_aux.z = wp_aux.z + speed_vector.z()*dT_;
-                        last_stamp = last_stamp + ros::Duration(dT_);
-                        wps_cumulative_time += ros::Duration(dT_);
-                        wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < time_horizon_)
-                            estimated_trajectory.waypoints.push_back(wp_aux);
-                        flight_plan_updated.waypoints.push_back(wp_aux);
-                        estimated_wp_count++;
-                        #ifdef DEBUG
-                        std::cout << "intermediate waypoint " << index_1 << "\n";
-                        std::cout << wp_aux << "\n";
-                        #endif                        
-                    }
-
-                    if(estimated_wp_count < number_estimated_wps)
-                    {
-                        #ifdef DEBUG
-                        std::cout << "Adding next flight plan waypoint to estimated trajectory" << b_waypoint_index << "\n";
-                        #endif
-                        wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
-                        //ros::Duration delta_time = flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp;
-                        last_stamp = last_stamp + ros::Duration(dT_);
-                        wps_cumulative_time += ros::Duration(dT_);
-                        //last_stamp += delta_time;
-                        wp_aux.stamp = last_stamp;
-                        if(wps_cumulative_time.toSec() < time_horizon_)
-                            estimated_trajectory.waypoints.push_back(wp_aux);
-                        flight_plan_updated.waypoints.push_back(wp_aux);
-                        estimated_wp_count++;
-                        flight_plan_wp_index++;
-                        #ifdef DEBUG
-                        std::cout << wp_aux << "\n";
-                        #endif
-                    }
-                }
-
-                last_stamp = current_position.stamp;
-                flight_plan_wp_index = flight_plan_current_wp_index;
+                int flight_plan_wp_index = flight_plan_current_wp_index;
                 flight_plan_updated.waypoints.clear();
                 flight_plan_updated.waypoints.push_back(current_position);
+                last_stamp = current_position.stamp;
+                last_stamp.fromSec(last_stamp.toSec() + time_to_next_waypoint);
+                wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index++];
+                wp_aux.stamp = last_stamp;
+                flight_plan_updated.waypoints.push_back(wp_aux);
 
                 while(flight_plan_wp_index < flight_plan_ref.waypoints.size())
                 {
                     wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
                     ros::Duration delta_time = flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp;
-                    //last_stamp = last_stamp + ros::Duration(dT_);
                     last_stamp += delta_time;
                     wp_aux.stamp = last_stamp;
                     flight_plan_updated.waypoints.push_back(wp_aux);
