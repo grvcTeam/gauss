@@ -1,0 +1,133 @@
+{
+	"operations": [
+		{
+			"uav_id": 0,
+			"icao_address": "3434007",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 1,
+			"is_started": false,
+			"current_wp": 1,
+			"flight_plan" : 
+			{
+				"waypoints" : 
+				[
+					{
+						"mandatory" : 0,
+						"stamp" : 131.0,
+						"x" : -3594.6224922090851,
+						"y" : -11734.950468032323,
+						"z" : 688.16103934166858
+					},
+					{
+						"mandatory" : 0,
+						"stamp" : 331.0,
+						"x" : 4073.8502756366311,
+						"y" : -17967.831869214187,
+						"z" : 673.31707959031701
+					}
+				]
+			},
+			"dT": 5.0,
+			"time_tracked": 10,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 90,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+					{
+						"x": 20,
+						"y": 20,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					},
+					{
+						"x": 90,
+						"y": -30,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					}
+				]
+			},
+			"flight_geometry": 180.0,
+			"operational_volume": 200.0,
+			"conop": "Power line inspection"
+		},
+		{
+			"uav_id": 1,
+			"icao_address": "3434009",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 0,
+			"is_started": false,
+			"current_wp": 1,
+			"flight_plan" : 
+			{
+				"waypoints" : 
+				[
+					{
+						"mandatory" : 0,
+						"stamp" : 0.0,
+						"x" : -837.13452451767057,
+						"y" : -8790.7997592465763,
+						"z" : 393.86887054797216
+					},
+					{
+						"mandatory" : 0,
+						"stamp" : 286.0,
+						"x" : 2196.9170897160038,
+						"y" : -16159.963410787657,
+						"z" : 379.08863979889611
+					},
+					{
+						"mandatory" : 0,
+						"stamp" : 447.0,
+						"x" : 6591.6405468615912,
+						"y" : -16930.405469029225,
+						"z" : 374.06010071096989
+					}
+				]
+			},
+			"dT": 5.0,
+			"time_tracked": 0,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 90,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+					{
+						"x": 20,
+						"y": 20,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					},
+					{
+						"x": 90,
+						"y": -30,
+						"z": 0,
+						"stamp": 1,
+						"mandatory": 0
+					}
+				]
+			},
+			"flight_geometry": 90.0,
+			"operational_volume": 100.0,
+			"conop": "Power line inspection 2"
+		}
+	]
+}
