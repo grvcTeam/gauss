@@ -1,7 +1,4 @@
-Threat threat
-Geofence[] geofences
-ConflictiveOperation[] conflictive_operations
-CheckSegmentsLossResult conflictive_segments
+NewThreat threat
 ---
 bool success
 string message

@@ -1,4 +1,5 @@
 #include <gauss_msgs/NewDeconfliction.h>
+#include <gauss_msgs/NewThreat.h>
 #include <gauss_msgs/NewThreats.h>
 #include <gauss_msgs/Notifications.h>
 #include <gauss_msgs/PilotAnswer.h>
@@ -8,6 +9,20 @@
 
 ros::ServiceClient tactical_client_, notification_client_;
 
+gauss_msgs::Threat translateToThreat(const gauss_msgs::NewThreat _threat) {
+    gauss_msgs::Threat out_threat;
+    out_threat.geofence_ids = _threat.geofence_ids;
+    out_threat.header = _threat.header;
+    out_threat.location = _threat.location;
+    out_threat.priority_ops = _threat.priority_ops;
+    out_threat.threat_id = _threat.threat_id;
+    out_threat.threat_type = _threat.threat_type;
+    out_threat.times = _threat.times;
+    out_threat.uav_ids = _threat.uav_ids;
+
+    return out_threat;
+}
+
 gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &_msg, const int &_uav_id) {
     gauss_msgs::Notification out_solution;
     double check_cost_risk = std::numeric_limits<double>::max();
@@ -16,7 +31,7 @@ gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &
         // If not, just check solution for the UAV with less priority.
         if ((possible_solution.uav_id == _uav_id || _uav_id == -1) && check_cost_risk >= (possible_solution.cost + possible_solution.riskiness)) {
             out_solution.description = "";
-            out_solution.threat = _msg.request.threat;
+            out_solution.threat = translateToThreat(_msg.request.threat);
             out_solution.uav_id = possible_solution.uav_id;
             out_solution.action = possible_solution.maneuver_type;
             out_solution.maneuver_type = possible_solution.maneuver_type;
@@ -26,7 +41,7 @@ gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &
             check_cost_risk = possible_solution.cost + possible_solution.riskiness;
         }
     }
-    for (auto operation : _msg.request.conflictive_operations) {
+    for (auto operation : _msg.request.threat.conflictive_operations) {
         if (operation.uav_id == out_solution.uav_id) {
             out_solution.actual_wp = operation.actual_wp;
             out_solution.current_wp = operation.current_wp;
@@ -37,7 +52,7 @@ gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &
     return out_solution;
 }
 
-int selectSmallerPriority(const gauss_msgs::Threat &_threat) {
+int selectSmallerPriority(const gauss_msgs::NewThreat &_threat) {
     int out_uav_id_priority;
     int smaller_priority = std::numeric_limits<int>::max();
     ROS_ERROR_COND(_threat.uav_ids.size() != _threat.priority_ops.size(), "[EM] Threat uav_ids size [%zd] should match priority_ops size [%zd]!", _threat.uav_ids.size(), _threat.priority_ops.size());
@@ -74,9 +89,6 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
             threat.threat_type == threat.LOSS_OF_SEPARATION || threat.threat_type == threat.UAS_OUT_OV) {
             // Call tactical
             gauss_msgs::NewDeconfliction tactical_msg;
-            tactical_msg.request.conflictive_operations = _req.conflictive_operations;
-            tactical_msg.request.conflictive_segments = _req.conflictive_segments;
-            tactical_msg.request.geofences = _req.geofences;
             tactical_msg.request.threat = threat;
             if (tactical_client_.call(tactical_msg)) {
                 int uav_id_smaller_priority = selectSmallerPriority(threat);  // Get the UAV id with less priority

@@ -472,33 +472,31 @@ gauss_msgs::ConflictiveOperation fillConflictiveOperation(const int& _trajectory
 }
 
 // TODO: Discuss this function. Right now is taking just the first threat into account
-gauss_msgs::NewThreats fillDeconflictionMsg(const std::vector<LossResult>& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
-    gauss_msgs::NewThreats out_msg;
-    gauss_msgs::Threat threat;
+gauss_msgs::NewThreat fillDeconflictionMsg(LossResult& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
+    gauss_msgs::NewThreat out_threat;
     static double count_id = 0;
-    threat.threat_id = count_id++;
-    threat.threat_type = threat.LOSS_OF_SEPARATION;
-    threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result_list.front().first_trajectory_index).uav_id);
-    threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result_list.front().second_trajectory_index).uav_id);
-    threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result_list.front().first_trajectory_index).priority);
-    threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result_list.front().second_trajectory_index).priority);
-    out_msg.request.threats.push_back(threat);
-    out_msg.request.conflictive_operations.push_back(fillConflictiveOperation(_loss_result_list.front().first_trajectory_index, _index_to_operation_map));
-    out_msg.request.conflictive_operations.push_back(fillConflictiveOperation(_loss_result_list.front().second_trajectory_index, _index_to_operation_map));
-    for (auto j : _loss_result_list.front().segments_loss_results) {
-        out_msg.request.conflictive_segments.segment_first.push_back(j.first.point_A);
-        out_msg.request.conflictive_segments.segment_first.push_back(j.first.point_B);
-        out_msg.request.conflictive_segments.segment_second.push_back(j.second.point_A);
-        out_msg.request.conflictive_segments.segment_second.push_back(j.second.point_B);
-        out_msg.request.conflictive_segments.t_min = j.t_min;
-        out_msg.request.conflictive_segments.s_min = j.s_min;
-        out_msg.request.conflictive_segments.t_crossing_0 = j.t_crossing_0;
-        out_msg.request.conflictive_segments.t_crossing_1 = j.t_crossing_1;
-        out_msg.request.conflictive_segments.point_at_t_min_segment_first = j.first.point_at_time(j.t_min);
-        out_msg.request.conflictive_segments.point_at_t_min_segment_second = j.second.point_at_time(j.t_min);
+    out_threat.threat_id = count_id++;
+    out_threat.threat_type = out_threat.LOSS_OF_SEPARATION;
+    out_threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result_list.first_trajectory_index).uav_id);
+    out_threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result_list.second_trajectory_index).uav_id);
+    out_threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result_list.first_trajectory_index).priority);
+    out_threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result_list.second_trajectory_index).priority);
+    out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result_list.first_trajectory_index, _index_to_operation_map));
+    out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result_list.second_trajectory_index, _index_to_operation_map));
+    for (auto j : _loss_result_list.segments_loss_results) {
+        out_threat.conflictive_segments.segment_first.push_back(j.first.point_A);
+        out_threat.conflictive_segments.segment_first.push_back(j.first.point_B);
+        out_threat.conflictive_segments.segment_second.push_back(j.second.point_A);
+        out_threat.conflictive_segments.segment_second.push_back(j.second.point_B);
+        out_threat.conflictive_segments.t_min = j.t_min;
+        out_threat.conflictive_segments.s_min = j.s_min;
+        out_threat.conflictive_segments.t_crossing_0 = j.t_crossing_0;
+        out_threat.conflictive_segments.t_crossing_1 = j.t_crossing_1;
+        out_threat.conflictive_segments.point_at_t_min_segment_first = j.first.point_at_time(j.t_min);
+        out_threat.conflictive_segments.point_at_t_min_segment_second = j.second.point_at_time(j.t_min);
     }
 
-    return out_msg;
+    return out_threat;
 }
 
 int main(int argc, char** argv) {
@@ -601,7 +599,8 @@ int main(int argc, char** argv) {
         if (loss_results_list.size() > 0) {
             static ros::Time time_send_threat = ros::Time::now();
             if (ros::Time::now().toSec() - time_send_threat.toSec() >= 10.0) {
-                gauss_msgs::NewThreats threats_msg = fillDeconflictionMsg(loss_results_list, index_to_operation_map);
+                gauss_msgs::NewThreats threats_msg;
+                threats_msg.request.threats.push_back(fillDeconflictionMsg(loss_results_list.front(), index_to_operation_map));
                 std::string cout_threats;
                 for (auto threat : threats_msg.request.threats) {
                     cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";

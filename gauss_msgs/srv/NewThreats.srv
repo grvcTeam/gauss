@@ -1,8 +1,5 @@
 int8[] uav_ids
-Threat[] threats
-Geofence[] geofences
-ConflictiveOperation[] conflictive_operations
-CheckSegmentsLossResult conflictive_segments
+NewThreat[] threats
 ---
 bool success
 string message
