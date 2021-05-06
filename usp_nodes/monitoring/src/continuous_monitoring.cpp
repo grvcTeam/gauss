@@ -472,18 +472,18 @@ gauss_msgs::ConflictiveOperation fillConflictiveOperation(const int& _trajectory
 }
 
 // TODO: Discuss this function. Right now is taking just the first threat into account
-gauss_msgs::NewThreat fillDeconflictionMsg(LossResult& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
+gauss_msgs::NewThreat fillDeconflictionMsg(const LossResult& _loss_result, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
     gauss_msgs::NewThreat out_threat;
     static double count_id = 0;
     out_threat.threat_id = count_id++;
     out_threat.threat_type = out_threat.LOSS_OF_SEPARATION;
-    out_threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result_list.first_trajectory_index).uav_id);
-    out_threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result_list.second_trajectory_index).uav_id);
-    out_threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result_list.first_trajectory_index).priority);
-    out_threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result_list.second_trajectory_index).priority);
-    out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result_list.first_trajectory_index, _index_to_operation_map));
-    out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result_list.second_trajectory_index, _index_to_operation_map));
-    for (auto j : _loss_result_list.segments_loss_results) {
+    out_threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result.first_trajectory_index).uav_id);
+    out_threat.uav_ids.push_back(_index_to_operation_map.at(_loss_result.second_trajectory_index).uav_id);
+    out_threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result.first_trajectory_index).priority);
+    out_threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result.second_trajectory_index).priority);
+    out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result.first_trajectory_index, _index_to_operation_map));
+    out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result.second_trajectory_index, _index_to_operation_map));
+    for (auto j : _loss_result.segments_loss_results) {
         out_threat.conflictive_segments.segment_first.push_back(j.first.point_A);
         out_threat.conflictive_segments.segment_first.push_back(j.first.point_B);
         out_threat.conflictive_segments.segment_second.push_back(j.second.point_A);
@@ -497,6 +497,42 @@ gauss_msgs::NewThreat fillDeconflictionMsg(LossResult& _loss_result_list, const 
     }
 
     return out_threat;
+}
+
+gauss_msgs::NewThreats manageResultList(const std::vector<LossResult>& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
+    double check_time_margin = 10.0;
+    static double stored_id_count = 0;
+    static std::vector<LossResult> stored_loss_result_list;
+    gauss_msgs::NewThreats out_threats;
+    if (stored_loss_result_list.size() == 0) {
+        stored_loss_result_list.push_back(_loss_result_list.front());
+        out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result_list.front(), _index_to_operation_map));
+    } else {
+        for (auto _loss_result : _loss_result_list) {
+            bool save_loss_result = false;
+            // Using lambda, check if both trajectory index of _loss_result are in stored_loss_result_list
+            std::vector<LossResult>::iterator stored_it = std::find_if(stored_loss_result_list.begin(), stored_loss_result_list.end(),
+                                                                       [_loss_result](LossResult stored_loss_result) { return (stored_loss_result.first_trajectory_index == _loss_result.first_trajectory_index &&
+                                                                                                                               stored_loss_result.second_trajectory_index == _loss_result.second_trajectory_index); });
+            if (stored_it != stored_loss_result_list.end()) {  // All trajectory index are found!
+                // Check if the difference of the intpu times (absolute) with the stored times is bigger than check_time_margin
+                if (std::abs(stored_it->segments_loss_results.front().t_crossing_0 - _loss_result.segments_loss_results.front().t_crossing_0) >= check_time_margin ||
+                    std::abs(stored_it->segments_loss_results.front().t_crossing_1 - _loss_result.segments_loss_results.front().t_crossing_1) >= check_time_margin ||
+                    std::abs(stored_it->segments_loss_results.back().t_crossing_0 - _loss_result.segments_loss_results.back().t_crossing_0) >= check_time_margin ||
+                    std::abs(stored_it->segments_loss_results.back().t_crossing_1 - _loss_result.segments_loss_results.back().t_crossing_1) >= check_time_margin) {
+                    save_loss_result = true;
+                }
+            } else {
+                save_loss_result = true;
+            }
+            if (save_loss_result) {
+                stored_loss_result_list.push_back(_loss_result);
+                out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result, _index_to_operation_map));
+            }
+        }
+    }
+
+    return out_threats;
 }
 
 int main(int argc, char** argv) {
@@ -597,10 +633,8 @@ int main(int argc, char** argv) {
 
         std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
         if (loss_results_list.size() > 0) {
-            static ros::Time time_send_threat = ros::Time::now();
-            if (ros::Time::now().toSec() - time_send_threat.toSec() >= 10.0) {
-                gauss_msgs::NewThreats threats_msg;
-                threats_msg.request.threats.push_back(fillDeconflictionMsg(loss_results_list.front(), index_to_operation_map));
+            gauss_msgs::NewThreats threats_msg = manageResultList(loss_results_list, index_to_operation_map);
+            if (threats_msg.request.threats.size() > 0) {
                 std::string cout_threats;
                 for (auto threat : threats_msg.request.threats) {
                     cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
@@ -614,7 +648,6 @@ int main(int argc, char** argv) {
                     ROS_ERROR("[Monitoring] Failed to call service: [%s]", tactical_srv_url);
                     return 1;
                 }
-                time_send_threat = ros::Time::now();
             }
         }
 
