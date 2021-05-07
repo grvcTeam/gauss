@@ -1114,6 +1114,7 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
         x.x() = current_position.x - waypoint_a.x;
         x.y() = current_position.y - waypoint_a.y;
         x.z() = current_position.z - waypoint_a.z;
+        x.w() = 0.0;
 
         b = A.inverse()*x;
 
