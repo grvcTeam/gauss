@@ -300,7 +300,8 @@ std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_
 std::vector<gauss_msgs::Waypoint> delayFlightPlan(std::vector<gauss_msgs::Waypoint> &_segment, gauss_msgs::WaypointList &_flight_plan, int &_current_wp, gauss_msgs::Waypoint &_actual_wp) {
     std::vector<gauss_msgs::Waypoint> out_merged_solution;
     bool do_once = true;
-    double dtime = _segment.back().stamp.sec - _segment.front().stamp.sec;
+    double safety_margin = 1.5;
+    double dtime = (_segment.back().stamp.sec - _segment.front().stamp.sec) * safety_margin;
     if (actual_wp_on_merge_) out_merged_solution.push_back(_actual_wp);  // Insert the actual wp
     for (auto fp_wp : _flight_plan.waypoints) {
         if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) {  // Do nothing before current wp
