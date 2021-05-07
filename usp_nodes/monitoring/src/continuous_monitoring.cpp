@@ -499,35 +499,65 @@ gauss_msgs::NewThreat fillDeconflictionMsg(const LossResult& _loss_result, const
     return out_threat;
 }
 
+void cleanStoredList(std::vector<LossResult>& _stored_result_list, const std::vector<LossResult>& _actual_loss_result_list, const double& _check_time_margin) {
+    if (_actual_loss_result_list.size() == 0) {
+        _stored_result_list.clear();
+    } else {
+        for (auto _stored_result = _stored_result_list.begin(); _stored_result != _stored_result_list.end();) {
+            std::vector<LossResult>::const_iterator actual_it = std::find_if(_actual_loss_result_list.begin(), _actual_loss_result_list.end(),
+                                                                             [_stored_result](LossResult _actual_result) { return (_stored_result->first_trajectory_index == _actual_result.first_trajectory_index &&
+                                                                                                                                   _stored_result->second_trajectory_index == _actual_result.second_trajectory_index); });
+            if (actual_it != _actual_loss_result_list.end()) {
+                if (std::abs(_stored_result->segments_loss_results.front().t_crossing_0 - actual_it->segments_loss_results.front().t_crossing_0) >= _check_time_margin ||
+                    std::abs(_stored_result->segments_loss_results.front().t_crossing_1 - actual_it->segments_loss_results.front().t_crossing_1) >= _check_time_margin ||
+                    std::abs(_stored_result->segments_loss_results.back().t_crossing_0 - actual_it->segments_loss_results.back().t_crossing_0) >= _check_time_margin ||
+                    std::abs(_stored_result->segments_loss_results.back().t_crossing_1 - actual_it->segments_loss_results.back().t_crossing_1) >= _check_time_margin) {
+                    // Not found! Must be deleted.
+                    _stored_result = _stored_result_list.erase(_stored_result);
+                } else {
+                    // Found! Do nothing.
+                    _stored_result++;
+                }
+            } else {
+                // Not found! Must be deleted.
+                _stored_result = _stored_result_list.erase(_stored_result);
+            }
+        }
+    }
+}
+
 gauss_msgs::NewThreats manageResultList(const std::vector<LossResult>& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
     double check_time_margin = 10.0;
     static double stored_id_count = 0;
-    static std::vector<LossResult> stored_loss_result_list;
     gauss_msgs::NewThreats out_threats;
-    if (stored_loss_result_list.size() == 0) {
-        stored_loss_result_list.push_back(_loss_result_list.front());
-        out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result_list.front(), _index_to_operation_map));
-    } else {
-        for (auto _loss_result : _loss_result_list) {
-            bool save_loss_result = false;
-            // Using lambda, check if both trajectory index of _loss_result are in stored_loss_result_list
-            std::vector<LossResult>::iterator stored_it = std::find_if(stored_loss_result_list.begin(), stored_loss_result_list.end(),
-                                                                       [_loss_result](LossResult stored_loss_result) { return (stored_loss_result.first_trajectory_index == _loss_result.first_trajectory_index &&
-                                                                                                                               stored_loss_result.second_trajectory_index == _loss_result.second_trajectory_index); });
-            if (stored_it != stored_loss_result_list.end()) {  // All trajectory index are found!
-                // Check if the difference of the intpu times (absolute) with the stored times is bigger than check_time_margin
-                if (std::abs(stored_it->segments_loss_results.front().t_crossing_0 - _loss_result.segments_loss_results.front().t_crossing_0) >= check_time_margin ||
-                    std::abs(stored_it->segments_loss_results.front().t_crossing_1 - _loss_result.segments_loss_results.front().t_crossing_1) >= check_time_margin ||
-                    std::abs(stored_it->segments_loss_results.back().t_crossing_0 - _loss_result.segments_loss_results.back().t_crossing_0) >= check_time_margin ||
-                    std::abs(stored_it->segments_loss_results.back().t_crossing_1 - _loss_result.segments_loss_results.back().t_crossing_1) >= check_time_margin) {
+    static std::vector<LossResult> stored_loss_result_list;
+    if (stored_loss_result_list.size() > 0) cleanStoredList(stored_loss_result_list, _loss_result_list, check_time_margin);
+    if (_loss_result_list.size() > 0) {
+        if (stored_loss_result_list.size() == 0) {
+            stored_loss_result_list.push_back(_loss_result_list.front());
+            out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result_list.front(), _index_to_operation_map));
+        } else {
+            for (auto _loss_result : _loss_result_list) {
+                bool save_loss_result = false;
+                // Using lambda, check if both trajectory index of _loss_result are in stored_loss_result_list
+                std::vector<LossResult>::iterator stored_it = std::find_if(stored_loss_result_list.begin(), stored_loss_result_list.end(),
+                                                                           [_loss_result](LossResult stored_loss_result) { return (stored_loss_result.first_trajectory_index == _loss_result.first_trajectory_index &&
+                                                                                                                                   stored_loss_result.second_trajectory_index == _loss_result.second_trajectory_index); });
+                if (stored_it != stored_loss_result_list.end()) {  // All trajectory index are found!
+                    // Check if the difference of the intpu times (absolute) with the stored times is bigger than check_time_margin
+                    if (std::abs(stored_it->segments_loss_results.front().t_crossing_0 - _loss_result.segments_loss_results.front().t_crossing_0) >= check_time_margin ||
+                        std::abs(stored_it->segments_loss_results.front().t_crossing_1 - _loss_result.segments_loss_results.front().t_crossing_1) >= check_time_margin ||
+                        std::abs(stored_it->segments_loss_results.back().t_crossing_0 - _loss_result.segments_loss_results.back().t_crossing_0) >= check_time_margin ||
+                        std::abs(stored_it->segments_loss_results.back().t_crossing_1 - _loss_result.segments_loss_results.back().t_crossing_1) >= check_time_margin) {
+                        save_loss_result = true;
+                    }
+                } else {
                     save_loss_result = true;
                 }
-            } else {
-                save_loss_result = true;
-            }
-            if (save_loss_result) {
-                stored_loss_result_list.push_back(_loss_result);
-                out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result, _index_to_operation_map));
+                if (save_loss_result) {
+                    stored_loss_result_list.push_back(_loss_result);
+                    out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result, _index_to_operation_map));
+                }
             }
         }
     }
@@ -632,22 +662,20 @@ int main(int argc, char** argv) {
         }
 
         std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
-        if (loss_results_list.size() > 0) {
-            gauss_msgs::NewThreats threats_msg = manageResultList(loss_results_list, index_to_operation_map);
-            if (threats_msg.request.threats.size() > 0) {
-                std::string cout_threats;
-                for (auto threat : threats_msg.request.threats) {
-                    cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
-                    for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
-                    cout_threats = cout_threats + "]";
-                }
-                ROS_INFO_STREAM("[Monitoring] Threats detected: [id type | uav] " + cout_threats);
-                if (new_threats_client.call(threats_msg)) {
-                    // ROS_INFO("[Monitoring] Call tactical... ok");
-                } else {
-                    ROS_ERROR("[Monitoring] Failed to call service: [%s]", tactical_srv_url);
-                    return 1;
-                }
+        gauss_msgs::NewThreats threats_msg = manageResultList(loss_results_list, index_to_operation_map);
+        if (threats_msg.request.threats.size() > 0) {
+            std::string cout_threats;
+            for (auto threat : threats_msg.request.threats) {
+                cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
+                for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
+                cout_threats = cout_threats + "]";
+            }
+            ROS_INFO_STREAM("[Monitoring] Threats detected: [id type | uav] " + cout_threats);
+            if (new_threats_client.call(threats_msg)) {
+                // ROS_INFO("[Monitoring] Call tactical... ok");
+            } else {
+                ROS_ERROR("[Monitoring] Failed to call service: [%s]", tactical_srv_url);
+                return 1;
             }
         }
 
