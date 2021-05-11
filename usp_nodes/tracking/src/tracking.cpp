@@ -249,7 +249,7 @@ bool Tracking::update(std::vector<Candidate*> &cand_list)
         // Check if Candidate information comes from a non cooperative uav, in that case the info is discarded
         if ((*candidates_it)->uav_id != std::numeric_limits<uint8_t>::max() )
         {
-            if(uav_id_flight_status_map_[((*candidates_it)->uav_id)] == FlightStatus::STARTED)
+            if(uav_id_flight_status_map_[((*candidates_it)->uav_id)] != FlightStatus::NOT_STARTED)
             {
                 auto it_target_tracker = cooperative_targets_.find((*candidates_it)->uav_id);
                 if(it_target_tracker != cooperative_targets_.end())
@@ -356,7 +356,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     
     if (msg->header.stamp != ros::Time(0))
     {
-        if(uav_id_flight_status_map_[msg->uav_id] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[msg->uav_id] != FlightStatus::NOT_STARTED) // Flight status Started & Ended
         {
             bool create_candidate = false;
             if (use_position_report_ && msg->source == msg->SOURCE_RPA)
@@ -533,7 +533,7 @@ bool Tracking::writeTrackingInfoToDatabase()
     // Write cooperative uavs operations
     for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
 	{
-        if(uav_id_flight_status_map_[it->first] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[it->first] != FlightStatus::NOT_STARTED)
         {
             if(updated_flight_plan_flag_map_[it->first])
             {
@@ -694,7 +694,7 @@ void Tracking::fillTrackingWaypointList()
     // First we fill tracking waypoint list of cooperative UAVs
     for(auto it=cooperative_targets_.begin(); it!=cooperative_targets_.end(); ++it)
     {
-        if(uav_id_flight_status_map_[it->first] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[it->first] != FlightStatus::NOT_STARTED)
         {
             gauss_msgs::Waypoint waypoint_aux;
             waypoint_aux.stamp = it->second->currentPositionTimestamp();
@@ -739,7 +739,7 @@ void Tracking::estimateTrajectory()
     {
         uint8_t uav_id = it->first;
         bool started_flight = false;
-        if(uav_id_flight_status_map_[uav_id] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[uav_id] != FlightStatus::NOT_STARTED)
             started_flight = true;
         bool estimate_flag = already_tracked_cooperative_operations_[uav_id] && started_flight;
         if ( estimate_flag )
