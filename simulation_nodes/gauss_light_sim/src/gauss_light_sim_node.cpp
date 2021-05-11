@@ -552,14 +552,15 @@ class LightSim {
                 auto operation = icao_to_operation_map[icao];
                 if (!icao_to_state_info_map[icao].update(elapsed, operation)) {
                     // TODO: Check why it stops after receiving a new flight plan <-----------------
-                    // // Operation is finished
-                    // ROS_INFO("RPA[%s] finished operation", icao.c_str());
+                    // Operation is finished
+                    ROS_INFO("[Sim] RPA[%s] finished operation", icao.c_str());
                     // icao_to_is_started_map[icao] = false;
-                    // // TODO: Check tracking, it stop instantly the update of the operation instead of wait for the next service call (writeTracking)
-                    // gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
-                    // status_msg.icao = std::stoi(icao);
-                    // status_msg.status = "stop";
-                    // status_pub.publish(status_msg);
+                    // TODO: Check tracking, it stop instantly the update of the operation instead of wait for the next service call (writeTracking)
+                    gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
+                    status_msg.icao = std::stoi(icao);
+                    status_msg.status = "stop";
+                    status_pub.publish(status_msg);
+                    // stopOperation(icao);
                 }
                 rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
                 tf_broadcaster.sendTransform(icao_to_state_info_map[icao].tf);
