@@ -286,13 +286,13 @@ class RPAStateInfoWrapper {
 
     // Each function updates a subset of fields in data:
     // uint32 icao                 - update
-    // float64 latitude            -------- updatePhysics
-    // float64 longitude           -------- updatePhysics
-    // float32 altitude            -------- updatePhysics
-    // float32 yaw                 -------- updatePhysics
-    // float32 pitch               -------- updatePhysics
-    // float32 roll                -------- updatePhysics
-    // float32 groundspeed         -------- updatePhysics
+    // float64 latitude            -------- updatePhysics4D
+    // float64 longitude           -------- updatePhysics4D
+    // float32 altitude            -------- updatePhysics4D
+    // float32 yaw                 -------- updatePhysics4D
+    // float32 pitch               -------- updatePhysics4D
+    // float32 roll                -------- updatePhysics4D
+    // float32 groundspeed         -------- updatePhysics4D
     // float32 covariance_h        ---------------------- applyChange
     // float32 covariance_v        ---------------------- applyChange
     // float32 hpl                 ---------------------- applyChange
@@ -339,10 +339,10 @@ class RPAStateInfoWrapper {
             }
         }
 
-        if (icao_to_speed_map.find(operation.icao_address)->second != 0.0) { // If cruising speed is 0, use updatePhysics
-            return updatePhysicsCruisingSpeed(elapsed, operation.flight_plan, icao_to_speed_map.find(operation.icao_address)->second, sim_rate);
+        if (icao_to_speed_map.find(operation.icao_address)->second != 0.0) { // If cruising speed is 0, use updatePhysics4D
+            return updatePhysics3D(elapsed, operation.flight_plan, icao_to_speed_map.find(operation.icao_address)->second, sim_rate);
         } else {
-            return updatePhysics(elapsed, operation.flight_plan);
+            return updatePhysics4D(elapsed, operation.flight_plan);
         }
     }
 
@@ -383,7 +383,7 @@ class RPAStateInfoWrapper {
         }
     }
 
-    bool updatePhysics(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan) {
+    bool updatePhysics4D(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan) {
         // This function returns true if 'physics' is running
         bool running = false;  // otherwise, it returns false
         double latitude, longitude, altitude;
@@ -449,7 +449,7 @@ class RPAStateInfoWrapper {
         return running;
     }
 
-    bool updatePhysicsCruisingSpeed(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan, const double &cruising_speed, const double sim_rate) {
+    bool updatePhysics3D(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan, const double &cruising_speed, const double sim_rate) {
         // This function returns true if 'physics' is running
         bool running = false;  // otherwise, it returns false
         double latitude, longitude, altitude;
