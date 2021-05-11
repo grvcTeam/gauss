@@ -8,6 +8,8 @@ init_time: 0.0  # https://time.is/Unix_time_now
 safetyDistance: 10
 actual_wp_on_merge: true
 
+sim_rate: 10.0
+
 simulation:
   auto_start:
     - {icao: 3434009, delay: 5.0}
@@ -15,3 +17,7 @@ simulation:
 
   # change_param:
   #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
+
+  cruising_speed:
+    - {icao: 3434009, speed: 10.0}
+    - {icao: 3434000, speed: 0.0}

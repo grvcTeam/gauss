@@ -52,6 +52,112 @@ gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint& from, const gauss_m
 }
 */
 
+inline double distanceBetweenWaypoints(const gauss_msgs::Waypoint &waypoint_a, const gauss_msgs::Waypoint &waypoint_b)
+{
+    return sqrt(pow(waypoint_a.x - waypoint_b.x,2) + pow(waypoint_a.y - waypoint_b.y, 2) + pow(waypoint_a.z - waypoint_b.z, 2));
+}
+
+void findSegmentWaypointsIndices(const gauss_msgs::Waypoint &current_position, const gauss_msgs::WaypointList &flight_plan, int &a_index, int &b_index, double &distance_to_segment, double &distance_to_point_a, double &distance_to_point_b)
+{
+    int first_index = 0;
+    int second_index = 0;
+    distance_to_segment = std::numeric_limits<double>::max();
+    double distance_to_waypoint_a = std::numeric_limits<double>::max();
+    bool flag_distance_to_waypoint_a = false;
+    bool flag_distance_to_waypoint_b = false;
+
+    for (int i=0; i < flight_plan.waypoints.size()-1; i++)
+    {
+        gauss_msgs::Waypoint waypoint_a = flight_plan.waypoints[i];
+        gauss_msgs::Waypoint waypoint_b = flight_plan.waypoints[i+1];
+        Eigen::Vector3d vector_u;
+        flag_distance_to_waypoint_a = false;
+        flag_distance_to_waypoint_b = false;
+        vector_u.x() = waypoint_b.x - waypoint_a.x;
+        vector_u.y() = waypoint_b.y - waypoint_a.y;
+        vector_u.z() = waypoint_b.z - waypoint_a.z;
+        /*
+            Solve this equation
+            |alpha_1|     | 1    0    0    u_1|^-1   | a_1 - x_0|
+            |alpha_2|     | 0    1    0    u_2|      | a_2 - y_0|
+            |alpha_3|  =  | 0    0    1    u_3|   *  | a_3 - z_0|
+            |    t  |     | u_1  u_2  u_3  0  |      |     0    |
+
+            b = A^-1*x
+        */
+        Eigen::Matrix4d A;
+        Eigen::Vector4d b;
+        Eigen::Vector4d x;
+
+        A = Eigen::Matrix4d::Identity();
+        A(3,3) = 0;
+        A(0,3) = vector_u.x();
+        A(1,3) = vector_u.y();
+        A(2,3) = vector_u.z();
+        A(3,0) = vector_u.x();
+        A(3,1) = vector_u.y();
+        A(3,2) = vector_u.z();
+
+        x.x() = current_position.x - waypoint_a.x;
+        x.y() = current_position.y - waypoint_a.y;
+        x.z() = current_position.z - waypoint_a.z;
+        x.w() = 0.0;
+
+        b = A.inverse()*x;
+
+        double distance;
+        if (b[3] >= 0 && b[3] <= 1)
+        {
+            distance = sqrt(b[0]*b[0] + b[1]*b[1] + b[2]*b[2]);
+        }
+        else
+        {
+            double distance_to_waypoint_a = distanceBetweenWaypoints(current_position, waypoint_a);
+            double distance_to_waypoint_b = distanceBetweenWaypoints(current_position, waypoint_b);
+
+            if (distance_to_waypoint_a < distance_to_waypoint_b)
+            {
+                distance = distance_to_waypoint_a;
+                flag_distance_to_waypoint_a = true;
+            }
+            else
+            {
+                distance = distance_to_waypoint_b;
+                flag_distance_to_waypoint_b = true;
+            }
+        }
+        // Then check the distance to the line that contains the segment
+        if (distance <= distance_to_segment)
+        {
+            distance_to_segment = distance;
+            if(flag_distance_to_waypoint_a)
+            {
+                first_index = i;
+                second_index = i;
+            }
+            else if(flag_distance_to_waypoint_b)
+            {
+                first_index = i+1;
+                second_index = i+1;                
+            }
+            else
+            {
+                first_index = i;
+                second_index = i+1;
+            }
+        }
+    }
+
+    a_index = first_index;
+    b_index = second_index;
+
+    gauss_msgs::Waypoint waypoint_a = flight_plan.waypoints[first_index];
+    gauss_msgs::Waypoint waypoint_b = flight_plan.waypoints[second_index];
+
+    distance_to_point_a = distanceBetweenWaypoints(waypoint_a, current_position);
+    distance_to_point_b = distanceBetweenWaypoints(waypoint_b, current_position);
+}
+
 // This is a trickier version of the previous function, as time-base issues must be addressed (TODO!)
 gauss_msgs::Waypoint interpolate(const gauss_msgs::Waypoint &from, const gauss_msgs::Waypoint &to, const ros::Duration &t, double* yaw = nullptr) {
     // Make sure that from.stamp < to.stamp
@@ -202,7 +308,7 @@ class RPAStateInfoWrapper {
     // float32 signal_noise_ratio  ---------------------- applyChange
     // float32 received_power      ---------------------- applyChange
 
-    bool update(const ros::Duration &elapsed, const gauss_msgs::Operation &operation) {
+    bool update(const ros::Duration &elapsed, const gauss_msgs::Operation &operation, const std::map<std::string, double> &icao_to_speed_map, const double &sim_rate) {
         // TODO: Solve icao string vs uint32 issue
         data.icao = std::stoi(operation.icao_address);
 
@@ -233,7 +339,11 @@ class RPAStateInfoWrapper {
             }
         }
 
-        return updatePhysics(elapsed, operation.flight_plan);
+        if (icao_to_speed_map.find(operation.icao_address)->second != 0.0) { // If cruising speed is 0, use updatePhysics
+            return updatePhysicsCruisingSpeed(elapsed, operation.flight_plan, icao_to_speed_map.find(operation.icao_address)->second, sim_rate);
+        } else {
+            return updatePhysics(elapsed, operation.flight_plan);
+        }
     }
 
     void setProjection(const GeographicLib::LocalCartesian &projection) { proj = projection; }
@@ -339,6 +449,96 @@ class RPAStateInfoWrapper {
         return running;
     }
 
+    bool updatePhysicsCruisingSpeed(const ros::Duration &elapsed, const gauss_msgs::WaypointList &flight_plan, const double &cruising_speed, const double sim_rate) {
+        // This function returns true if 'physics' is running
+        bool running = false;  // otherwise, it returns false
+        double latitude, longitude, altitude;
+
+        // Update common tf data
+        tf.header.stamp = ros::Time::now();
+        tf.header.frame_id = "map";
+        tf.child_frame_id = std::to_string(data.icao);
+
+        if (flight_plan.waypoints.size() == 0) {
+            ROS_ERROR("[Sim] Flight plan is empty");
+            return false;
+
+        } else if (flight_plan.waypoints.size() == 1) {
+            tf.transform.translation.x = flight_plan.waypoints[0].x;
+            tf.transform.translation.y = flight_plan.waypoints[0].y;
+            tf.transform.translation.z = flight_plan.waypoints[0].z;
+            proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
+            data.latitude = latitude;
+            data.longitude = longitude;
+            data.altitude = altitude;
+            data.groundspeed = 0;
+            return false;
+        }
+        // At first step, curret position should be the first waypoint of the flight plan
+        static gauss_msgs::Waypoint current_position = flight_plan.waypoints[0];
+
+        int a_index, b_index;
+        double dist_to_segment, dist_to_a, dist_to_b;
+        findSegmentWaypointsIndices(current_position, flight_plan, a_index, b_index, dist_to_segment, dist_to_a, dist_to_b);
+        Eigen::Vector3f p_a, p_b, unit_vec;
+        p_a = Eigen::Vector3f(current_position.x, current_position.y, current_position.z);
+        p_b = Eigen::Vector3f(flight_plan.waypoints.at(b_index).x, flight_plan.waypoints.at(b_index).y, flight_plan.waypoints.at(b_index).z);
+        unit_vec = (p_b - p_a) / (p_b - p_a).norm();
+
+        gauss_msgs::Waypoint target_point;
+        double target_yaw, remaining_dist_to_travel;
+        // v = m / s -> m = v * s -> s = 1 / hz
+        double dist_to_move = (1 /  sim_rate) * cruising_speed;
+
+        if (dist_to_move <= dist_to_b) {
+            // If there is enough distance to next waypoint, apply all the distance
+            running = true;
+            unit_vec *= dist_to_move;
+            target_point.x = current_position.x + unit_vec[0];
+            target_point.y = current_position.y + unit_vec[1];
+            target_point.z = current_position.z + unit_vec[2];
+            target_yaw = atan2(flight_plan.waypoints[b_index].y - flight_plan.waypoints[a_index].y, 
+                               flight_plan.waypoints[b_index].x - flight_plan.waypoints[a_index].x);
+        } else if (dist_to_move > dist_to_b && b_index != flight_plan.waypoints.size() - 1) {
+            // If there is NOT enough distance to next waypoint, apply the remaining distance to the next segment
+            // TODO: The remaining distance can be bigger than the next segment
+            running = true;
+            remaining_dist_to_travel = dist_to_move - dist_to_b; 
+            p_a = Eigen::Vector3f(flight_plan.waypoints.at(a_index + 1).x, flight_plan.waypoints.at(a_index + 1).y, flight_plan.waypoints.at(a_index + 1).z);
+            p_b = Eigen::Vector3f(flight_plan.waypoints.at(b_index + 1).x, flight_plan.waypoints.at(b_index + 1).y, flight_plan.waypoints.at(b_index + 1).z);
+            unit_vec = (p_b - p_a) / (p_b - p_a).norm();
+            unit_vec *= remaining_dist_to_travel;
+            target_point.x = flight_plan.waypoints[a_index + 1].x + unit_vec[0];
+            target_point.y = flight_plan.waypoints[a_index + 1].y + unit_vec[1];
+            target_point.z = flight_plan.waypoints[a_index + 1].z + unit_vec[2];
+            target_yaw = atan2(flight_plan.waypoints[b_index + 1].y - flight_plan.waypoints[a_index + 1].y, 
+                               flight_plan.waypoints[b_index + 1].x - flight_plan.waypoints[a_index + 1].x);
+
+        } else {
+            // If there is NOT enough distance to next waypoint and it is the last one
+            running = false;
+            unit_vec *= dist_to_b;
+            target_point.x = current_position.x + unit_vec[0];
+            target_point.y = current_position.y + unit_vec[1];
+            target_point.z = current_position.z + unit_vec[2];
+            target_yaw = atan2(flight_plan.waypoints[b_index].y - flight_plan.waypoints[a_index].y, 
+                               flight_plan.waypoints[b_index].x - flight_plan.waypoints[a_index].x);
+        }
+        // Convert to TF
+        copyTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+        // Store current position for next step
+        current_position.x = tf.transform.translation.x;
+        current_position.y = tf.transform.translation.y;
+        current_position.z = tf.transform.translation.z;
+        // Cartesian to geographic conversion
+        proj.Reverse(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z, latitude, longitude, altitude);
+        data.latitude = latitude;
+        data.longitude = longitude;
+        data.altitude = altitude;
+        data.groundspeed = cruising_speed;
+        return running;
+    }
+
     bool applyChange(const YAML::Node &yaml_change) {
         // This function returns true if change is correctly applied
         if (!yaml_change.IsMap()) {
@@ -434,11 +634,12 @@ class LightSim {
         status_sub = n.subscribe("/gauss/flight", 10, &LightSim::flightStatusCallback, this);
         status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10);
         rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo", 10);
+        n.getParam("sim_rate", sim_rate);
     }
 
     void start() {
         ROS_INFO("[Sim] Starting simulation at t = [%lf]s", ros::Time::now().toSec());
-        timer = n.createTimer(ros::Duration(0.1), &LightSim::updateCallback, this);
+        timer = n.createTimer(ros::Duration(1/sim_rate), &LightSim::updateCallback, this);
     }
 
     void setOperations(const std::vector<gauss_msgs::Operation> &operations) {
@@ -468,6 +669,15 @@ class LightSim {
                 this->status_pub.publish(status_msg);
             };
             auto_start_timers.push_back(n.createTimer(countdown, callback, true));
+        }
+    }
+    
+    void setCruisingSpeed(const std::map<std::string, double> &_icao_to_cruising_speed_map) {
+        icao_to_cruising_speed_map = _icao_to_cruising_speed_map;
+        for (auto const& cruising_speed_item : icao_to_cruising_speed_map) {
+            auto icao = cruising_speed_item.first;
+            auto speed = cruising_speed_item.second;
+            ROS_INFO("[Sim] Operation icao [%s] will be simulated at [%lf] meters per seconds", icao.c_str(), speed);
         }
     }
 
@@ -550,17 +760,14 @@ class LightSim {
                 // ros::Duration elapsed = time.current_real - icao_to_time_zero_map[icao];
                 ros::Duration elapsed = time.current_real - ros::Time(0);
                 auto operation = icao_to_operation_map[icao];
-                if (!icao_to_state_info_map[icao].update(elapsed, operation)) {
-                    // TODO: Check why it stops after receiving a new flight plan <-----------------
+                if (!icao_to_state_info_map[icao].update(elapsed, operation, icao_to_cruising_speed_map, sim_rate)) {
                     // Operation is finished
                     ROS_INFO("[Sim] RPA[%s] finished operation", icao.c_str());
-                    // icao_to_is_started_map[icao] = false;
                     // TODO: Check tracking, it stop instantly the update of the operation instead of wait for the next service call (writeTracking)
                     gauss_msgs_mqtt::RPSChangeFlightStatus status_msg;
                     status_msg.icao = std::stoi(icao);
                     status_msg.status = "stop";
                     status_pub.publish(status_msg);
-                    // stopOperation(icao);
                 }
                 rpa_state_info_pub.publish(icao_to_state_info_map[icao].data);
                 tf_broadcaster.sendTransform(icao_to_state_info_map[icao].tf);
@@ -570,11 +777,14 @@ class LightSim {
 
     std::map<std::string, bool> icao_to_is_started_map;
     std::map<std::string, ros::Time> icao_to_time_zero_map;
+    std::map<std::string, double> icao_to_cruising_speed_map;
     std::map<std::string, gauss_msgs::Operation> icao_to_operation_map;
     std::map<std::string, RPAStateInfoWrapper> icao_to_state_info_map;
     std::map<std::string, gauss_msgs::Waypoint> icao_to_current_position_map;
     // std::vector<geometry_msgs::TransformStamped> tf_vector;  // TODO?
 
+    // Param
+    double sim_rate = 10.0;
     // Auxiliary variable for cartesian to geographic conversion
     GeographicLib::LocalCartesian proj_;
 
@@ -707,6 +917,20 @@ int main(int argc, char **argv) {
             // std::cout << req << '\n';
             sim.changeParamCallback(req, res);
         }
+    }
+
+    if (timing_yaml["simulation"]["cruising_speed"]) {
+        // Load auto_start_map from config file
+        auto cruising_speed_yaml = timing_yaml["simulation"]["cruising_speed"];
+        std::map<std::string, double> cruising_speed_map;
+        ROS_INFO("[Sim] cruising_speed:");
+        for (auto cruising_speed_item: cruising_speed_yaml) {
+            ROS_INFO_STREAM("[Sim] - " << cruising_speed_item);
+            auto icao = cruising_speed_item["icao"].as<std::string>();
+            auto speed = cruising_speed_item["speed"].as<double>();
+            cruising_speed_map[icao] = speed;
+        }
+        sim.setCruisingSpeed(cruising_speed_map);
     }
 
     sim.start();
