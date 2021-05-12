@@ -403,6 +403,32 @@ struct LossResult {
     std::vector<CheckSegmentsLossResult> segments_loss_results;
 };
 
+std::vector<LossResult> getContiguousResults(const LossResult& input) {
+    std::vector<LossResult> output;
+    if (input.segments_loss_results.size() < 1) {
+        ROS_ERROR("input.segments_loss_results.size() < 1");
+        return output;
+    }
+
+    float t_gap_threshold = 1.0;  // [s]  TODO: as a parameter?
+    auto current_loss_result = input;
+    current_loss_result.segments_loss_results.clear();
+    current_loss_result.segments_loss_results.push_back(input.segments_loss_results[0]);
+    for (int i = 1; i < input.segments_loss_results.size(); i++) {
+        double t_gap_first = fabs(input.segments_loss_results[i].first.t_A - input.segments_loss_results[i - 1].first.t_B);
+        double t_gap_second = fabs(input.segments_loss_results[i].second.t_A - input.segments_loss_results[i - 1].second.t_B);
+        if ((t_gap_first > t_gap_threshold) || (t_gap_second > t_gap_threshold)) {
+            // i-th element is not contiguous
+            output.push_back(current_loss_result);
+            current_loss_result.segments_loss_results.clear();
+        }
+        current_loss_result.segments_loss_results.push_back(input.segments_loss_results[i]);
+    }
+    output.push_back(current_loss_result);
+
+    return output;
+}
+
 std::pair<LossExtreme, LossExtreme> calculateExtremes(const LossResult& result) {
     std::pair<LossExtreme, LossExtreme> extremes;
     if (result.segments_loss_results.size() < 1) {
@@ -613,17 +639,12 @@ std::pair<double, double> checkGeofence2D(const Segment& segment, const gauss_ms
 
     bool point_A_is_in = (sq_distance_A < sq_radius);
     bool point_B_is_in = (sq_distance_B < sq_radius);
-    // int current_case = (int)point_A_is_in + 2 * (int)point_A_is_in;  // 0: A and B out; 1: A in, B out; 2: A out, B in; 3: A and B in;
 
     // Geofence2DResult result;
-    if (point_A_is_in && point_B_is_in) {  // (current_case == 3) {
+    if (point_A_is_in && point_B_is_in) {
         // A and B inside the circle
         ROS_INFO("A and B inside the circle");
         return std::make_pair(segment.t_A, segment.t_B);
-        // result.points_inside = true;
-        // result.t_first = segment.t_A;
-        // result.t_second = segment.t_B;
-        // return result;
     }
 
     float a_x = pow(translated_segment.point_B.x - translated_segment.point_A.x, 2);
@@ -645,30 +666,13 @@ std::pair<double, double> checkGeofence2D(const Segment& segment, const gauss_ms
     auto t_crossing_0 = translated_segment.t_A + clamp(m_crossing.first,  0, 1) * (translated_segment.t_B - translated_segment.t_A);
     auto t_crossing_1 = translated_segment.t_A + clamp(m_crossing.second, 0, 1) * (translated_segment.t_B - translated_segment.t_A);
     return std::make_pair(t_crossing_0, t_crossing_1);
-
-    // switch(current_case) {
-    //     case 0:
-    //         break;
-    //     case 1:
-    //         // A in, B outside the circle
-    //         result.points_inside = true;
-    //         result.t_first = segment.t_A;
-    //         // result.t_second = segment.point_at_param().stamp;
-    //         break;
-    //     case 2:
-    //         break;
-    //     default:
-    //         ROS_WARN("Unexpected current_case value [%d]", current_case);
-    // }
-
-    // return result;
 }
 
 bool checkOverlappingInTime(std::pair<double, double> time_interval_a, std::pair<double, double> time_interval_b) {
     return true;  // TODO: Check!
 }
 
-  // TODO: Rename to GeofenceConflict?
+// TODO: Rename to GeofenceConflict?
 struct GeofenceConflictResult {
     GeofenceConflictResult(int i): trajectory_index(i) {}
     int trajectory_index;
@@ -689,15 +693,6 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
         //     float64[] x
         //     float64[] y
     }
-
-    // // TODO: We should consider possible conflicts into the future!
-    // auto current_time = ros::Time::now();
-    // if (!geofence.static_geofence && 
-    //     ((current_time < geofence.start_time) || (current_time > geofence.end_time))) {
-    //     // It is not static, but it is not active, so...
-    //     ROS_INFO("Geofence is not active!");
-    //     continue;
-    // }
 
     for (int i = 0; i < trajectories.size(); i++) {
         ROS_INFO("Checking trajectory [%d]", i);
@@ -805,6 +800,27 @@ struct GeofenceResult {
     std::vector<GeofenceConflictResult> conflictive_trajectories;
 };
 
+std::vector<Segment> getFirstSetOfContiguousSegments(const std::vector<Segment>& input) {
+    std::vector<Segment> output;
+    if (input.size() < 1) {
+        ROS_ERROR("input.size() < 1");
+        return output;
+    }
+
+    output.push_back(input[0]);
+    float t_gap_threshold = 1.0;  // [s]  TODO: as a parameter?
+    for (int i = 1; i < input.size(); i++) {
+        double t_gap = fabs(input[i].t_A - input[i - 1].t_B);
+        if (t_gap > t_gap_threshold) {
+            // i-th Segment is not contiguous
+            break;
+        }
+        output.push_back(input[i]);
+    }
+
+    return output;
+}
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "continuous_monitoring");
 
@@ -906,14 +922,17 @@ int main(int argc, char** argv) {
             for (int j = 0; j < geofence_result.conflictive_trajectories.size(); j++) {
                 auto trajectory = geofence_result.conflictive_trajectories[j];
                 // trajectory.trajectory_index;
-                for (int k = 0; k < trajectory.conflicts.size(); k++) {
+                auto all_conflicts = trajectory.conflicts;
+                auto first_conflict = getFirstSetOfContiguousSegments(all_conflicts);
+                auto conflicts = first_conflict;
+                for (int k = 0; k < conflicts.size(); k++) {
                     int segment_id = 1e6 * i + 1e3 * j + k;
                     std_msgs::ColorRGBA segment_color;
                     segment_color.r = 1.0;
                     // segment_color.g = 0;
                     // segment_color.b = 0;
                     segment_color.a = trajectory.intrusion? 1.0 : 0.75;
-                    marker_array.markers.push_back(trajectory.conflicts[k].translateToMarker(segment_id, segment_color));
+                    marker_array.markers.push_back(conflicts[k].translateToMarker(segment_id, segment_color));
                 }
             }
         }
