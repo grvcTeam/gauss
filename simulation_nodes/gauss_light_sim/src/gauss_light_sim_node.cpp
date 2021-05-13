@@ -501,18 +501,27 @@ class RPAStateInfoWrapper {
                                flight_plan.waypoints[b_index].x - flight_plan.waypoints[a_index].x);
         } else if (dist_to_move > dist_to_b && b_index != flight_plan.waypoints.size() - 1) {
             // If there is NOT enough distance to next waypoint, apply the remaining distance to the next segment
-            // TODO: The remaining distance can be bigger than the next segment
             running = true;
+            a_index++;
+            b_index++;
             remaining_dist_to_travel = dist_to_move - dist_to_b; 
-            p_a = Eigen::Vector3f(flight_plan.waypoints.at(a_index + 1).x, flight_plan.waypoints.at(a_index + 1).y, flight_plan.waypoints.at(a_index + 1).z);
-            p_b = Eigen::Vector3f(flight_plan.waypoints.at(b_index + 1).x, flight_plan.waypoints.at(b_index + 1).y, flight_plan.waypoints.at(b_index + 1).z);
+            p_a = Eigen::Vector3f(flight_plan.waypoints.at(a_index).x, flight_plan.waypoints.at(a_index).y, flight_plan.waypoints.at(a_index).z);
+            p_b = Eigen::Vector3f(flight_plan.waypoints.at(b_index).x, flight_plan.waypoints.at(b_index).y, flight_plan.waypoints.at(b_index).z);
+            // The remaining distance can be bigger than the next segment
+            while ((p_b - p_a).norm() < remaining_dist_to_travel) {
+                a_index++;
+                b_index++;
+                p_a = Eigen::Vector3f(flight_plan.waypoints.at(a_index).x, flight_plan.waypoints.at(a_index).y, flight_plan.waypoints.at(a_index).z);
+                p_b = Eigen::Vector3f(flight_plan.waypoints.at(b_index).x, flight_plan.waypoints.at(b_index).y, flight_plan.waypoints.at(b_index).z);
+                remaining_dist_to_travel -= (p_b - p_a).norm();
+            }
             unit_vec = (p_b - p_a) / (p_b - p_a).norm();
             unit_vec *= remaining_dist_to_travel;
-            target_point.x = flight_plan.waypoints[a_index + 1].x + unit_vec[0];
-            target_point.y = flight_plan.waypoints[a_index + 1].y + unit_vec[1];
-            target_point.z = flight_plan.waypoints[a_index + 1].z + unit_vec[2];
-            target_yaw = atan2(flight_plan.waypoints[b_index + 1].y - flight_plan.waypoints[a_index + 1].y, 
-                               flight_plan.waypoints[b_index + 1].x - flight_plan.waypoints[a_index + 1].x);
+            target_point.x = flight_plan.waypoints[a_index].x + unit_vec[0];
+            target_point.y = flight_plan.waypoints[a_index].y + unit_vec[1];
+            target_point.z = flight_plan.waypoints[a_index].z + unit_vec[2];
+            target_yaw = atan2(flight_plan.waypoints[b_index].y - flight_plan.waypoints[a_index].y, 
+                               flight_plan.waypoints[b_index].x - flight_plan.waypoints[a_index].x);
 
         } else {
             // If there is NOT enough distance to next waypoint and it is the last one

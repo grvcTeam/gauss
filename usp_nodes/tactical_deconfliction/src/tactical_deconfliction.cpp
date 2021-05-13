@@ -343,7 +343,7 @@ visualization_msgs::Marker createMarkerSpheres(const gauss_msgs::Waypoint &_p_at
     marker_spheres.scale.x = 5.0;
     marker_spheres.scale.y = 5.0;
     marker_spheres.scale.z = 5.0;
-    marker_spheres.lifetime = ros::Duration(1.0);
+    marker_spheres.lifetime = ros::Duration(5.0);
     marker_spheres.points.push_back(translateToPoint(_p_at_t_min_first));
     marker_spheres.colors.push_back(white);
     marker_spheres.points.push_back(translateToPoint(_p_at_t_min_second));
@@ -368,7 +368,7 @@ visualization_msgs::Marker createMarkerLines(const std::vector<gauss_msgs::Waypo
     marker_lines.pose.orientation.w = 1;
     marker_lines.scale.x = 5.0;
     marker_lines.color = blue;
-    marker_lines.lifetime = ros::Duration(1.0);
+    marker_lines.lifetime = ros::Duration(5.0);
 
     for (auto wp : _solution) {
         marker_lines.points.push_back(translateToPoint(wp));
@@ -419,8 +419,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.threat.conflictive_segments.point_at_t_min_segment_first, req.threat.conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
-            // Visualize results
-            for (auto i : res.deconfliction_plans) marker_array.markers.push_back(createMarkerLines(i.waypoint_list));
+            for (int i = 0; i < 2; i++) marker_array.markers.push_back(createMarkerLines(res.deconfliction_plans[i].waypoint_list));
             visualization_pub_.publish(marker_array);
         } break;
         case req.threat.GEOFENCE_CONFLICT: {
