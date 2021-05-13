@@ -274,13 +274,13 @@ std::vector<gauss_msgs::Waypoint> findAlternativePathAStar(geometry_msgs::Point 
     return pathAStartToWPVector(a_star_path, a_star_times);
 }
 
-std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_msgs::Waypoint> &_solution, gauss_msgs::WaypointList &_flight_plan, int &_current_wp, gauss_msgs::Waypoint &_actual_wp) {
+std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_msgs::Waypoint> &_solution, gauss_msgs::WaypointList &_flight_plan, gauss_msgs::Waypoint &_actual_wp) {
     std::vector<gauss_msgs::Waypoint> out_merged_solution;
     bool do_once = true;
     if (actual_wp_on_merge_) out_merged_solution.push_back(_actual_wp);  // Insert the actual wp
     for (auto fp_wp : _flight_plan.waypoints) {
-        if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) {  // Do nothing before current wp
-            if (fp_wp.stamp <= _solution.front().stamp) {                   // Between current wp and first wp of the solution
+        if (_flight_plan.waypoints.front().stamp <= fp_wp.stamp) {  // Do nothing before current wp. Current wp (it is refered to flight plan) is equal than flight_plan_updated[0]
+            if (fp_wp.stamp <= _solution.front().stamp) {           // Between current wp and first wp of the solution
                 out_merged_solution.push_back(fp_wp);
             } else if (do_once && _solution.back().stamp < fp_wp.stamp) {  // Insert all the solution wps
                 for (auto solution_wp : _solution) {
@@ -297,15 +297,15 @@ std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_
     return out_merged_solution;
 }
 
-std::vector<gauss_msgs::Waypoint> delayFlightPlan(std::vector<gauss_msgs::Waypoint> &_segment, gauss_msgs::WaypointList &_flight_plan, int &_current_wp, gauss_msgs::Waypoint &_actual_wp) {
+std::vector<gauss_msgs::Waypoint> delayFlightPlan(std::vector<gauss_msgs::Waypoint> &_segment, gauss_msgs::WaypointList &_flight_plan, gauss_msgs::Waypoint &_actual_wp) {
     std::vector<gauss_msgs::Waypoint> out_merged_solution;
     bool do_once = true;
     double safety_margin = 1.5;
     double dtime = (_segment.back().stamp.sec - _segment.front().stamp.sec) * safety_margin;
     if (actual_wp_on_merge_) out_merged_solution.push_back(_actual_wp);  // Insert the actual wp
     for (auto fp_wp : _flight_plan.waypoints) {
-        if (_flight_plan.waypoints.at(_current_wp).stamp <= fp_wp.stamp) {  // Do nothing before current wp
-            if (fp_wp.stamp <= _segment.front().stamp) {                    // Between current wp and first wp of the solution
+        if (_flight_plan.waypoints.front().stamp <= fp_wp.stamp) {  // Do nothing before current wp. Current wp (it is refered to flight plan) is equal than flight_plan_updated[0]
+            if (fp_wp.stamp <= _segment.front().stamp) {            // Between current wp and first wp of the solution
                 out_merged_solution.push_back(fp_wp);
             } else if (do_once && _segment.back().stamp < fp_wp.stamp) {  // Insert all the solution wps
                 for (auto segment_wp : _segment) {
@@ -401,7 +401,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 // TODO: Should another alternative be proposed if the current one hits the ground?
                 checkGroundCollision(temp_solution, req.threat.conflictive_operations.at(i).operational_volume);
                 // TODO: Who should do the merge?
-                possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.at(i).flight_plan_updated, req.threat.conflictive_operations.at(i).current_wp, req.threat.conflictive_operations.at(i).actual_wp);
+                possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.at(i).flight_plan_updated, req.threat.conflictive_operations.at(i).actual_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }
             // !Solution delaying one operation
@@ -412,7 +412,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 possible_solution.cost = possible_solution.riskiness = fake_value;
                 possible_solution.uav_id = req.threat.conflictive_operations.at(i).uav_id;
                 std::vector<gauss_msgs::Waypoint> temp_solution = segments_first_second.at(i);
-                possible_solution.waypoint_list = delayFlightPlan(segments_first_second.at(i), req.threat.conflictive_operations.at(i).flight_plan_updated, req.threat.conflictive_operations.at(i).current_wp, req.threat.conflictive_operations.at(i).actual_wp);
+                possible_solution.waypoint_list = delayFlightPlan(segments_first_second.at(i), req.threat.conflictive_operations.at(i).flight_plan_updated, req.threat.conflictive_operations.at(i).actual_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }
             // Visualize "space" results
