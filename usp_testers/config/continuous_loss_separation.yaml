@@ -18,6 +18,7 @@ simulation:
   # change_param:
   #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
 
+  # 4D -> speed should be 0.0 | 3D -> setup a speed
   cruising_speed:
     - {icao: 3434009, speed: 0.0}
-    - {icao: 3434000, speed: 10.0}
+    - {icao: 3434000, speed: 0.0}

@@ -13,6 +13,7 @@
 #include <vector>
 #include <tracking/target_tracker.h>
 #include <limits>
+#include <yaml-cpp/yaml.h>
 
 #include <gauss_msgs/Operation.h>
 
@@ -101,6 +102,7 @@ private:
     std::map<uint8_t, std::string> uav_id_icao_address_map_; // Map relating uav_id and icao_address
     std::map<std::string, uint8_t> icao_address_uav_id_map_; // Inverse map
     std::map<uint8_t, FlightStatus> uav_id_flight_status_map_;
+    std::map<std::string, double> cruising_speed_map_;
     std::map<uint8_t, gauss_msgs::Operation> cooperative_operations_;
     std::map<uint8_t, pair_wp_index> cooperative_operations_flight_plan_segment_wp_indices_;
     std::map<uint8_t, bool> already_tracked_cooperative_operations_;
@@ -840,6 +842,11 @@ void Tracking::estimateTrajectory()
                     }
                 }
                 time_to_next_waypoint = distance_from_current_pos_to_next_wp/distance_between_waypoints * time_between_waypoints;
+                // If the simulator is using a cruising speed, modify the way tracking estimates the trajectory
+                double mod_v;
+                if (!cruising_speed_map_.empty() && cruising_speed_map_[it->second.icao_address] != 0.0) mod_v = cruising_speed_map_[it->second.icao_address];
+                double t_next_wp = distance_from_current_pos_to_next_wp / mod_v;
+                if (!cruising_speed_map_.empty() && cruising_speed_map_[it->second.icao_address] != 0.0) time_to_next_waypoint = t_next_wp;
 
                 #ifdef DEBUG
                 std::cout << "Time to next waypoint " << time_to_next_waypoint << "\n";
@@ -858,6 +865,12 @@ void Tracking::estimateTrajectory()
                 {
                     wp_aux = flight_plan_ref.waypoints[flight_plan_wp_index];
                     ros::Duration delta_time = flight_plan_ref.waypoints[flight_plan_wp_index].stamp - flight_plan_ref.waypoints[flight_plan_wp_index-1].stamp;
+                    // If the simulator is using a cruising speed, modify the way tracking estimates the trajectory
+                    double d_segment = sqrt(pow(flight_plan_ref.waypoints[flight_plan_wp_index].x - flight_plan_ref.waypoints[flight_plan_wp_index-1].x, 2) +
+                                       pow(flight_plan_ref.waypoints[flight_plan_wp_index].y - flight_plan_ref.waypoints[flight_plan_wp_index-1].y, 2) +
+                                       pow(flight_plan_ref.waypoints[flight_plan_wp_index].z - flight_plan_ref.waypoints[flight_plan_wp_index-1].z, 2));
+                    double t_segment = d_segment / mod_v;
+                    if (!cruising_speed_map_.empty() && cruising_speed_map_[it->second.icao_address] != 0.0) delta_time.fromSec(t_segment); 
                     last_stamp += delta_time;
                     wp_aux.stamp = last_stamp;
                     flight_plan_updated.waypoints.push_back(wp_aux);
@@ -1053,6 +1066,31 @@ void Tracking::main()
 
     ros::Rate rate(estimator_rate);
     ros::Rate sleep_rate(1);
+
+    // Load YAML
+    std::string timing_file = "";
+    pnh.getParam("timing_file", timing_file);
+    YAML::Node timing_yaml;
+    if (timing_file != "") {
+        ROS_INFO("[Tracking] Loading timing from %s", timing_file.c_str());
+        try {
+            timing_yaml = YAML::LoadFile(timing_file);
+        } catch(std::runtime_error& e) {
+            ROS_ERROR("[Tracking] Ignoring yaml, as file may not exist or it is bad defined: %s", e.what());
+            // return 1;  // TODO: exit?
+        }
+    }
+    if (timing_yaml["simulation"]["cruising_speed"]) {
+        // Load cruising_speed_map from config file
+        auto cruising_speed_yaml = timing_yaml["simulation"]["cruising_speed"];
+        ROS_INFO("[Tracking] cruising_speed:");
+        for (auto cruising_speed_item: cruising_speed_yaml) {
+            ROS_INFO_STREAM("[Tracking] - " << cruising_speed_item);
+            auto icao = cruising_speed_item["icao"].as<std::string>();
+            auto speed = cruising_speed_item["speed"].as<double>();
+            cruising_speed_map_[icao] = speed;
+        }
+    }
 
     while(ros::Time::now() == ros::Time(0)) // Wait until /clock messages are published if in simulation
     {

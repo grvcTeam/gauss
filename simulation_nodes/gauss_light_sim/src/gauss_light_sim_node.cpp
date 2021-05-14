@@ -339,7 +339,7 @@ class RPAStateInfoWrapper {
             }
         }
 
-        if (icao_to_speed_map.find(operation.icao_address)->second != 0.0) { // If cruising speed is 0, use updatePhysics4D
+        if (!icao_to_speed_map.empty() && icao_to_speed_map.find(operation.icao_address)->second != 0.0) { // If cruising speed is 0 or map is empty, use updatePhysics4D
             return updatePhysics3D(elapsed, operation.flight_plan, icao_to_speed_map.find(operation.icao_address)->second, sim_rate);
         } else {
             return updatePhysics4D(elapsed, operation.flight_plan);

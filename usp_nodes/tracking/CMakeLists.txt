@@ -147,7 +147,7 @@ target_link_libraries(tracking ${catkin_LIBRARIES})
 add_dependencies(tracking ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 add_executable(continuous_tracking src/continuous_tracking.cpp src/target_tracker.cpp)
-target_link_libraries(continuous_tracking ${catkin_LIBRARIES})
+target_link_libraries(continuous_tracking ${catkin_LIBRARIES} yaml-cpp)
 add_dependencies(continuous_tracking ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 ## Rename C++ executable without prefix
