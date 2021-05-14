@@ -31,10 +31,10 @@ std::vector<Eigen::Vector3f> perpendicularSeparationVector(const gauss_msgs::Way
     double distance_operational_volumes = _op_vol_A + _op_vol_B;
     if (safety_distance_ >= distance_operational_volumes) {
         distance_to_avoid = safety_distance_;
-        distance_to_avoid -= distance_between_points;
     } else {
-        distance_to_avoid = abs(_op_vol_A - _op_vol_B);
+        distance_to_avoid = distance_operational_volumes;
     }
+    distance_to_avoid -= distance_between_points;
     double extra_safety_margin = 1.1;  // Increase 10% the distance
     distance_to_avoid *= extra_safety_margin;
 
