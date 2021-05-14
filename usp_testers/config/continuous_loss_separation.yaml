@@ -12,6 +12,7 @@ sim_rate: 10.0
 
 simulation:
   auto_start:
+    - {icao: 3434011, delay: 8.0}
     - {icao: 3434009, delay: 5.0}
     - {icao: 3434000, delay: 5.0}
 
@@ -20,5 +21,6 @@ simulation:
 
   # 4D -> speed should be 0.0 | 3D -> setup a speed
   cruising_speed:
+    - {icao: 3434011, speed: 0.0}
     - {icao: 3434009, speed: 0.0}
     - {icao: 3434000, speed: 0.0}

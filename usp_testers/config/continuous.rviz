@@ -5,9 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Visualize1/Namespaces1
+        - /TF1/Tree1
       Splitter Ratio: 0.792507231
-    Tree Height: 406
+    Tree Height: 359
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -58,6 +58,8 @@ Visualization Manager:
           Value: true
         3434009:
           Value: true
+        3434011:
+          Value: true
         All Enabled: true
         map:
           Value: true
@@ -71,6 +73,8 @@ Visualization Manager:
           3434000:
             {}
           3434009:
+            {}
+          3434011:
             {}
       Update Interval: 0
       Value: true
@@ -99,6 +103,16 @@ Visualization Manager:
         3434009/volumes/flight_geometry_spheres: false
         3434009/volumes/operational_volume: true
         3434009/volumes/operational_volume_spheres: false
+        3434011/estimated_trajectory: true
+        3434011/flight_plan: true
+        3434011/flight_plan_updated: false
+        3434011/landing_spots: true
+        3434011/operation_info: true
+        3434011/track: true
+        3434011/volumes/flight_geometry: false
+        3434011/volumes/flight_geometry_spheres: false
+        3434011/volumes/operational_volume: true
+        3434011/volumes/operational_volume_spheres: false
         map: false
       Queue Size: 100
       Value: true
@@ -109,6 +123,7 @@ Visualization Manager:
       Namespaces:
         extremes: true
         loss_0_1: true
+        loss_1_2: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -119,6 +134,10 @@ Visualization Manager:
         avoid_points: true
         lines_0: true
         lines_1: true
+        lines_2: true
+        lines_3: true
+        lines_4: true
+        lines_5: true
       Queue Size: 100
       Value: true
   Enabled: true
