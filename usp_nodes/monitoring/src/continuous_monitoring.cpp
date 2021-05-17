@@ -672,12 +672,30 @@ bool checkOverlappingInTime(std::pair<double, double> time_interval_a, std::pair
     return (time_interval_a.first <= time_interval_b.second) && (time_interval_a.second >= time_interval_b.first);
 }
 
+geometry_msgs::Point calculateClosestExit(const geometry_msgs::Point& current, const gauss_msgs::Circle& circle) {
+    geometry_msgs::Point out;
+    float delta_x = current.x - circle.x_center;
+    float delta_y = current.y - circle.y_center;
+    auto distance = sqrt(pow(delta_x, 2) + pow(delta_y, 2));
+    if (distance < 1e-3) {
+        // At the center of the geofence? Go East!
+        out.x = circle.x_center + circle.radius;
+        out.y = circle.y_center;
+        // out.x = std::nan("");  // TODO: Better NaN and handle later?
+        // out.y = std::nan("");
+        return out;
+    }
+    out.x = circle.x_center + (delta_x / distance) * circle.radius;
+    out.y = circle.y_center + (delta_y / distance) * circle.radius;
+    return out;
+}
+
 // TODO: Rename to GeofenceConflict?
 struct GeofenceConflictResult {
     GeofenceConflictResult(int i): trajectory_index(i) {}
     int trajectory_index;
     std::vector<Segment> conflicts;
-    bool intrusion = false;
+    gauss_msgs::Waypoint closest_exit;  // Use the mandatory field as intrusion flag
 };
 
 std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gauss_msgs::WaypointList>& trajectories, const std::vector<double>& volumes, const gauss_msgs::Geofence& geofence) {
@@ -789,7 +807,11 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
                     && (pow(current_position.x - rectified_geofence.circle.x_center, 2) + pow(current_position.y - rectified_geofence.circle.y_center, 2) < pow(rectified_geofence.circle.radius, 2))
                     ) {
                     ROS_WARN("Intrusion!");
-                    current_result.intrusion = true;
+                    current_result.closest_exit.mandatory = true;
+                    auto xy_closest_exit = calculateClosestExit(translateToPoint(current_position), rectified_geofence.circle);
+                    current_result.closest_exit.x = xy_closest_exit.x;
+                    current_result.closest_exit.y = xy_closest_exit.y;
+                    current_result.closest_exit.z = current_position.z;  // Suppose we want the closest exit with no changes in altuitude!
                 }
                 current_result.conflicts.push_back(Segment(segment.point_at_time(conflict_times.first), segment.point_at_time(conflict_times.second)));
             }
@@ -935,13 +957,20 @@ int main(int argc, char** argv) {
                 auto all_conflicts = trajectory.conflicts;
                 auto first_conflict = getFirstSetOfContiguousSegments(all_conflicts);
                 auto conflicts = first_conflict;
+                int segment_id = 1e6 * i + 1e3 * j;
+                std_msgs::ColorRGBA segment_color;
+                segment_color.a = 1.0;
+                segment_color.r = 1.0;
+                if (trajectory.closest_exit.mandatory) {
+                    // Means it is an intrusion!
+                    Segment way_out(trajectory.closest_exit, conflicts.back().point_B);
+                    marker_array.markers.push_back(way_out.translateToMarker(segment_id, segment_color));
+                    continue;
+                }
+                // else:
                 for (int k = 0; k < conflicts.size(); k++) {
-                    int segment_id = 1e6 * i + 1e3 * j + k;
-                    std_msgs::ColorRGBA segment_color;
-                    segment_color.r = 1.0;
-                    // segment_color.g = 0;
-                    // segment_color.b = 0;
-                    segment_color.a = trajectory.intrusion? 1.0 : 0.75;
+                    segment_id += k;
+                    segment_color.g = 0.5;
                     marker_array.markers.push_back(conflicts[k].translateToMarker(segment_id, segment_color));
                 }
             }
