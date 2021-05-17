@@ -669,7 +669,7 @@ std::pair<double, double> checkGeofence2D(const Segment& segment, const gauss_ms
 }
 
 bool checkOverlappingInTime(std::pair<double, double> time_interval_a, std::pair<double, double> time_interval_b) {
-    return true;  // TODO: Check!
+    return (time_interval_a.first <= time_interval_b.second) && (time_interval_a.second >= time_interval_b.first);
 }
 
 // TODO: Rename to GeofenceConflict?

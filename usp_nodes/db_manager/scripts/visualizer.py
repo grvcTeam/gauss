@@ -630,8 +630,11 @@ def main():
         geofence_viz = GeofenceViz(global_frame_id, rospy.Duration(1.0/update_rate))
         for geofence in read_geofences_response.geofences:
             ns = 'geofence_' + str(geofence.id)
-            color = palette.get_color('red')  # TODO: Force red?
-            if geofence.start_time.secs < rospy.get_rostime().secs and rospy.get_rostime().secs < geofence.end_time.secs: 
+            if geofence.start_time.secs < rospy.get_rostime().secs and rospy.get_rostime().secs < geofence.end_time.secs:
+                color = palette.get_color('red')  # TODO: Force red? 
+                marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
+            else:
+                color = palette.get_color('yellow')  # TODO: other?
                 marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
 
         visualization_pub.publish(marker_array)
