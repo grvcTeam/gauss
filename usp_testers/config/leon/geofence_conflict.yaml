@@ -1,17 +1,17 @@
 # Old light_sim.launch
-operations_json: "arenosillo_loss_separation"
+operations_json: "/leon/phase_5/geofence_conflict"
 geofences_json: "no_geofences"
-origin_latitude: 37.094930
-origin_longitude: -6.736467
-origin_ellipsoidal_height: 50.278  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
+origin_latitude: 42.6503418
+origin_longitude: -5.7090354
+origin_ellipsoidal_height: 56.098  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
 init_time: 0.0  # https://time.is/Unix_time_now
 time_horizon: 360
 dT: 50
-minX: -5500
-minY: -20500
+minX: -2000
+minY: -4000
 minZ: 0
-maxX: 7000
-maxY: -7500
+maxX: 1500
+maxY: 1000
 maxZ: 1000
 deltaX: 200.0
 deltaY: 200.0
