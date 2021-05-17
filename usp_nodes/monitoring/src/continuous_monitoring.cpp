@@ -680,7 +680,7 @@ struct GeofenceConflictResult {
     bool intrusion = false;
 };
 
-std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gauss_msgs::WaypointList>& trajectories, const gauss_msgs::Geofence& geofence) {
+std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gauss_msgs::WaypointList>& trajectories, const std::vector<double>& volumes, const gauss_msgs::Geofence& geofence) {
     std::vector<GeofenceConflictResult> result;
 
     if (!geofence.cylinder_shape) {
@@ -694,6 +694,11 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
         //     float64[] y
     }
 
+    if (trajectories.size() != volumes.size()) {
+        ROS_ERROR("Sizes do not match: trajectories.size() = %ld, volumes.size() = %ld", trajectories.size(), volumes.size());
+        return result;
+    }
+
     for (int i = 0; i < trajectories.size(); i++) {
         ROS_INFO("Checking trajectory [%d]", i);
         GeofenceConflictResult current_result(i);
@@ -703,19 +708,24 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
             ROS_ERROR("[Monitoring]: trajectory must contain at least 2 points, [%ld] found in second argument", trajectories[i].waypoints.size());
             continue;
         }
+        auto operational_volume = volumes[i];
+        auto rectified_geofence = geofence;
+        rectified_geofence.min_altitude -= operational_volume;
+        rectified_geofence.max_altitude += operational_volume;
+        rectified_geofence.circle.radius += operational_volume;
 
         for (int j = 0; j < trajectories[i].waypoints.size() - 1; j++) {
             ROS_INFO("Checking segment [%d, %d]", j, j + 1);
             auto segment = Segment(trajectories[i].waypoints[j], trajectories[i].waypoints[j + 1]);
 
             // TODO: combine the following two ifs into a single one?
-            if ((segment.point_A.z < geofence.min_altitude) && (segment.point_B.z < geofence.min_altitude)) {
-                // The whole segment lies below the geofence
+            if ((segment.point_A.z < rectified_geofence.min_altitude) && (segment.point_B.z < rectified_geofence.min_altitude)) {
+                // The whole segment lies below the rectified_geofence
                 ROS_INFO("The whole segment lies below the geofence");
                 continue;
             }
-            if ((segment.point_A.z > geofence.max_altitude) && (segment.point_B.z > geofence.max_altitude)) {
-                // The whole segment lies above the geofence
+            if ((segment.point_A.z > rectified_geofence.max_altitude) && (segment.point_B.z > rectified_geofence.max_altitude)) {
+                // The whole segment lies above the rectified_geofence
                 ROS_INFO("The whole segment lies above the geofence");
                 continue;
             }
@@ -729,34 +739,34 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
             // }
 
             // Get the segment that does lie between min_alt, max_alt
-            if (segment.point_A.z < geofence.min_altitude) {
+            if (segment.point_A.z < rectified_geofence.min_altitude) {
                 // Point A lies below the geofence z interval
                 ROS_INFO("Point A lies below the geofence z interval");
-                float m_min = (geofence.min_altitude - segment.point_A.z) / delta_z;
+                float m_min = (rectified_geofence.min_altitude - segment.point_A.z) / delta_z;
                 segment.point_A = segment.point_at_param(m_min);
                 // TODO: Consider the special case of j == 0 for geofence intrusion!
-            } else if (segment.point_A.z > geofence.max_altitude) {
+            } else if (segment.point_A.z > rectified_geofence.max_altitude) {
                 // Point A lies above the geofence z interval
                 ROS_INFO("Point A lies above the geofence z interval");
-                float m_max = (geofence.max_altitude - segment.point_A.z) / delta_z;
+                float m_max = (rectified_geofence.max_altitude - segment.point_A.z) / delta_z;
                 segment.point_A = segment.point_at_param(m_max);
                 // TODO: Consider the special case of j == 0 for geofence intrusion!
             }
 
             // Same for point B  // TODO: repeated code!
-            if (segment.point_B.z < geofence.min_altitude) {
+            if (segment.point_B.z < rectified_geofence.min_altitude) {
                 // Point B lies below the geofence z interval
                 ROS_INFO("Point B lies below the geofence z interval");
-                float m_min = (geofence.min_altitude - segment.point_B.z) / delta_z;
+                float m_min = (rectified_geofence.min_altitude - segment.point_B.z) / delta_z;
                 segment.point_B = segment.point_at_param(m_min);
-            } else if (segment.point_B.z > geofence.max_altitude) {
+            } else if (segment.point_B.z > rectified_geofence.max_altitude) {
                 // Point B lies above the geofence z interval
                 ROS_INFO("Point B lies above the geofence z interval");
-                float m_max = (geofence.max_altitude - segment.point_B.z) / delta_z;
+                float m_max = (rectified_geofence.max_altitude - segment.point_B.z) / delta_z;
                 segment.point_B = segment.point_at_param(m_max);
             }
 
-            auto conflict_times = checkGeofence2D(segment, geofence.circle);
+            auto conflict_times = checkGeofence2D(segment, rectified_geofence.circle);
             if (std::isnan(conflict_times.first)) {  // conflict_times.second should be also nan
                 ROS_INFO("No conflicts");
                 // return result; // TODO: Only for debug!
@@ -770,13 +780,13 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
                 continue;
             }
 
-            if (checkOverlappingInTime(conflict_times, std::make_pair(geofence.start_time.toSec(), geofence.end_time.toSec()))) {
+            if (checkOverlappingInTime(conflict_times, std::make_pair(rectified_geofence.start_time.toSec(), rectified_geofence.end_time.toSec()))) {
                 ROS_INFO("Conflict!");  // TODO
                 auto current_position = trajectories[i].waypoints[j];
                 // Check also for intrusion:
                 if ((j == 0)
-                    && in_range(current_position.z, geofence.min_altitude, geofence.max_altitude)
-                    && (pow(current_position.x - geofence.circle.x_center, 2) + pow(current_position.y - geofence.circle.y_center, 2) < pow(geofence.circle.radius, 2))
+                    && in_range(current_position.z, rectified_geofence.min_altitude, rectified_geofence.max_altitude)
+                    && (pow(current_position.x - rectified_geofence.circle.x_center, 2) + pow(current_position.y - rectified_geofence.circle.y_center, 2) < pow(rectified_geofence.circle.radius, 2))
                     ) {
                     ROS_WARN("Intrusion!");
                     current_result.intrusion = true;
@@ -909,7 +919,7 @@ int main(int argc, char** argv) {
             ROS_INFO("_________________________");
             ROS_INFO("Checking geofence id [%d]", geofence.id);
             GeofenceResult current_result(geofence.id);
-            current_result.conflictive_trajectories = checkGeofenceConflict(estimated_trajectories, geofence);
+            current_result.conflictive_trajectories = checkGeofenceConflict(estimated_trajectories, operational_volumes, geofence);
             if (current_result.conflictive_trajectories.size() > 0) {
                 geofence_results_list.push_back(current_result);
             }
