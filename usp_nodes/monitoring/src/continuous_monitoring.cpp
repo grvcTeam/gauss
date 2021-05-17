@@ -975,14 +975,16 @@ int main(int argc, char** argv) {
                 }
             }
         }
-        visualization_pub.publish(marker_array);
-
-        ros::spinOnce();
-        rate.sleep();
-        continue;
+        // visualization_pub.publish(marker_array);
+        // ros::spinOnce();
+        // rate.sleep();
+        // continue;
 
         auto trajectories_count = estimated_trajectories.size();
         if (trajectories_count < 2) {
+            visualization_pub.publish(marker_array);
+            ros::spinOnce();
+            rate.sleep();
             continue;
         }
 
