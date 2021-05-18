@@ -201,10 +201,10 @@ std::pair<double, double> quadratic_roots(double a, double b, double c) {
     return std::make_pair((-b - e) / (2 * a), (-b + e) / (2 * a));
 }
 
-struct CheckSegmentsLossResult {
-    CheckSegmentsLossResult(const Segment& first, const Segment& second) : first(first), second(second) {}
+struct LossConflictiveSegments {
+    LossConflictiveSegments(const Segment& first, const Segment& second) : first(first), second(second) {}
 
-    friend std::ostream& operator<<(std::ostream& out, const CheckSegmentsLossResult& r);
+    friend std::ostream& operator<<(std::ostream& out, const LossConflictiveSegments& r);
     Segment first;
     Segment second;
     double t_min = std::nan("");
@@ -214,7 +214,7 @@ struct CheckSegmentsLossResult {
     bool threshold_is_violated = false;
 };
 
-std::ostream& operator<<(std::ostream& out, const CheckSegmentsLossResult& r) {
+std::ostream& operator<<(std::ostream& out, const LossConflictiveSegments& r) {
     out << "first = " << r.first << '\n';
     out << "second = " << r.second << '\n';
     out << "t_min[s] = " << r.t_min << '\n';
@@ -225,7 +225,7 @@ std::ostream& operator<<(std::ostream& out, const CheckSegmentsLossResult& r) {
     return out;
 }
 
-CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, double s_threshold) {
+LossConflictiveSegments checkUnifiedSegmentsLoss(Segment first, Segment second, double s_threshold) {
     // print('checkUnifiedSegmentsLoss:')
     // print(first.point_A)
     // print(first.point_B)
@@ -273,7 +273,7 @@ CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, 
         // print(t_min)
         // print(s_min)
     }
-    auto result = CheckSegmentsLossResult(first, second);
+    auto result = LossConflictiveSegments(first, second);
     result.t_min = t_min;
     result.s_min = s_min;
 
@@ -305,7 +305,7 @@ CheckSegmentsLossResult checkUnifiedSegmentsLoss(Segment first, Segment second, 
     return result;
 }
 
-CheckSegmentsLossResult checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold) {
+LossConflictiveSegments checkSegmentsLoss(const std::pair<Segment, Segment>& segments, double s_threshold) {
     // print('checkSegmentsLoss:')
     // print(first.point_A)
     // print(first.point_B)
@@ -320,7 +320,7 @@ CheckSegmentsLossResult checkSegmentsLoss(const std::pair<Segment, Segment>& seg
     double t_beta = std::min(t_B1, t_B2);
     if (t_alpha > t_beta) {
         // ROS_INFO("t_alpha[%lf] > t_beta[%lf]", t_alpha, t_beta);
-        return CheckSegmentsLossResult(segments.first, segments.second);
+        return LossConflictiveSegments(segments.first, segments.second);
     }
 
     auto P_alpha1 = segments.first.point_at_time(t_alpha);
@@ -330,8 +330,8 @@ CheckSegmentsLossResult checkSegmentsLoss(const std::pair<Segment, Segment>& seg
     return checkUnifiedSegmentsLoss(Segment(P_alpha1, P_beta1), Segment(P_alpha2, P_beta2), s_threshold);
 }
 
-std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories, double s_threshold) {
-    std::vector<CheckSegmentsLossResult> segment_loss_results;
+std::vector<LossConflictiveSegments> checkTrajectoriesLoss(const std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList>& trajectories, double s_threshold) {
+    std::vector<LossConflictiveSegments> segment_loss_results;
     if (trajectories.first.waypoints.size() < 2) {
         // TODO: Warn and push the same point twice?
         ROS_ERROR("[Monitoring]: trajectory must contain at least 2 points, [%ld] found in first argument", trajectories.first.waypoints.size());
@@ -400,29 +400,29 @@ struct LossResult {
     friend std::ostream& operator<<(std::ostream& out, const LossResult& r);
     int first_trajectory_index;
     int second_trajectory_index;
-    std::vector<CheckSegmentsLossResult> segments_loss_results;
+    std::vector<LossConflictiveSegments> loss_conflictive_segments;
 };
 
 std::vector<LossResult> getContiguousResults(const LossResult& input) {
     std::vector<LossResult> output;
-    if (input.segments_loss_results.size() < 1) {
-        ROS_ERROR("input.segments_loss_results.size() < 1");
+    if (input.loss_conflictive_segments.size() < 1) {
+        ROS_ERROR("input.loss_conflictive_segments.size() < 1");
         return output;
     }
 
     float t_gap_threshold = 1.0;  // [s]  TODO: as a parameter?
     auto current_loss_result = input;
-    current_loss_result.segments_loss_results.clear();
-    current_loss_result.segments_loss_results.push_back(input.segments_loss_results[0]);
-    for (int i = 1; i < input.segments_loss_results.size(); i++) {
-        double t_gap_first = fabs(input.segments_loss_results[i].first.t_A - input.segments_loss_results[i - 1].first.t_B);
-        double t_gap_second = fabs(input.segments_loss_results[i].second.t_A - input.segments_loss_results[i - 1].second.t_B);
+    current_loss_result.loss_conflictive_segments.clear();
+    current_loss_result.loss_conflictive_segments.push_back(input.loss_conflictive_segments[0]);
+    for (int i = 1; i < input.loss_conflictive_segments.size(); i++) {
+        double t_gap_first = fabs(input.loss_conflictive_segments[i].first.t_A - input.loss_conflictive_segments[i - 1].first.t_B);
+        double t_gap_second = fabs(input.loss_conflictive_segments[i].second.t_A - input.loss_conflictive_segments[i - 1].second.t_B);
         if ((t_gap_first > t_gap_threshold) || (t_gap_second > t_gap_threshold)) {
             // i-th element is not contiguous
             output.push_back(current_loss_result);
-            current_loss_result.segments_loss_results.clear();
+            current_loss_result.loss_conflictive_segments.clear();
         }
-        current_loss_result.segments_loss_results.push_back(input.segments_loss_results[i]);
+        current_loss_result.loss_conflictive_segments.push_back(input.loss_conflictive_segments[i]);
     }
     output.push_back(current_loss_result);
 
@@ -431,35 +431,35 @@ std::vector<LossResult> getContiguousResults(const LossResult& input) {
 
 std::pair<LossExtreme, LossExtreme> calculateExtremes(const LossResult& result) {
     std::pair<LossExtreme, LossExtreme> extremes;
-    if (result.segments_loss_results.size() < 1) {
-        ROS_ERROR("result.segments_loss_results.size() < 1");
+    if (result.loss_conflictive_segments.size() < 1) {
+        ROS_ERROR("result.loss_conflictive_segments.size() < 1");
         return extremes;
     }
 
     // In points are for sure A's from segment 0
-    extremes.first.in_point = result.segments_loss_results[0].first.point_A;
-    extremes.second.in_point = result.segments_loss_results[0].second.point_A;
+    extremes.first.in_point = result.loss_conflictive_segments[0].first.point_A;
+    extremes.second.in_point = result.loss_conflictive_segments[0].second.point_A;
 
     // Initialize out points as B's from segment 0...
-    extremes.first.out_point = result.segments_loss_results[0].first.point_B;
-    extremes.second.out_point = result.segments_loss_results[0].second.point_B;
+    extremes.first.out_point = result.loss_conflictive_segments[0].first.point_B;
+    extremes.second.out_point = result.loss_conflictive_segments[0].second.point_B;
     //  ...but update if more contiguous segments are available
     float t_gap_threshold = 1.0;  // [s]
     // Check for first
-    for (int i = 1; i < result.segments_loss_results.size(); i++) {
-        double t_gap = fabs(result.segments_loss_results[i].first.t_A - result.segments_loss_results[i - 1].first.t_B);
+    for (int i = 1; i < result.loss_conflictive_segments.size(); i++) {
+        double t_gap = fabs(result.loss_conflictive_segments[i].first.t_A - result.loss_conflictive_segments[i - 1].first.t_B);
         if (t_gap > t_gap_threshold) {
             break;
         }
-        extremes.first.out_point = result.segments_loss_results[i].first.point_B;
+        extremes.first.out_point = result.loss_conflictive_segments[i].first.point_B;
     }
     // Check for second
-    for (int i = 1; i < result.segments_loss_results.size(); i++) {
-        double t_gap = fabs(result.segments_loss_results[i].second.t_A - result.segments_loss_results[i - 1].second.t_B);
+    for (int i = 1; i < result.loss_conflictive_segments.size(); i++) {
+        double t_gap = fabs(result.loss_conflictive_segments[i].second.t_A - result.loss_conflictive_segments[i - 1].second.t_B);
         if (t_gap > t_gap_threshold) {
             break;
         }
-        extremes.second.out_point = result.segments_loss_results[i].second.point_B;
+        extremes.second.out_point = result.loss_conflictive_segments[i].second.point_B;
     }
 
     return extremes;
@@ -477,7 +477,7 @@ visualization_msgs::Marker translateToMarker(const LossResult& result) {
     marker.color.r = 1.0;  // TODO: color?
     marker.color.a = 1.0;
     marker.lifetime = ros::Duration(1.0);  // TODO: pair with frequency
-    for (auto segments_loss : result.segments_loss_results) {
+    for (auto segments_loss : result.loss_conflictive_segments) {
         marker.points.push_back(translateToPoint(segments_loss.first.point_A));
         marker.points.push_back(translateToPoint(segments_loss.first.point_B));
         marker.points.push_back(translateToPoint(segments_loss.second.point_A));
@@ -496,25 +496,25 @@ visualization_msgs::Marker translateToMarker(const LossResult& result) {
 std::ostream& operator<<(std::ostream& out, const LossResult& r) {
     out << "first_trajectory_index = " << r.first_trajectory_index << '\n';
     out << "second_trajectory_index = " << r.second_trajectory_index << '\n';
-    out << "segments_loss_results = [" << r.second_trajectory_index << '\n';
-    for (int i = 0; i < r.segments_loss_results.size(); i++) {
-        out << r.segments_loss_results[i] << '\n';
+    out << "loss_conflictive_segments = [" << r.second_trajectory_index << '\n';
+    for (int i = 0; i < r.loss_conflictive_segments.size(); i++) {
+        out << r.loss_conflictive_segments[i] << '\n';
     }
     out << "]\n";
     return out;
 }
 
 bool happensBefore(const LossResult& a, const LossResult& b) {
-    if (a.segments_loss_results.size() < 1) {
-        ROS_ERROR("a.segments_loss_results.size() < 1");
+    if (a.loss_conflictive_segments.size() < 1) {
+        ROS_ERROR("a.loss_conflictive_segments.size() < 1");
         return false;
     }
-    if (b.segments_loss_results.size() < 1) {
-        ROS_ERROR("b.segments_loss_results.size() < 1");
+    if (b.loss_conflictive_segments.size() < 1) {
+        ROS_ERROR("b.loss_conflictive_segments.size() < 1");
         return true;
     }
 
-    return a.segments_loss_results[0].t_crossing_0 < b.segments_loss_results[0].t_crossing_0;
+    return a.loss_conflictive_segments[0].t_crossing_0 < b.loss_conflictive_segments[0].t_crossing_0;
 }
 
 gauss_msgs::ConflictiveOperation fillConflictiveOperation(const int& _trajectory_index, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
@@ -543,7 +543,7 @@ gauss_msgs::NewThreat fillDeconflictionMsg(const LossResult& _loss_result, const
     out_threat.priority_ops.push_back(_index_to_operation_map.at(_loss_result.second_trajectory_index).priority);
     out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result.first_trajectory_index, _index_to_operation_map));
     out_threat.conflictive_operations.push_back(fillConflictiveOperation(_loss_result.second_trajectory_index, _index_to_operation_map));
-    for (auto j : _loss_result.segments_loss_results) {
+    for (auto j : _loss_result.loss_conflictive_segments) {
         out_threat.conflictive_segments.segment_first.push_back(j.first.point_A);
         out_threat.conflictive_segments.segment_first.push_back(j.first.point_B);
         out_threat.conflictive_segments.segment_second.push_back(j.second.point_A);
@@ -568,10 +568,10 @@ void cleanStoredList(std::vector<LossResult>& _stored_result_list, const std::ve
                                                                              [_stored_result](LossResult _actual_result) { return (_stored_result->first_trajectory_index == _actual_result.first_trajectory_index &&
                                                                                                                                    _stored_result->second_trajectory_index == _actual_result.second_trajectory_index); });
             if (actual_it != _actual_loss_result_list.end()) {
-                if (std::abs(_stored_result->segments_loss_results.front().t_crossing_0 - actual_it->segments_loss_results.front().t_crossing_0) >= _check_time_margin ||
-                    std::abs(_stored_result->segments_loss_results.front().t_crossing_1 - actual_it->segments_loss_results.front().t_crossing_1) >= _check_time_margin ||
-                    std::abs(_stored_result->segments_loss_results.back().t_crossing_0 - actual_it->segments_loss_results.back().t_crossing_0) >= _check_time_margin ||
-                    std::abs(_stored_result->segments_loss_results.back().t_crossing_1 - actual_it->segments_loss_results.back().t_crossing_1) >= _check_time_margin) {
+                if (std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_0 - actual_it->loss_conflictive_segments.front().t_crossing_0) >= _check_time_margin ||
+                    std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_1 - actual_it->loss_conflictive_segments.front().t_crossing_1) >= _check_time_margin ||
+                    std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_0 - actual_it->loss_conflictive_segments.back().t_crossing_0) >= _check_time_margin ||
+                    std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_1 - actual_it->loss_conflictive_segments.back().t_crossing_1) >= _check_time_margin) {
                     // Not found! Must be deleted.
                     _stored_result = _stored_result_list.erase(_stored_result);
                 } else {
@@ -605,10 +605,10 @@ gauss_msgs::NewThreats manageResultList(const std::vector<LossResult>& _loss_res
                                                                                                                                    stored_loss_result.second_trajectory_index == _loss_result.second_trajectory_index); });
                 if (stored_it != stored_loss_result_list.end()) {  // All trajectory index are found!
                     // Check if the difference of the intpu times (absolute) with the stored times is bigger than check_time_margin
-                    if (std::abs(stored_it->segments_loss_results.front().t_crossing_0 - _loss_result.segments_loss_results.front().t_crossing_0) >= check_time_margin ||
-                        std::abs(stored_it->segments_loss_results.front().t_crossing_1 - _loss_result.segments_loss_results.front().t_crossing_1) >= check_time_margin ||
-                        std::abs(stored_it->segments_loss_results.back().t_crossing_0 - _loss_result.segments_loss_results.back().t_crossing_0) >= check_time_margin ||
-                        std::abs(stored_it->segments_loss_results.back().t_crossing_1 - _loss_result.segments_loss_results.back().t_crossing_1) >= check_time_margin) {
+                    if (std::abs(stored_it->loss_conflictive_segments.front().t_crossing_0 - _loss_result.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
+                        std::abs(stored_it->loss_conflictive_segments.front().t_crossing_1 - _loss_result.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
+                        std::abs(stored_it->loss_conflictive_segments.back().t_crossing_0 - _loss_result.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
+                        std::abs(stored_it->loss_conflictive_segments.back().t_crossing_1 - _loss_result.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin) {
                         save_loss_result = true;
                     }
                 } else {
@@ -691,15 +691,15 @@ geometry_msgs::Point calculateClosestExit(const geometry_msgs::Point& current, c
 }
 
 // TODO: Rename to GeofenceConflict?
-struct GeofenceConflictResult {
-    GeofenceConflictResult(int i): trajectory_index(i) {}
+struct GeoConflictiveTrajectory {
+    GeoConflictiveTrajectory(int i): trajectory_index(i) {}
     int trajectory_index;
-    std::vector<Segment> conflicts;
-    gauss_msgs::Waypoint closest_exit;  // Use the mandatory field as intrusion flag
+    std::vector<Segment> conflictive_segments;
+    gauss_msgs::Waypoint closest_exit_wp;  // Use the mandatory field as intrusion flag
 };
 
-std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gauss_msgs::WaypointList>& trajectories, const std::vector<double>& volumes, const gauss_msgs::Geofence& geofence) {
-    std::vector<GeofenceConflictResult> result;
+std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<gauss_msgs::WaypointList>& trajectories, const std::vector<double>& volumes, const gauss_msgs::Geofence& geofence) {
+    std::vector<GeoConflictiveTrajectory> result;
 
     if (!geofence.cylinder_shape) {
         // TODO: implement also for polygons
@@ -719,7 +719,7 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
 
     for (int i = 0; i < trajectories.size(); i++) {
         ROS_INFO("Checking trajectory [%d]", i);
-        GeofenceConflictResult current_result(i);
+        GeoConflictiveTrajectory current_result(i);
 
         if (trajectories[i].waypoints.size() < 2) {
             // TODO: Warn and push the same point twice?
@@ -807,18 +807,18 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
                     && (pow(current_position.x - rectified_geofence.circle.x_center, 2) + pow(current_position.y - rectified_geofence.circle.y_center, 2) < pow(rectified_geofence.circle.radius, 2))
                     ) {
                     ROS_WARN("Intrusion!");
-                    current_result.closest_exit.mandatory = true;
+                    current_result.closest_exit_wp.mandatory = true;
                     auto xy_closest_exit = calculateClosestExit(translateToPoint(current_position), rectified_geofence.circle);
-                    current_result.closest_exit.x = xy_closest_exit.x;
-                    current_result.closest_exit.y = xy_closest_exit.y;
-                    current_result.closest_exit.z = current_position.z;  // Suppose we want the closest exit with no changes in altuitude!
+                    current_result.closest_exit_wp.x = xy_closest_exit.x;
+                    current_result.closest_exit_wp.y = xy_closest_exit.y;
+                    current_result.closest_exit_wp.z = current_position.z;  // Suppose we want the closest exit with no changes in altuitude!
                 }
-                current_result.conflicts.push_back(Segment(segment.point_at_time(conflict_times.first), segment.point_at_time(conflict_times.second)));
+                current_result.conflictive_segments.push_back(Segment(segment.point_at_time(conflict_times.first), segment.point_at_time(conflict_times.second)));
             }
             // result.push_back(current_result);  // TODO: Only for debug!
             // return result;  // TODO: Only for debug!
         }
-        if (current_result.conflicts.size() > 0) {
+        if (current_result.conflictive_segments.size() > 0) {
             result.push_back(current_result);
         }
     }
@@ -829,7 +829,7 @@ std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gaus
 struct GeofenceResult {
     GeofenceResult(int i): geofence_id(i) {}
     int geofence_id;
-    std::vector<GeofenceConflictResult> conflictive_trajectories;
+    std::vector<GeoConflictiveTrajectory> geo_conflictive_trajectories;
 };
 
 std::vector<Segment> getFirstSetOfContiguousSegments(const std::vector<Segment>& input) {
@@ -941,8 +941,8 @@ int main(int argc, char** argv) {
             ROS_INFO("_________________________");
             ROS_INFO("Checking geofence id [%d]", geofence.id);
             GeofenceResult current_result(geofence.id);
-            current_result.conflictive_trajectories = checkGeofenceConflict(estimated_trajectories, operational_volumes, geofence);
-            if (current_result.conflictive_trajectories.size() > 0) {
+            current_result.geo_conflictive_trajectories = checkGeofenceConflict(estimated_trajectories, operational_volumes, geofence);
+            if (current_result.geo_conflictive_trajectories.size() > 0) {
                 geofence_results_list.push_back(current_result);
             }
         }
@@ -951,19 +951,19 @@ int main(int argc, char** argv) {
         for (int i = 0; i < geofence_results_list.size(); i++) {
             auto geofence_result = geofence_results_list[i];
             // geofence_result.geofence_id
-            for (int j = 0; j < geofence_result.conflictive_trajectories.size(); j++) {
-                auto trajectory = geofence_result.conflictive_trajectories[j];
+            for (int j = 0; j < geofence_result.geo_conflictive_trajectories.size(); j++) {
+                auto trajectory = geofence_result.geo_conflictive_trajectories[j];
                 // trajectory.trajectory_index;
-                auto all_conflicts = trajectory.conflicts;
+                auto all_conflicts = trajectory.conflictive_segments;
                 auto first_conflict = getFirstSetOfContiguousSegments(all_conflicts);
                 auto conflicts = first_conflict;
                 int segment_id = 1e6 * i + 1e3 * j;
                 std_msgs::ColorRGBA segment_color;
                 segment_color.a = 1.0;
                 segment_color.r = 1.0;
-                if (trajectory.closest_exit.mandatory) {
+                if (trajectory.closest_exit_wp.mandatory) {
                     // Means it is an intrusion!
-                    Segment way_out(trajectory.closest_exit, conflicts.back().point_B);
+                    Segment way_out(trajectory.closest_exit_wp, conflicts.back().point_B);
                     marker_array.markers.push_back(way_out.translateToMarker(segment_id, segment_color));
                     continue;
                 }
@@ -1002,10 +1002,10 @@ int main(int argc, char** argv) {
                 // ROS_INFO("Checking trajectories: [%d, %d]", i, j);
                 trajectories.second = estimated_trajectories[j];
                 double s_threshold = std::max(safety_distance_sq, pow(operational_volumes[i] + operational_volumes[j], 2));
-                auto segments_loss_results = checkTrajectoriesLoss(trajectories, s_threshold);
-                if (segments_loss_results.size() > 0) {
+                auto loss_conflictive_segments = checkTrajectoriesLoss(trajectories, s_threshold);
+                if (loss_conflictive_segments.size() > 0) {
                     LossResult loss_result(i, j);
-                    loss_result.segments_loss_results = segments_loss_results;
+                    loss_result.loss_conflictive_segments = loss_conflictive_segments;
                     loss_results_list.push_back(loss_result);
                 }
             }
