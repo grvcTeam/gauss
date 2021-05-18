@@ -115,7 +115,7 @@ class GaussPlugin(Plugin):
         msg.setText('Accept alternative flight plan for [' + str(self.alternative_flight_plan.icao) + '] ?')
         msg.setIcon(QMessageBox.Question)
         msg.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
-        msg.setDefaultButton(QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.Yes)
         # msg.setInformativeText('Accept new plan?')
         msg.setDetailedText('{}'.format(self.alternative_flight_plan))
         # msg.buttonClicked.connect(self.handle_message_box)  # TODO: do handling here?
