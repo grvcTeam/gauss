@@ -151,7 +151,7 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     // Publish
     rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 10);
-    alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
+    alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 10);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
     airspace_alert_pub_ = nh_.advertise<gauss_msgs::AirspaceUpdate>("/gauss/airspace_alert", 1);
     flight_status_pub_ = nh_.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10);

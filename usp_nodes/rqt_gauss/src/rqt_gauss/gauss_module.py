@@ -46,8 +46,8 @@ class GaussPlugin(Plugin):
         # Do connections and stuff here. For complex plugins, consider
         # creating custom helper classes instead of QWidget
         self.status_pub = rospy.Publisher('/gauss/flight', RPSChangeFlightStatus, queue_size=1)
-        self.acceptance_pub = rospy.Publisher('/gauss/flightacceptance', RPSFlightPlanAccept, queue_size=1)
-        rospy.Subscriber('/gauss/alternative_flight_plan', UTMAlternativeFlightPlan, self.alternative_flight_plan_callback)
+        self.acceptance_pub = rospy.Publisher('/gauss/flightacceptance', RPSFlightPlanAccept, queue_size=10)
+        rospy.Subscriber('/gauss/alternative_flight_plan', UTMAlternativeFlightPlan, self.alternative_flight_plan_callback,queue_size = 10)
         self.read_icao_service = rospy.ServiceProxy('/gauss/read_icao', ReadIcao)
 
         self._widget.refresh_button.clicked.connect(self.handle_refresh_button_clicked)
@@ -102,17 +102,17 @@ class GaussPlugin(Plugin):
         self.change_flight_status('stop')
 
     def alternative_flight_plan_callback(self, data):
-        if self.alternative_flight_plan is None:
+        # if self.alternative_flight_plan is None:
             self.alternative_flight_plan = data
             rospy.loginfo('[RQt] Received: [{}]'.format(data))
             self.pop_up.emit()
-        else:
-            rospy.loginfo('[RQt] Waiting for pilot response...')
+        # else:
+        #     rospy.loginfo('[RQt] Waiting for pilot response...')
 
     def show_pop_up(self):
         msg = QMessageBox()
         msg.setWindowTitle('Alternative flight plan received')
-        msg.setText('Accept alternative flight plan?')
+        msg.setText('Accept alternative flight plan for [' + str(self.alternative_flight_plan.icao) + '] ?')
         msg.setIcon(QMessageBox.Question)
         msg.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
         msg.setDefaultButton(QMessageBox.No)
