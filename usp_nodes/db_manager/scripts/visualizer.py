@@ -500,6 +500,11 @@ def main():
 
         for operation in read_operation_response.operation:
             operation_ns = operation.icao_address
+            # Change alpha depending on is_started value
+            if (operation.is_started) :
+                is_started_alpha = 1.0
+            else :
+                is_started_alpha = 0.1
 
             # Visualize non-trajectory information
             if operation.track.waypoints:
@@ -593,7 +598,7 @@ def main():
 
             # Visualize flight_plan
             ns = operation_ns + '/flight_plan'
-            color = palette.get_color(id_to_color[operation.uav_id % 10])
+            color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha)
             color_scheme = WaypointListColorScheme(color, color, color, color)
             flight_plan_viz.path_scale = Vector3(1, 0, 0)
             flight_plan = flight_plan_viz.get_markerarray(operation.flight_plan.waypoints, ns, color_scheme)
@@ -629,8 +634,8 @@ def main():
 
             # Visualize volumes (flight geometry, operational volume)
             ns = operation_ns + '/volumes'
-            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.7)
-            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.5)
+            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha-0.8)
+            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha-0.5)
             volume = volume_viz.get_markerarray(operation, ns, fg_color, ov_color)
             marker_array.markers.extend(volume.markers)
 
