@@ -2,6 +2,7 @@
 #include <gauss_msgs/NewThreats.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadOperation.h>
+#include <gauss_msgs/ReadGeofences.h>
 #include <gauss_msgs/Waypoint.h>
 #include <geometry_msgs/Vector3.h>
 #include <ros/ros.h>
@@ -9,6 +10,10 @@
 #include <visualization_msgs/MarkerArray.h>
 
 #include <Eigen/Eigen>
+
+bool in_range(double x, double min_x, double max_x) {
+    return (x > min_x) && (x < max_x);
+}
 
 double clamp(double x, double min_x, double max_x) {
     if (min_x > max_x) {
@@ -102,6 +107,35 @@ struct Segment {
         return point;
     }
 
+    gauss_msgs::Waypoint point_at_param(double m) const {
+        gauss_msgs::Waypoint point;
+        point.x = point_A.x + m * (point_B.x - point_A.x);
+        point.y = point_A.y + m * (point_B.y - point_A.y);
+        point.z = point_A.z + m * (point_B.z - point_A.z);
+        double t =  t_A + m * (t_B - t_A);
+        point.stamp.fromSec(t);
+        return point;
+    }
+
+    visualization_msgs::Marker translateToMarker(int id, std_msgs::ColorRGBA color) {
+        visualization_msgs::Marker marker;
+        marker.header.stamp = ros::Time::now();
+        marker.header.frame_id = "map";  // TODO: other?
+        marker.ns = "segments";
+        marker.id = id;
+        marker.type = visualization_msgs::Marker::ARROW;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.pose.orientation.w = 1;
+        marker.scale.x = 1.0;  // shaft diameter
+        marker.scale.y = 1.5;  // head diameter
+        marker.scale.z = 1.0;  // head length (if not zero)
+        marker.color = color;
+        marker.lifetime = ros::Duration(1.0);  // TODO: pair with frequency
+        marker.points.push_back(translateToPoint(point_A));
+        marker.points.push_back(translateToPoint(point_B));
+        return marker;
+    }
+
     friend std::ostream& operator<<(std::ostream& out, const Segment& s);
     gauss_msgs::Waypoint point_A;
     gauss_msgs::Waypoint point_B;
@@ -160,7 +194,7 @@ std::pair<double, double> quadratic_roots(double a, double b, double c) {
 
     float d = b * b - 4 * a * c;
     if (d < 0) {
-        ROS_WARN("d = [%lf], complex solutions!", d);
+        // ROS_WARN("d = [%lf], complex solutions!", d);
         return std::make_pair(std::nan(""), std::nan(""));
     }
     double e = sqrt(d);
@@ -320,7 +354,7 @@ std::vector<CheckSegmentsLossResult> checkTrajectoriesLoss(const std::pair<gauss
             // std::cout << segments.second.point_A << "_____________\n" << segments.second.point_B << '\n';
             auto loss_check = checkSegmentsLoss(segments, s_threshold);
             if (loss_check.threshold_is_violated) {
-                ROS_ERROR("Loss of separation!");
+                ROS_ERROR("Loss of separation! [i = %d, j = %d]", i, j);
                 // std::cout << loss_check << '\n';
                 segment_loss_results.push_back(loss_check);
             }
@@ -368,6 +402,32 @@ struct LossResult {
     int second_trajectory_index;
     std::vector<CheckSegmentsLossResult> segments_loss_results;
 };
+
+std::vector<LossResult> getContiguousResults(const LossResult& input) {
+    std::vector<LossResult> output;
+    if (input.segments_loss_results.size() < 1) {
+        ROS_ERROR("input.segments_loss_results.size() < 1");
+        return output;
+    }
+
+    float t_gap_threshold = 1.0;  // [s]  TODO: as a parameter?
+    auto current_loss_result = input;
+    current_loss_result.segments_loss_results.clear();
+    current_loss_result.segments_loss_results.push_back(input.segments_loss_results[0]);
+    for (int i = 1; i < input.segments_loss_results.size(); i++) {
+        double t_gap_first = fabs(input.segments_loss_results[i].first.t_A - input.segments_loss_results[i - 1].first.t_B);
+        double t_gap_second = fabs(input.segments_loss_results[i].second.t_A - input.segments_loss_results[i - 1].second.t_B);
+        if ((t_gap_first > t_gap_threshold) || (t_gap_second > t_gap_threshold)) {
+            // i-th element is not contiguous
+            output.push_back(current_loss_result);
+            current_loss_result.segments_loss_results.clear();
+        }
+        current_loss_result.segments_loss_results.push_back(input.segments_loss_results[i]);
+    }
+    output.push_back(current_loss_result);
+
+    return output;
+}
 
 std::pair<LossExtreme, LossExtreme> calculateExtremes(const LossResult& result) {
     std::pair<LossExtreme, LossExtreme> extremes;
@@ -565,6 +625,234 @@ gauss_msgs::NewThreats manageResultList(const std::vector<LossResult>& _loss_res
     return out_threats;
 }
 
+std::pair<double, double> checkGeofence2D(const Segment& segment, const gauss_msgs::Circle& circle) {
+
+    auto translated_segment = segment;
+    translated_segment.point_A.x -= circle.x_center;
+    translated_segment.point_A.y -= circle.y_center;
+    translated_segment.point_B.x -= circle.x_center;
+    translated_segment.point_B.y -= circle.y_center;
+
+    float sq_distance_A = pow(translated_segment.point_A.x, 2) + pow(translated_segment.point_A.y, 2);
+    float sq_distance_B = pow(translated_segment.point_B.x, 2) + pow(translated_segment.point_B.y, 2);
+    float sq_radius = pow(circle.radius, 2);
+
+    bool point_A_is_in = (sq_distance_A < sq_radius);
+    bool point_B_is_in = (sq_distance_B < sq_radius);
+
+    // Geofence2DResult result;
+    if (point_A_is_in && point_B_is_in) {
+        // A and B inside the circle
+        ROS_INFO("A and B inside the circle");
+        return std::make_pair(segment.t_A, segment.t_B);
+    }
+
+    float a_x = pow(translated_segment.point_B.x - translated_segment.point_A.x, 2);
+    float b_x = 2.0 * (translated_segment.point_B.x - translated_segment.point_A.x) * translated_segment.point_A.x;
+    float c_x = pow(translated_segment.point_A.x, 2);
+    float a_y = pow(translated_segment.point_B.y - translated_segment.point_A.y, 2);
+    float b_y = 2.0 * (translated_segment.point_B.y - translated_segment.point_A.y) * translated_segment.point_A.y;
+    float c_y = pow(translated_segment.point_A.y, 2);
+
+    auto m_crossing = quadratic_roots(a_x + a_y, b_x + b_y, c_x + c_y - sq_radius);
+    ROS_INFO("Roots: m = [%lf, %lf]", m_crossing.first, m_crossing.second);
+
+    if (std::isnan(m_crossing.first)) {  // m_crossing.second should also be nan
+        // There is no intersection at all
+        ROS_INFO("There is no intersection at all");
+        return std::make_pair(std::nan(""), std::nan(""));
+    }
+
+    auto t_crossing_0 = translated_segment.t_A + clamp(m_crossing.first,  0, 1) * (translated_segment.t_B - translated_segment.t_A);
+    auto t_crossing_1 = translated_segment.t_A + clamp(m_crossing.second, 0, 1) * (translated_segment.t_B - translated_segment.t_A);
+    return std::make_pair(t_crossing_0, t_crossing_1);
+}
+
+bool checkOverlappingInTime(std::pair<double, double> time_interval_a, std::pair<double, double> time_interval_b) {
+    return (time_interval_a.first <= time_interval_b.second) && (time_interval_a.second >= time_interval_b.first);
+}
+
+geometry_msgs::Point calculateClosestExit(const geometry_msgs::Point& current, const gauss_msgs::Circle& circle) {
+    geometry_msgs::Point out;
+    float delta_x = current.x - circle.x_center;
+    float delta_y = current.y - circle.y_center;
+    auto distance = sqrt(pow(delta_x, 2) + pow(delta_y, 2));
+    if (distance < 1e-3) {
+        // At the center of the geofence? Go East!
+        out.x = circle.x_center + circle.radius;
+        out.y = circle.y_center;
+        // out.x = std::nan("");  // TODO: Better NaN and handle later?
+        // out.y = std::nan("");
+        return out;
+    }
+    out.x = circle.x_center + (delta_x / distance) * circle.radius;
+    out.y = circle.y_center + (delta_y / distance) * circle.radius;
+    return out;
+}
+
+// TODO: Rename to GeofenceConflict?
+struct GeofenceConflictResult {
+    GeofenceConflictResult(int i): trajectory_index(i) {}
+    int trajectory_index;
+    std::vector<Segment> conflicts;
+    gauss_msgs::Waypoint closest_exit;  // Use the mandatory field as intrusion flag
+};
+
+std::vector<GeofenceConflictResult> checkGeofenceConflict(const std::vector<gauss_msgs::WaypointList>& trajectories, const std::vector<double>& volumes, const gauss_msgs::Geofence& geofence) {
+    std::vector<GeofenceConflictResult> result;
+
+    if (!geofence.cylinder_shape) {
+        // TODO: implement also for polygons
+        ROS_WARN("Polygon geofences not implemented yet");
+        return result;
+        // float64 min_altitude	# meters
+        // float64 max_altitude	# meters
+        // Polygon polygon
+        //     float64[] x
+        //     float64[] y
+    }
+
+    if (trajectories.size() != volumes.size()) {
+        ROS_ERROR("Sizes do not match: trajectories.size() = %ld, volumes.size() = %ld", trajectories.size(), volumes.size());
+        return result;
+    }
+
+    for (int i = 0; i < trajectories.size(); i++) {
+        ROS_INFO("Checking trajectory [%d]", i);
+        GeofenceConflictResult current_result(i);
+
+        if (trajectories[i].waypoints.size() < 2) {
+            // TODO: Warn and push the same point twice?
+            ROS_ERROR("[Monitoring]: trajectory must contain at least 2 points, [%ld] found in second argument", trajectories[i].waypoints.size());
+            continue;
+        }
+        auto operational_volume = volumes[i];
+        auto rectified_geofence = geofence;
+        rectified_geofence.min_altitude -= operational_volume;
+        rectified_geofence.max_altitude += operational_volume;
+        rectified_geofence.circle.radius += operational_volume;
+
+        for (int j = 0; j < trajectories[i].waypoints.size() - 1; j++) {
+            ROS_INFO("Checking segment [%d, %d]", j, j + 1);
+            auto segment = Segment(trajectories[i].waypoints[j], trajectories[i].waypoints[j + 1]);
+
+            // TODO: combine the following two ifs into a single one?
+            if ((segment.point_A.z < rectified_geofence.min_altitude) && (segment.point_B.z < rectified_geofence.min_altitude)) {
+                // The whole segment lies below the rectified_geofence
+                ROS_INFO("The whole segment lies below the geofence");
+                continue;
+            }
+            if ((segment.point_A.z > rectified_geofence.max_altitude) && (segment.point_B.z > rectified_geofence.max_altitude)) {
+                // The whole segment lies above the rectified_geofence
+                ROS_INFO("The whole segment lies above the geofence");
+                continue;
+            }
+
+            // TODO: enlarge the circle with operational volume (* some security_gain)
+            float delta_z = segment.point_B.z - segment.point_A.z;
+            // if (fabs(delta_z) < 1e-3) {  // TODO: Early return?
+            //     // We can consider the whole segment lies inside the geofence z interval
+            //     // TODO: Consider the special case of j == 0 for geofence intrusion!
+            //     ROS_INFO("We can consider the whole segment lies inside the geofence z interval");
+            // }
+
+            // Get the segment that does lie between min_alt, max_alt
+            if (segment.point_A.z < rectified_geofence.min_altitude) {
+                // Point A lies below the geofence z interval
+                ROS_INFO("Point A lies below the geofence z interval");
+                float m_min = (rectified_geofence.min_altitude - segment.point_A.z) / delta_z;
+                segment.point_A = segment.point_at_param(m_min);
+                // TODO: Consider the special case of j == 0 for geofence intrusion!
+            } else if (segment.point_A.z > rectified_geofence.max_altitude) {
+                // Point A lies above the geofence z interval
+                ROS_INFO("Point A lies above the geofence z interval");
+                float m_max = (rectified_geofence.max_altitude - segment.point_A.z) / delta_z;
+                segment.point_A = segment.point_at_param(m_max);
+                // TODO: Consider the special case of j == 0 for geofence intrusion!
+            }
+
+            // Same for point B  // TODO: repeated code!
+            if (segment.point_B.z < rectified_geofence.min_altitude) {
+                // Point B lies below the geofence z interval
+                ROS_INFO("Point B lies below the geofence z interval");
+                float m_min = (rectified_geofence.min_altitude - segment.point_B.z) / delta_z;
+                segment.point_B = segment.point_at_param(m_min);
+            } else if (segment.point_B.z > rectified_geofence.max_altitude) {
+                // Point B lies above the geofence z interval
+                ROS_INFO("Point B lies above the geofence z interval");
+                float m_max = (rectified_geofence.max_altitude - segment.point_B.z) / delta_z;
+                segment.point_B = segment.point_at_param(m_max);
+            }
+
+            auto conflict_times = checkGeofence2D(segment, rectified_geofence.circle);
+            if (std::isnan(conflict_times.first)) {  // conflict_times.second should be also nan
+                ROS_INFO("No conflicts");
+                // return result; // TODO: Only for debug!
+                continue;
+            }  // TODO: Rename to GeofenceConflict?
+
+            auto current_time = ros::Time::now().toSec();
+            if (current_time > conflict_times.second) {  // Should be also > conflict_times.second
+                ROS_INFO("Past conflicts do not count :)");
+                // return result; // TODO: Only for debug!
+                continue;
+            }
+
+            if (checkOverlappingInTime(conflict_times, std::make_pair(rectified_geofence.start_time.toSec(), rectified_geofence.end_time.toSec()))) {
+                ROS_INFO("Conflict!");  // TODO
+                auto current_position = trajectories[i].waypoints[j];
+                // Check also for intrusion:
+                if ((j == 0)
+                    && in_range(current_position.z, rectified_geofence.min_altitude, rectified_geofence.max_altitude)
+                    && (pow(current_position.x - rectified_geofence.circle.x_center, 2) + pow(current_position.y - rectified_geofence.circle.y_center, 2) < pow(rectified_geofence.circle.radius, 2))
+                    ) {
+                    ROS_WARN("Intrusion!");
+                    current_result.closest_exit.mandatory = true;
+                    auto xy_closest_exit = calculateClosestExit(translateToPoint(current_position), rectified_geofence.circle);
+                    current_result.closest_exit.x = xy_closest_exit.x;
+                    current_result.closest_exit.y = xy_closest_exit.y;
+                    current_result.closest_exit.z = current_position.z;  // Suppose we want the closest exit with no changes in altuitude!
+                }
+                current_result.conflicts.push_back(Segment(segment.point_at_time(conflict_times.first), segment.point_at_time(conflict_times.second)));
+            }
+            // result.push_back(current_result);  // TODO: Only for debug!
+            // return result;  // TODO: Only for debug!
+        }
+        if (current_result.conflicts.size() > 0) {
+            result.push_back(current_result);
+        }
+    }
+
+    return result;
+}
+
+struct GeofenceResult {
+    GeofenceResult(int i): geofence_id(i) {}
+    int geofence_id;
+    std::vector<GeofenceConflictResult> conflictive_trajectories;
+};
+
+std::vector<Segment> getFirstSetOfContiguousSegments(const std::vector<Segment>& input) {
+    std::vector<Segment> output;
+    if (input.size() < 1) {
+        ROS_ERROR("input.size() < 1");
+        return output;
+    }
+
+    output.push_back(input[0]);
+    float t_gap_threshold = 1.0;  // [s]  TODO: as a parameter?
+    for (int i = 1; i < input.size(); i++) {
+        double t_gap = fabs(input[i].t_A - input[i - 1].t_B);
+        if (t_gap > t_gap_threshold) {
+            // i-th Segment is not contiguous
+            break;
+        }
+        output.push_back(input[i]);
+    }
+
+    return output;
+}
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "continuous_monitoring");
 
@@ -577,6 +865,7 @@ int main(int argc, char** argv) {
 
     auto read_icao_srv_url = "/gauss/read_icao";
     auto read_operation_srv_url = "/gauss/read_operation";
+    auto read_geofences_srv_url = "/gauss/read_geofences";
     auto tactical_srv_url = "/gauss/new_tactical_deconfliction";
     auto alternatives_topic_url = "/gauss/possible_alternatives";
     auto new_threats_srv_url = "/gauss/new_threats";
@@ -584,6 +873,7 @@ int main(int argc, char** argv) {
 
     ros::ServiceClient icao_client = n.serviceClient<gauss_msgs::ReadIcao>(read_icao_srv_url);
     ros::ServiceClient operation_client = n.serviceClient<gauss_msgs::ReadOperation>(read_operation_srv_url);
+    ros::ServiceClient geofences_client = n.serviceClient<gauss_msgs::ReadGeofences>(read_geofences_srv_url);
     ros::ServiceClient tactical_client = n.serviceClient<gauss_msgs::NewDeconfliction>(tactical_srv_url);
     ros::ServiceClient possible_alternatives_client = n.serviceClient<gauss_msgs::NewDeconfliction>(alternatives_topic_url);
     ros::ServiceClient new_threats_client = n.serviceClient<gauss_msgs::NewThreats>(new_threats_srv_url);
@@ -594,6 +884,8 @@ int main(int argc, char** argv) {
     ROS_INFO("[Monitoring] %s: ok", read_icao_srv_url);
     ros::service::waitForService(read_operation_srv_url, -1);
     ROS_INFO("[Monitoring] %s: ok", read_operation_srv_url);
+    ros::service::waitForService(read_geofences_srv_url, -1);
+    ROS_INFO("[Monitoring] %s: ok", read_geofences_srv_url);
     ros::service::waitForService(tactical_srv_url, -1);
     ROS_INFO("[Monitoring] %s: ok", tactical_srv_url);
     ros::service::waitForService(new_threats_srv_url, -1);
@@ -619,6 +911,16 @@ int main(int argc, char** argv) {
             return 1;
         }
 
+        gauss_msgs::ReadGeofences read_geofences;
+        read_geofences.request.geofences_ids = read_icao.response.geofence_id;
+        if (geofences_client.call(read_geofences)) {
+            // ROS_INFO("[Monitoring] Read geofences... ok");
+            // std::cout << read_geofences.response << '\n';
+        } else {
+            ROS_ERROR("[Monitoring] Failed to call service: [%s]", read_geofences_srv_url);
+            return 1;
+        }
+
         std::map<std::string, int> icao_to_index_map;
         std::map<int, gauss_msgs::Operation> index_to_operation_map;
         std::vector<gauss_msgs::WaypointList> estimated_trajectories;
@@ -633,8 +935,56 @@ int main(int argc, char** argv) {
             }
         }
 
+        std::vector<GeofenceResult> geofence_results_list;
+        for (auto geofence : read_geofences.response.geofences) {
+            // std::cout << geofence << '\n';
+            ROS_INFO("_________________________");
+            ROS_INFO("Checking geofence id [%d]", geofence.id);
+            GeofenceResult current_result(geofence.id);
+            current_result.conflictive_trajectories = checkGeofenceConflict(estimated_trajectories, operational_volumes, geofence);
+            if (current_result.conflictive_trajectories.size() > 0) {
+                geofence_results_list.push_back(current_result);
+            }
+        }
+        // Visualize...
+        visualization_msgs::MarkerArray marker_array;
+        for (int i = 0; i < geofence_results_list.size(); i++) {
+            auto geofence_result = geofence_results_list[i];
+            // geofence_result.geofence_id
+            for (int j = 0; j < geofence_result.conflictive_trajectories.size(); j++) {
+                auto trajectory = geofence_result.conflictive_trajectories[j];
+                // trajectory.trajectory_index;
+                auto all_conflicts = trajectory.conflicts;
+                auto first_conflict = getFirstSetOfContiguousSegments(all_conflicts);
+                auto conflicts = first_conflict;
+                int segment_id = 1e6 * i + 1e3 * j;
+                std_msgs::ColorRGBA segment_color;
+                segment_color.a = 1.0;
+                segment_color.r = 1.0;
+                if (trajectory.closest_exit.mandatory) {
+                    // Means it is an intrusion!
+                    Segment way_out(trajectory.closest_exit, conflicts.back().point_B);
+                    marker_array.markers.push_back(way_out.translateToMarker(segment_id, segment_color));
+                    continue;
+                }
+                // else:
+                for (int k = 0; k < conflicts.size(); k++) {
+                    segment_id += k;
+                    segment_color.g = 0.5;
+                    marker_array.markers.push_back(conflicts[k].translateToMarker(segment_id, segment_color));
+                }
+            }
+        }
+        // visualization_pub.publish(marker_array);
+        // ros::spinOnce();
+        // rate.sleep();
+        // continue;
+
         auto trajectories_count = estimated_trajectories.size();
         if (trajectories_count < 2) {
+            visualization_pub.publish(marker_array);
+            ros::spinOnce();
+            rate.sleep();
             continue;
         }
 
@@ -649,7 +999,7 @@ int main(int argc, char** argv) {
             std::pair<gauss_msgs::WaypointList, gauss_msgs::WaypointList> trajectories;
             trajectories.first = estimated_trajectories[i];
             for (int j = i + 1; j < trajectories_count; j++) {
-                // printf("[%d, %d]\n", i, j);
+                // ROS_INFO("Checking trajectories: [%d, %d]", i, j);
                 trajectories.second = estimated_trajectories[j];
                 double s_threshold = std::max(safety_distance_sq, pow(operational_volumes[i] + operational_volumes[j], 2));
                 auto segments_loss_results = checkTrajectoriesLoss(trajectories, s_threshold);
@@ -679,7 +1029,6 @@ int main(int argc, char** argv) {
             }
         }
 
-        visualization_msgs::MarkerArray marker_array;
         for (int i = 0; i < loss_results_list.size(); i++) {
             // std::cout << loss_results_list[i] << '\n';
             marker_array.markers.push_back(translateToMarker(loss_results_list[i]));
@@ -693,6 +1042,6 @@ int main(int argc, char** argv) {
         rate.sleep();
     }
 
-    ros::spin();
+    // ros::spin();
     return 0;
 }

@@ -2,16 +2,16 @@
 	"geofences": [
 		{
 			"id": 0,
-			"static_geofence": false,
-			"cylinder_shape": false,
+			"static_geofence": true,
+			"cylinder_shape": true,
 			"min_altitude": 0,
-			"max_altitude": 10,
-			"start_time": 5,
-			"end_time": 200,
+			"max_altitude": 150,
+			"start_time": 0,
+			"end_time": 2000000,
 			"circle": {
 				"x_center": 0,
-				"y_center": 0,
-				"radius": 0
+				"y_center": -200,
+				"radius": 300
 			},
 			"polygon": {
 				"waypoints": [
