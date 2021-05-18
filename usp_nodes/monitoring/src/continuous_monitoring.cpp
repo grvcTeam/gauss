@@ -394,8 +394,35 @@ visualization_msgs::Marker translateToMarker(const LossExtreme& extremes, int id
     return marker;
 }
 
-struct LossResult {
-    LossResult(const int i, const int j) : first_trajectory_index(i), second_trajectory_index(j) {}
+struct Result {
+    virtual bool isEqual(const Result& other) = 0;
+    virtual gauss_msgs::NewThreat convertToThreat() = 0;
+    enum ResultType{LOSS, GEO} type; 
+    virtual ~Result() = default;
+};
+
+struct LossResult : public Result {
+    LossResult(const int i, const int j) : first_trajectory_index(i), second_trajectory_index(j) {type = LOSS;}
+    // LossResult(const LossResult& other) : first_trajectory_index(other.first_trajectory_index), second_trajectory_index(other.second_trajectory_index) {
+    //     type = LOSS; 
+    //     loss_conflictive_segments = other.loss_conflictive_segments;
+    // }
+
+    bool isEqual(const Result& other) {
+        if (other.type == GEO) {
+            return false;
+        }
+        return isEqual(static_cast<LossResult>(other));
+    }
+
+    bool isEqual(const LossResult& other) {
+        const float check_time_margin = 10.0;  // [s]
+        return std::abs(loss_conflictive_segments.front().t_crossing_0 - other.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
+               std::abs(loss_conflictive_segments.front().t_crossing_1 - other.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
+               std::abs(loss_conflictive_segments.back().t_crossing_0 - other.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
+               std::abs(loss_conflictive_segments.back().t_crossing_1 - other.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin;
+    }
+    gauss_msgs::NewThreat convertToThreat() override {return gauss_msgs::NewThreat();}
 
     friend std::ostream& operator<<(std::ostream& out, const LossResult& r);
     int first_trajectory_index;
@@ -559,64 +586,72 @@ gauss_msgs::NewThreat fillDeconflictionMsg(const LossResult& _loss_result, const
     return out_threat;
 }
 
-void cleanStoredList(std::vector<LossResult>& _stored_result_list, const std::vector<LossResult>& _actual_loss_result_list, const double& _check_time_margin) {
+void cleanStoredList(std::vector<Result*>& _stored_result_list, const std::vector<Result*>& _actual_loss_result_list, const double& _check_time_margin) {
     if (_actual_loss_result_list.size() == 0) {
         _stored_result_list.clear();
     } else {
         for (auto _stored_result = _stored_result_list.begin(); _stored_result != _stored_result_list.end();) {
-            std::vector<LossResult>::const_iterator actual_it = std::find_if(_actual_loss_result_list.begin(), _actual_loss_result_list.end(),
-                                                                             [_stored_result](LossResult _actual_result) { return (_stored_result->first_trajectory_index == _actual_result.first_trajectory_index &&
-                                                                                                                                   _stored_result->second_trajectory_index == _actual_result.second_trajectory_index); });
-            if (actual_it != _actual_loss_result_list.end()) {
-                if (std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_0 - actual_it->loss_conflictive_segments.front().t_crossing_0) >= _check_time_margin ||
-                    std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_1 - actual_it->loss_conflictive_segments.front().t_crossing_1) >= _check_time_margin ||
-                    std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_0 - actual_it->loss_conflictive_segments.back().t_crossing_0) >= _check_time_margin ||
-                    std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_1 - actual_it->loss_conflictive_segments.back().t_crossing_1) >= _check_time_margin) {
-                    // Not found! Must be deleted.
-                    _stored_result = _stored_result_list.erase(_stored_result);
-                } else {
-                    // Found! Do nothing.
-                    _stored_result++;
-                }
-            } else {
-                // Not found! Must be deleted.
+            std::vector<Result*>::const_iterator actual_it = std::find_if(_actual_loss_result_list.begin(), _actual_loss_result_list.end(),
+                                                                             [_stored_result](Result* _actual_result) { return _actual_result->isEqual(**_stored_result); });
+            bool do_erase = (actual_it == _actual_loss_result_list.end());
+            // if (actual_it != _actual_loss_result_list.end()) {
+            //     if (std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_0 - actual_it->loss_conflictive_segments.front().t_crossing_0) >= _check_time_margin ||
+            //         std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_1 - actual_it->loss_conflictive_segments.front().t_crossing_1) >= _check_time_margin ||
+            //         std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_0 - actual_it->loss_conflictive_segments.back().t_crossing_0) >= _check_time_margin ||
+            //         std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_1 - actual_it->loss_conflictive_segments.back().t_crossing_1) >= _check_time_margin) {
+            //         // Not found! Must be deleted.
+            //         _stored_result = _stored_result_list.erase(_stored_result);
+            //     } else {
+            //         // Found! Do nothing.
+            //         _stored_result++;
+            //     }
+            // } else {
+            //     // Not found! Must be deleted.
+            //     _stored_result = _stored_result_list.erase(_stored_result);
+            // }
+            if (do_erase) {
+                delete *_stored_result;  //* Watchout!
                 _stored_result = _stored_result_list.erase(_stored_result);
+            } else {
+                _stored_result++;
             }
         }
     }
 }
 
-gauss_msgs::NewThreats manageResultList(const std::vector<LossResult>& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
+gauss_msgs::NewThreats manageResultList(std::vector<Result*>& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
     double check_time_margin = 10.0;
     static double stored_id_count = 0;
     gauss_msgs::NewThreats out_threats;
-    static std::vector<LossResult> stored_loss_result_list;
-    if (stored_loss_result_list.size() > 0) cleanStoredList(stored_loss_result_list, _loss_result_list, check_time_margin);
+    static std::vector<Result*> stored_result_list;
+    if (stored_result_list.size() > 0) cleanStoredList(stored_result_list, _loss_result_list, check_time_margin);
     if (_loss_result_list.size() > 0) {
-        if (stored_loss_result_list.size() == 0) {
-            stored_loss_result_list.push_back(_loss_result_list.front());
-            out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result_list.front(), _index_to_operation_map));
+        if (stored_result_list.size() == 0) {
+            stored_result_list.push_back(_loss_result_list.front());
+            //* out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result_list.front(), _index_to_operation_map));
         } else {
             for (auto _loss_result : _loss_result_list) {
                 bool save_loss_result = false;
-                // Using lambda, check if both trajectory index of _loss_result are in stored_loss_result_list
-                std::vector<LossResult>::iterator stored_it = std::find_if(stored_loss_result_list.begin(), stored_loss_result_list.end(),
-                                                                           [_loss_result](LossResult stored_loss_result) { return (stored_loss_result.first_trajectory_index == _loss_result.first_trajectory_index &&
-                                                                                                                                   stored_loss_result.second_trajectory_index == _loss_result.second_trajectory_index); });
-                if (stored_it != stored_loss_result_list.end()) {  // All trajectory index are found!
+                // Using lambda, check if both trajectory index of _loss_result are in stored_result_list
+                std::vector<Result*>::iterator stored_it = std::find_if(stored_result_list.begin(), stored_result_list.end(),
+                                                                           [_loss_result](Result* stored_loss_result) { return stored_loss_result->isEqual(*_loss_result); });
+                save_loss_result = (stored_it == stored_result_list.end());
+                // if (stored_it != stored_result_list.end()) {  // All trajectory index are found!
                     // Check if the difference of the intpu times (absolute) with the stored times is bigger than check_time_margin
-                    if (std::abs(stored_it->loss_conflictive_segments.front().t_crossing_0 - _loss_result.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
-                        std::abs(stored_it->loss_conflictive_segments.front().t_crossing_1 - _loss_result.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
-                        std::abs(stored_it->loss_conflictive_segments.back().t_crossing_0 - _loss_result.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
-                        std::abs(stored_it->loss_conflictive_segments.back().t_crossing_1 - _loss_result.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin) {
-                        save_loss_result = true;
-                    }
-                } else {
-                    save_loss_result = true;
-                }
+                    // if (std::abs(stored_it->loss_conflictive_segments.front().t_crossing_0 - _loss_result.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
+                    //     std::abs(stored_it->loss_conflictive_segments.front().t_crossing_1 - _loss_result.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
+                    //     std::abs(stored_it->loss_conflictive_segments.back().t_crossing_0 - _loss_result.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
+                    //     std::abs(stored_it->loss_conflictive_segments.back().t_crossing_1 - _loss_result.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin) {
+                    // save_loss_result = false;
+                    // }
+                // } else {
+                //     save_loss_result = true;
+                // }
                 if (save_loss_result) {
-                    stored_loss_result_list.push_back(_loss_result);
-                    out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result, _index_to_operation_map));
+                    stored_result_list.push_back(_loss_result);
+                    //* out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result, _index_to_operation_map));
+                } else {
+                    delete _loss_result;  //* Watchout!
                 }
             }
         }
@@ -826,10 +861,12 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
     return result;
 }
 
-struct GeofenceResult {
-    GeofenceResult(int i): geofence_id(i) {}
+struct GeofenceResult : public Result {
+    GeofenceResult(int i): geofence_id(i) {type = GEO;}
     int geofence_id;
     std::vector<GeoConflictiveTrajectory> geo_conflictive_trajectories;
+    bool isEqual(const Result& other) override {return true;}
+    gauss_msgs::NewThreat convertToThreat() {return gauss_msgs::NewThreat();}
 };
 
 std::vector<Segment> getFirstSetOfContiguousSegments(const std::vector<Segment>& input) {
@@ -1012,7 +1049,13 @@ int main(int argc, char** argv) {
         }
 
         std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
-        gauss_msgs::NewThreats threats_msg = manageResultList(loss_results_list, index_to_operation_map);
+        std::vector<Result*> result_list;        
+        for (auto loss_result : loss_results_list) {
+            Result* result = new LossResult(loss_result);
+            result_list.push_back(result);
+        }
+
+        gauss_msgs::NewThreats threats_msg = manageResultList(result_list, index_to_operation_map);
         if (threats_msg.request.threats.size() > 0) {
             std::string cout_threats;
             for (auto threat : threats_msg.request.threats) {
