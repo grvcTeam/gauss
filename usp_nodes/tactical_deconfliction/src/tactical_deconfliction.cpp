@@ -188,8 +188,8 @@ std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, geometry_m
     double max_y = *std::max_element(temp_y.begin(), temp_y.end());
 
     while (min_x >= obs_min.x || min_y >= obs_min.y || max_x <= obs_max.x || max_y <= obs_max.y) {
-        if (min_x >= obs_min.x) min_x = _operational_volume * 2 - min_x;
-        if (min_y >= obs_min.y) min_y = _operational_volume * 2 - min_y;
+        if (min_x >= obs_min.x) min_x = min_x - _operational_volume * 2;
+        if (min_y >= obs_min.y) min_y = min_y - _operational_volume * 2;
         if (max_x <= obs_max.x) max_x = _operational_volume * 2 + max_x;
         if (max_y <= obs_max.y) max_y = _operational_volume * 2 + max_y;
     }
@@ -218,6 +218,7 @@ nav_msgs::Path translateToPath(const gauss_msgs::WaypointList &_wp_list) {
         temp_wp.pose.position.y = wp.y;
         temp_wp.pose.position.z = wp.z;
         temp_wp.header.stamp = wp.stamp;
+        out_path.poses.push_back(temp_wp);
     }
     return out_path;
 }
@@ -382,11 +383,11 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
     switch (req.threat.threat_type) {
         case req.threat.LOSS_OF_SEPARATION: {
             std::vector<std::vector<gauss_msgs::Waypoint>> segments_first_second;
-            segments_first_second.push_back(req.threat.conflictive_segments.segment_first);
-            segments_first_second.push_back(req.threat.conflictive_segments.segment_second);
+            segments_first_second.push_back(req.threat.loss_conflictive_segments.segment_first);
+            segments_first_second.push_back(req.threat.loss_conflictive_segments.segment_second);
             std::vector<gauss_msgs::Waypoint> points_at_t_min;
-            points_at_t_min.push_back(req.threat.conflictive_segments.point_at_t_min_segment_first);
-            points_at_t_min.push_back(req.threat.conflictive_segments.point_at_t_min_segment_second);
+            points_at_t_min.push_back(req.threat.loss_conflictive_segments.point_at_t_min_segment_first);
+            points_at_t_min.push_back(req.threat.loss_conflictive_segments.point_at_t_min_segment_second);
             ROS_ERROR_COND(req.threat.conflictive_operations.size() != 2, "[Tactical] Deconflictive server should receive 2 conflictive operations to solve LOSS OF SEPARATION!");
             // Calculate a vector to separate perpendiculary one trajectory
             std::vector<Eigen::Vector3f> avoid_vectors = perpendicularSeparationVector(points_at_t_min.front(), points_at_t_min.back(), req.threat.conflictive_operations.front().operational_volume, req.threat.conflictive_operations.back().operational_volume);
@@ -417,7 +418,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             }
             // Visualize "space" results
             visualization_msgs::MarkerArray marker_array;
-            visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.threat.conflictive_segments.point_at_t_min_segment_first, req.threat.conflictive_segments.point_at_t_min_segment_second);
+            visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.threat.loss_conflictive_segments.point_at_t_min_segment_first, req.threat.loss_conflictive_segments.point_at_t_min_segment_second);
             marker_array.markers.push_back(marker_spheres);
             for (int i = 0; i < 2; i++) marker_array.markers.push_back(createMarkerLines(res.deconfliction_plans[i].waypoint_list));
             visualization_pub_.publish(marker_array);
@@ -427,19 +428,25 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // * Assume inputs from monitoring
             // TODO: Check if init and end points have to be further apart from the geofence!
             geometry_msgs::Point p_init_conflict, p_end_conflict;
-            p_init_conflict = translateToPoint(req.threat.conflictive_segments.segment_first.front());
-            p_end_conflict = translateToPoint(req.threat.conflictive_segments.segment_first.back());
-            ros::Time t_init_conflict = req.threat.conflictive_segments.segment_first.front().stamp;
-            ros::Time t_end_conflict = req.threat.conflictive_segments.segment_first.front().stamp;
+            p_init_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.front());
+            p_end_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.back());
+            ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.all_segments.front().stamp;
+            ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.all_segments.back().stamp;
 
+            double fake_value = 1.0;
             gauss_msgs::DeconflictionPlan possible_solution;
             // [1] Ruta a mi destino evitando una geofence
             possible_solution.maneuver_type = 1;
-            possible_solution.waypoint_list = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+            possible_solution.uav_id = req.threat.uav_ids.front();
+            possible_solution.cost = possible_solution.riskiness = fake_value;
+            std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+            possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.front().flight_plan_updated, req.threat.conflictive_operations.front().actual_wp);
             res.deconfliction_plans.push_back(possible_solution);
             // [3] Ruta que me manda devuelta a casa
             possible_solution.maneuver_type = 3;
             possible_solution.waypoint_list.clear();
+            possible_solution.uav_id = req.threat.uav_ids.front();
+            possible_solution.cost = possible_solution.riskiness = fake_value * 2;
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().flight_plan.waypoints.front());
             res.deconfliction_plans.push_back(possible_solution);
@@ -449,26 +456,34 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // * Assume inputs from monitoring
             // TODO: Check if init and end points have to be further apart from the geofence!
             geometry_msgs::Point p_init_conflict, p_end_conflict;
-            p_init_conflict = translateToPoint(req.threat.conflictive_segments.segment_first.front());  // * Should we assume that this is the escape point?
-            p_end_conflict = translateToPoint(req.threat.conflictive_segments.segment_first.back());
-            ros::Time t_init_conflict = req.threat.conflictive_segments.segment_first.front().stamp;
-            ros::Time t_end_conflict = req.threat.conflictive_segments.segment_first.front().stamp;
+            p_init_conflict = translateToPoint(req.threat.geofence_conflictive_segments.clossest_exit_wp);  // * Should we assume that this is the escape point?
+            p_end_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.back());
+            ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.clossest_exit_wp.stamp;
+            ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.all_segments.back().stamp;
 
+            double fake_value = 1.0;
             gauss_msgs::DeconflictionPlan possible_solution;
             possible_solution.uav_id = req.threat.conflictive_operations.front().uav_id;
             // [6] Ruta a mi destino saliendo lo antes posible de la geofence
             possible_solution.maneuver_type = 1;
-            possible_solution.waypoint_list = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+            possible_solution.uav_id = req.threat.uav_ids.front();
+            possible_solution.cost = possible_solution.riskiness = fake_value;
+            std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+            possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.front().flight_plan_updated, req.threat.conflictive_operations.front().actual_wp);
             res.deconfliction_plans.push_back(possible_solution);
             // [2] Ruta a mi destino por el camino mas corto
             possible_solution.maneuver_type = 2;
             possible_solution.waypoint_list.clear();
+            possible_solution.uav_id = req.threat.uav_ids.front();
+            possible_solution.cost = possible_solution.riskiness = fake_value * 2;
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().flight_plan.waypoints.back());
             res.deconfliction_plans.push_back(possible_solution);
             // [3] Ruta que me manda de vuelta a casa
             possible_solution.maneuver_type = 3;
             possible_solution.waypoint_list.clear();
+            possible_solution.uav_id = req.threat.uav_ids.front();
+            possible_solution.cost = possible_solution.riskiness = fake_value * 3;
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().flight_plan.waypoints.front());
             res.deconfliction_plans.push_back(possible_solution);

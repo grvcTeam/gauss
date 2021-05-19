@@ -9,7 +9,8 @@ Waypoint location
 
 Geofence[] conflictive_geofences
 ConflictiveOperation[] conflictive_operations
-CheckSegmentsLossResult conflictive_segments
+LossConflictiveSegments loss_conflictive_segments
+GeofenceConflictiveSegments geofence_conflictive_segments
 
 uint8 SPOOFING_ATTACK = 0       # Detected by USP
 uint8 TECHNICAL_FAILURE = 1     # Detected by USP
