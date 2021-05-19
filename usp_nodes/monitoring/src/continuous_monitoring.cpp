@@ -418,10 +418,10 @@ struct LossResult {
     bool isEqual(const LossResult& other) {
         const float check_time_margin = 10.0;  // [s]
         return (first_trajectory_index == other.first_trajectory_index && second_trajectory_index == other.second_trajectory_index) &&
-               (std::abs(loss_conflictive_segments.front().t_crossing_0 - other.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
-                std::abs(loss_conflictive_segments.front().t_crossing_1 - other.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
-                std::abs(loss_conflictive_segments.back().t_crossing_0 - other.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
-                std::abs(loss_conflictive_segments.back().t_crossing_1 - other.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin);
+               (std::abs(loss_conflictive_segments.front().t_crossing_0 - other.loss_conflictive_segments.front().t_crossing_0) <= check_time_margin ||
+                std::abs(loss_conflictive_segments.front().t_crossing_1 - other.loss_conflictive_segments.front().t_crossing_1) <= check_time_margin ||
+                std::abs(loss_conflictive_segments.back().t_crossing_0 - other.loss_conflictive_segments.back().t_crossing_0) <= check_time_margin ||
+                std::abs(loss_conflictive_segments.back().t_crossing_1 - other.loss_conflictive_segments.back().t_crossing_1) <= check_time_margin);
     }
     gauss_msgs::NewThreat convertToThreat(const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
         gauss_msgs::NewThreat out_threat;
@@ -447,7 +447,8 @@ struct LossResult {
             out_threat.conflictive_segments.point_at_t_min_segment_second = j.second.point_at_time(j.t_min);
         }
 
-        return out_threat;}
+        return out_threat;
+    }
 };
 
 struct GeoConflictiveTrajectory {
