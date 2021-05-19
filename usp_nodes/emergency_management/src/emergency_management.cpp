@@ -91,7 +91,8 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
             gauss_msgs::NewDeconfliction tactical_msg;
             tactical_msg.request.threat = threat;
             if (tactical_client_.call(tactical_msg)) {
-                int uav_id_smaller_priority = selectSmallerPriority(threat);  // Get the UAV id with less priority
+                int uav_id_smaller_priority = threat.uav_ids.front();
+                if (threat.threat_type == threat.LOSS_OF_SEPARATION) uav_id_smaller_priority = selectSmallerPriority(threat);  // Get the UAV id with less priority
                 gauss_msgs::Notifications notifications_msg;
                 notifications_msg.request.notifications.push_back(selectBestSolution(tactical_msg, uav_id_smaller_priority));
                 if (!notification_client_.call(notifications_msg)) ROS_WARN("[EM] Failed to call USP manager");
