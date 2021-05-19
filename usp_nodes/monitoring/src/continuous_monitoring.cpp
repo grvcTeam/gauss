@@ -394,40 +394,76 @@ visualization_msgs::Marker translateToMarker(const LossExtreme& extremes, int id
     return marker;
 }
 
-struct Result {
-    virtual bool isEqual(const Result& other) = 0;
-    virtual gauss_msgs::NewThreat convertToThreat() = 0;
-    enum ResultType{LOSS, GEO} type; 
-    virtual ~Result() = default;
-};
+gauss_msgs::ConflictiveOperation fillConflictiveOperation(const int& _trajectory_index, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
+    gauss_msgs::ConflictiveOperation out_msg;
+    out_msg.actual_wp = _index_to_operation_map.at(_trajectory_index).track.waypoints.back();
+    out_msg.current_wp = _index_to_operation_map.at(_trajectory_index).current_wp;
+    out_msg.estimated_trajectory = _index_to_operation_map.at(_trajectory_index).estimated_trajectory;
+    out_msg.flight_plan = _index_to_operation_map.at(_trajectory_index).flight_plan;
+    out_msg.flight_plan_updated = _index_to_operation_map.at(_trajectory_index).flight_plan_updated;
+    out_msg.landing_spots = _index_to_operation_map.at(_trajectory_index).landing_spots;
+    out_msg.operational_volume = _index_to_operation_map.at(_trajectory_index).operational_volume;
+    out_msg.uav_id = _index_to_operation_map.at(_trajectory_index).uav_id;
 
-struct LossResult : public Result {
-    LossResult(const int i, const int j) : first_trajectory_index(i), second_trajectory_index(j) {type = LOSS;}
-    // LossResult(const LossResult& other) : first_trajectory_index(other.first_trajectory_index), second_trajectory_index(other.second_trajectory_index) {
-    //     type = LOSS; 
-    //     loss_conflictive_segments = other.loss_conflictive_segments;
-    // }
+    return out_msg;
+}
 
-    bool isEqual(const Result& other) {
-        if (other.type == GEO) {
-            return false;
-        }
-        return isEqual(static_cast<LossResult>(other));
-    }
-
-    bool isEqual(const LossResult& other) {
-        const float check_time_margin = 10.0;  // [s]
-        return std::abs(loss_conflictive_segments.front().t_crossing_0 - other.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
-               std::abs(loss_conflictive_segments.front().t_crossing_1 - other.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
-               std::abs(loss_conflictive_segments.back().t_crossing_0 - other.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
-               std::abs(loss_conflictive_segments.back().t_crossing_1 - other.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin;
-    }
-    gauss_msgs::NewThreat convertToThreat() override {return gauss_msgs::NewThreat();}
-
+struct LossResult {
+    LossResult(const int i, const int j) : first_trajectory_index(i), second_trajectory_index(j) {}
     friend std::ostream& operator<<(std::ostream& out, const LossResult& r);
     int first_trajectory_index;
     int second_trajectory_index;
     std::vector<LossConflictiveSegments> loss_conflictive_segments;
+
+    bool isEqual(const LossResult& other) {
+        const float check_time_margin = 10.0;  // [s]
+        return (first_trajectory_index == other.first_trajectory_index && second_trajectory_index == other.second_trajectory_index) &&
+               (std::abs(loss_conflictive_segments.front().t_crossing_0 - other.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
+                std::abs(loss_conflictive_segments.front().t_crossing_1 - other.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
+                std::abs(loss_conflictive_segments.back().t_crossing_0 - other.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
+                std::abs(loss_conflictive_segments.back().t_crossing_1 - other.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin);
+    }
+    gauss_msgs::NewThreat convertToThreat(const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
+        gauss_msgs::NewThreat out_threat;
+        static double count_id = 0;
+        out_threat.threat_id = count_id++;
+        out_threat.threat_type = out_threat.LOSS_OF_SEPARATION;
+        out_threat.uav_ids.push_back(_index_to_operation_map.at(first_trajectory_index).uav_id);
+        out_threat.uav_ids.push_back(_index_to_operation_map.at(second_trajectory_index).uav_id);
+        out_threat.priority_ops.push_back(_index_to_operation_map.at(first_trajectory_index).priority);
+        out_threat.priority_ops.push_back(_index_to_operation_map.at(second_trajectory_index).priority);
+        out_threat.conflictive_operations.push_back(fillConflictiveOperation(first_trajectory_index, _index_to_operation_map));
+        out_threat.conflictive_operations.push_back(fillConflictiveOperation(second_trajectory_index, _index_to_operation_map));
+        for (auto j : loss_conflictive_segments) {
+            out_threat.conflictive_segments.segment_first.push_back(j.first.point_A);
+            out_threat.conflictive_segments.segment_first.push_back(j.first.point_B);
+            out_threat.conflictive_segments.segment_second.push_back(j.second.point_A);
+            out_threat.conflictive_segments.segment_second.push_back(j.second.point_B);
+            out_threat.conflictive_segments.t_min = j.t_min;
+            out_threat.conflictive_segments.s_min = j.s_min;
+            out_threat.conflictive_segments.t_crossing_0 = j.t_crossing_0;
+            out_threat.conflictive_segments.t_crossing_1 = j.t_crossing_1;
+            out_threat.conflictive_segments.point_at_t_min_segment_first = j.first.point_at_time(j.t_min);
+            out_threat.conflictive_segments.point_at_t_min_segment_second = j.second.point_at_time(j.t_min);
+        }
+
+        return out_threat;}
+};
+
+struct GeoConflictiveTrajectory {
+    GeoConflictiveTrajectory(int i): trajectory_index(i) {}
+    int trajectory_index;
+    std::vector<Segment> conflictive_segments;
+    gauss_msgs::Waypoint closest_exit_wp;  // Use the mandatory field as intrusion flag
+};
+
+struct GeofenceResult {
+    GeofenceResult(int i): geofence_id(i) {}
+    int geofence_id;
+    std::vector<GeoConflictiveTrajectory> geo_conflictive_trajectories;
+    
+    bool isEqual(const GeofenceResult& other) {return true;}
+    gauss_msgs::NewThreat convertToThreat() {return gauss_msgs::NewThreat();}
 };
 
 std::vector<LossResult> getContiguousResults(const LossResult& input) {
@@ -544,20 +580,6 @@ bool happensBefore(const LossResult& a, const LossResult& b) {
     return a.loss_conflictive_segments[0].t_crossing_0 < b.loss_conflictive_segments[0].t_crossing_0;
 }
 
-gauss_msgs::ConflictiveOperation fillConflictiveOperation(const int& _trajectory_index, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
-    gauss_msgs::ConflictiveOperation out_msg;
-    out_msg.actual_wp = _index_to_operation_map.at(_trajectory_index).track.waypoints.back();
-    out_msg.current_wp = _index_to_operation_map.at(_trajectory_index).current_wp;
-    out_msg.estimated_trajectory = _index_to_operation_map.at(_trajectory_index).estimated_trajectory;
-    out_msg.flight_plan = _index_to_operation_map.at(_trajectory_index).flight_plan;
-    out_msg.flight_plan_updated = _index_to_operation_map.at(_trajectory_index).flight_plan_updated;
-    out_msg.landing_spots = _index_to_operation_map.at(_trajectory_index).landing_spots;
-    out_msg.operational_volume = _index_to_operation_map.at(_trajectory_index).operational_volume;
-    out_msg.uav_id = _index_to_operation_map.at(_trajectory_index).uav_id;
-
-    return out_msg;
-}
-
 // TODO: Discuss this function. Right now is taking just the first threat into account
 gauss_msgs::NewThreat fillDeconflictionMsg(const LossResult& _loss_result, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
     gauss_msgs::NewThreat out_threat;
@@ -586,32 +608,16 @@ gauss_msgs::NewThreat fillDeconflictionMsg(const LossResult& _loss_result, const
     return out_threat;
 }
 
-void cleanStoredList(std::vector<Result*>& _stored_result_list, const std::vector<Result*>& _actual_loss_result_list, const double& _check_time_margin) {
+void cleanStoredList(std::vector<LossResult>& _stored_loss_result_list, std::vector<GeofenceResult>& _stored_geofence_result_list, const std::vector<LossResult>& _actual_loss_result_list, const std::vector<GeofenceResult>& _actual_geofence_result_list, const double& _check_time_margin) {
     if (_actual_loss_result_list.size() == 0) {
-        _stored_result_list.clear();
+        _stored_loss_result_list.clear();
     } else {
-        for (auto _stored_result = _stored_result_list.begin(); _stored_result != _stored_result_list.end();) {
-            std::vector<Result*>::const_iterator actual_it = std::find_if(_actual_loss_result_list.begin(), _actual_loss_result_list.end(),
-                                                                             [_stored_result](Result* _actual_result) { return _actual_result->isEqual(**_stored_result); });
+        for (auto _stored_result = _stored_loss_result_list.begin(); _stored_result != _stored_loss_result_list.end();) {
+            std::vector<LossResult>::const_iterator actual_it = std::find_if(_actual_loss_result_list.begin(), _actual_loss_result_list.end(),
+                                                                             [_stored_result](LossResult _actual_result) { return _actual_result.isEqual(*_stored_result); });
             bool do_erase = (actual_it == _actual_loss_result_list.end());
-            // if (actual_it != _actual_loss_result_list.end()) {
-            //     if (std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_0 - actual_it->loss_conflictive_segments.front().t_crossing_0) >= _check_time_margin ||
-            //         std::abs(_stored_result->loss_conflictive_segments.front().t_crossing_1 - actual_it->loss_conflictive_segments.front().t_crossing_1) >= _check_time_margin ||
-            //         std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_0 - actual_it->loss_conflictive_segments.back().t_crossing_0) >= _check_time_margin ||
-            //         std::abs(_stored_result->loss_conflictive_segments.back().t_crossing_1 - actual_it->loss_conflictive_segments.back().t_crossing_1) >= _check_time_margin) {
-            //         // Not found! Must be deleted.
-            //         _stored_result = _stored_result_list.erase(_stored_result);
-            //     } else {
-            //         // Found! Do nothing.
-            //         _stored_result++;
-            //     }
-            // } else {
-            //     // Not found! Must be deleted.
-            //     _stored_result = _stored_result_list.erase(_stored_result);
-            // }
             if (do_erase) {
-                delete *_stored_result;  //* Watchout!
-                _stored_result = _stored_result_list.erase(_stored_result);
+                _stored_result = _stored_loss_result_list.erase(_stored_result);
             } else {
                 _stored_result++;
             }
@@ -619,39 +625,27 @@ void cleanStoredList(std::vector<Result*>& _stored_result_list, const std::vecto
     }
 }
 
-gauss_msgs::NewThreats manageResultList(std::vector<Result*>& _loss_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
+gauss_msgs::NewThreats manageResultList(std::vector<LossResult>& _loss_result_list, std::vector<GeofenceResult>& _geofence_result_list, const std::map<int, gauss_msgs::Operation>& _index_to_operation_map) {
     double check_time_margin = 10.0;
-    static double stored_id_count = 0;
+    static double stored_loss_id_count, stored_geofence_id_count = 0;
     gauss_msgs::NewThreats out_threats;
-    static std::vector<Result*> stored_result_list;
-    if (stored_result_list.size() > 0) cleanStoredList(stored_result_list, _loss_result_list, check_time_margin);
+    static std::vector<LossResult> stored_loss_result_list;
+    static std::vector<GeofenceResult> stored_geofence_result_list;
+    if (stored_loss_result_list.size() > 0 || stored_geofence_result_list.size() > 0) cleanStoredList(stored_loss_result_list, stored_geofence_result_list, _loss_result_list, _geofence_result_list, check_time_margin);
     if (_loss_result_list.size() > 0) {
-        if (stored_result_list.size() == 0) {
-            stored_result_list.push_back(_loss_result_list.front());
-            //* out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result_list.front(), _index_to_operation_map));
+        if (stored_loss_result_list.size() == 0) {
+            stored_loss_result_list.push_back(_loss_result_list.front());
+            out_threats.request.threats.push_back(_loss_result_list[0].convertToThreat(_index_to_operation_map));
         } else {
             for (auto _loss_result : _loss_result_list) {
                 bool save_loss_result = false;
-                // Using lambda, check if both trajectory index of _loss_result are in stored_result_list
-                std::vector<Result*>::iterator stored_it = std::find_if(stored_result_list.begin(), stored_result_list.end(),
-                                                                           [_loss_result](Result* stored_loss_result) { return stored_loss_result->isEqual(*_loss_result); });
-                save_loss_result = (stored_it == stored_result_list.end());
-                // if (stored_it != stored_result_list.end()) {  // All trajectory index are found!
-                    // Check if the difference of the intpu times (absolute) with the stored times is bigger than check_time_margin
-                    // if (std::abs(stored_it->loss_conflictive_segments.front().t_crossing_0 - _loss_result.loss_conflictive_segments.front().t_crossing_0) >= check_time_margin ||
-                    //     std::abs(stored_it->loss_conflictive_segments.front().t_crossing_1 - _loss_result.loss_conflictive_segments.front().t_crossing_1) >= check_time_margin ||
-                    //     std::abs(stored_it->loss_conflictive_segments.back().t_crossing_0 - _loss_result.loss_conflictive_segments.back().t_crossing_0) >= check_time_margin ||
-                    //     std::abs(stored_it->loss_conflictive_segments.back().t_crossing_1 - _loss_result.loss_conflictive_segments.back().t_crossing_1) >= check_time_margin) {
-                    // save_loss_result = false;
-                    // }
-                // } else {
-                //     save_loss_result = true;
-                // }
+                // Using lambda, check if both trajectory index of _loss_result are in stored_loss_result_list
+                std::vector<LossResult>::iterator stored_it = std::find_if(stored_loss_result_list.begin(), stored_loss_result_list.end(),
+                                                                           [_loss_result](LossResult stored_loss_result) { return stored_loss_result.isEqual(_loss_result); });
+                save_loss_result = (stored_it == stored_loss_result_list.end());
                 if (save_loss_result) {
-                    stored_result_list.push_back(_loss_result);
-                    //* out_threats.request.threats.push_back(fillDeconflictionMsg(_loss_result, _index_to_operation_map));
-                } else {
-                    delete _loss_result;  //* Watchout!
+                    stored_loss_result_list.push_back(_loss_result);
+                    out_threats.request.threats.push_back(_loss_result.convertToThreat(_index_to_operation_map));
                 }
             }
         }
@@ -678,7 +672,7 @@ std::pair<double, double> checkGeofence2D(const Segment& segment, const gauss_ms
     // Geofence2DResult result;
     if (point_A_is_in && point_B_is_in) {
         // A and B inside the circle
-        ROS_INFO("A and B inside the circle");
+        // ROS_INFO("A and B inside the circle");
         return std::make_pair(segment.t_A, segment.t_B);
     }
 
@@ -690,11 +684,11 @@ std::pair<double, double> checkGeofence2D(const Segment& segment, const gauss_ms
     float c_y = pow(translated_segment.point_A.y, 2);
 
     auto m_crossing = quadratic_roots(a_x + a_y, b_x + b_y, c_x + c_y - sq_radius);
-    ROS_INFO("Roots: m = [%lf, %lf]", m_crossing.first, m_crossing.second);
+    // ROS_INFO("Roots: m = [%lf, %lf]", m_crossing.first, m_crossing.second);
 
     if (std::isnan(m_crossing.first)) {  // m_crossing.second should also be nan
         // There is no intersection at all
-        ROS_INFO("There is no intersection at all");
+        // ROS_INFO("There is no intersection at all");
         return std::make_pair(std::nan(""), std::nan(""));
     }
 
@@ -725,14 +719,6 @@ geometry_msgs::Point calculateClosestExit(const geometry_msgs::Point& current, c
     return out;
 }
 
-// TODO: Rename to GeofenceConflict?
-struct GeoConflictiveTrajectory {
-    GeoConflictiveTrajectory(int i): trajectory_index(i) {}
-    int trajectory_index;
-    std::vector<Segment> conflictive_segments;
-    gauss_msgs::Waypoint closest_exit_wp;  // Use the mandatory field as intrusion flag
-};
-
 std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<gauss_msgs::WaypointList>& trajectories, const std::vector<double>& volumes, const gauss_msgs::Geofence& geofence) {
     std::vector<GeoConflictiveTrajectory> result;
 
@@ -753,7 +739,7 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
     }
 
     for (int i = 0; i < trajectories.size(); i++) {
-        ROS_INFO("Checking trajectory [%d]", i);
+        // ROS_INFO("Checking trajectory [%d]", i);
         GeoConflictiveTrajectory current_result(i);
 
         if (trajectories[i].waypoints.size() < 2) {
@@ -768,18 +754,18 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
         rectified_geofence.circle.radius += operational_volume;
 
         for (int j = 0; j < trajectories[i].waypoints.size() - 1; j++) {
-            ROS_INFO("Checking segment [%d, %d]", j, j + 1);
+            // ROS_INFO("Checking segment [%d, %d]", j, j + 1);
             auto segment = Segment(trajectories[i].waypoints[j], trajectories[i].waypoints[j + 1]);
 
             // TODO: combine the following two ifs into a single one?
             if ((segment.point_A.z < rectified_geofence.min_altitude) && (segment.point_B.z < rectified_geofence.min_altitude)) {
                 // The whole segment lies below the rectified_geofence
-                ROS_INFO("The whole segment lies below the geofence");
+                // ROS_INFO("The whole segment lies below the geofence");
                 continue;
             }
             if ((segment.point_A.z > rectified_geofence.max_altitude) && (segment.point_B.z > rectified_geofence.max_altitude)) {
                 // The whole segment lies above the rectified_geofence
-                ROS_INFO("The whole segment lies above the geofence");
+                // ROS_INFO("The whole segment lies above the geofence");
                 continue;
             }
 
@@ -794,13 +780,13 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
             // Get the segment that does lie between min_alt, max_alt
             if (segment.point_A.z < rectified_geofence.min_altitude) {
                 // Point A lies below the geofence z interval
-                ROS_INFO("Point A lies below the geofence z interval");
+                // ROS_INFO("Point A lies below the geofence z interval");
                 float m_min = (rectified_geofence.min_altitude - segment.point_A.z) / delta_z;
                 segment.point_A = segment.point_at_param(m_min);
                 // TODO: Consider the special case of j == 0 for geofence intrusion!
             } else if (segment.point_A.z > rectified_geofence.max_altitude) {
                 // Point A lies above the geofence z interval
-                ROS_INFO("Point A lies above the geofence z interval");
+                // ROS_INFO("Point A lies above the geofence z interval");
                 float m_max = (rectified_geofence.max_altitude - segment.point_A.z) / delta_z;
                 segment.point_A = segment.point_at_param(m_max);
                 // TODO: Consider the special case of j == 0 for geofence intrusion!
@@ -809,32 +795,32 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
             // Same for point B  // TODO: repeated code!
             if (segment.point_B.z < rectified_geofence.min_altitude) {
                 // Point B lies below the geofence z interval
-                ROS_INFO("Point B lies below the geofence z interval");
+                // ROS_INFO("Point B lies below the geofence z interval");
                 float m_min = (rectified_geofence.min_altitude - segment.point_B.z) / delta_z;
                 segment.point_B = segment.point_at_param(m_min);
             } else if (segment.point_B.z > rectified_geofence.max_altitude) {
                 // Point B lies above the geofence z interval
-                ROS_INFO("Point B lies above the geofence z interval");
+                // ROS_INFO("Point B lies above the geofence z interval");
                 float m_max = (rectified_geofence.max_altitude - segment.point_B.z) / delta_z;
                 segment.point_B = segment.point_at_param(m_max);
             }
 
             auto conflict_times = checkGeofence2D(segment, rectified_geofence.circle);
             if (std::isnan(conflict_times.first)) {  // conflict_times.second should be also nan
-                ROS_INFO("No conflicts");
+                // ROS_INFO("No conflicts");
                 // return result; // TODO: Only for debug!
                 continue;
             }  // TODO: Rename to GeofenceConflict?
 
             auto current_time = ros::Time::now().toSec();
             if (current_time > conflict_times.second) {  // Should be also > conflict_times.second
-                ROS_INFO("Past conflicts do not count :)");
+                // ROS_INFO("Past conflicts do not count :)");
                 // return result; // TODO: Only for debug!
                 continue;
             }
 
             if (checkOverlappingInTime(conflict_times, std::make_pair(rectified_geofence.start_time.toSec(), rectified_geofence.end_time.toSec()))) {
-                ROS_INFO("Conflict!");  // TODO
+                // ROS_INFO("Conflict!");  // TODO
                 auto current_position = trajectories[i].waypoints[j];
                 // Check also for intrusion:
                 if ((j == 0)
@@ -860,14 +846,6 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
 
     return result;
 }
-
-struct GeofenceResult : public Result {
-    GeofenceResult(int i): geofence_id(i) {type = GEO;}
-    int geofence_id;
-    std::vector<GeoConflictiveTrajectory> geo_conflictive_trajectories;
-    bool isEqual(const Result& other) override {return true;}
-    gauss_msgs::NewThreat convertToThreat() {return gauss_msgs::NewThreat();}
-};
 
 std::vector<Segment> getFirstSetOfContiguousSegments(const std::vector<Segment>& input) {
     std::vector<Segment> output;
@@ -975,8 +953,8 @@ int main(int argc, char** argv) {
         std::vector<GeofenceResult> geofence_results_list;
         for (auto geofence : read_geofences.response.geofences) {
             // std::cout << geofence << '\n';
-            ROS_INFO("_________________________");
-            ROS_INFO("Checking geofence id [%d]", geofence.id);
+            // ROS_INFO("_________________________");
+            // ROS_INFO("Checking geofence id [%d]", geofence.id);
             GeofenceResult current_result(geofence.id);
             current_result.geo_conflictive_trajectories = checkGeofenceConflict(estimated_trajectories, operational_volumes, geofence);
             if (current_result.geo_conflictive_trajectories.size() > 0) {
@@ -1049,13 +1027,8 @@ int main(int argc, char** argv) {
         }
 
         std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
-        std::vector<Result*> result_list;        
-        for (auto loss_result : loss_results_list) {
-            Result* result = new LossResult(loss_result);
-            result_list.push_back(result);
-        }
 
-        gauss_msgs::NewThreats threats_msg = manageResultList(result_list, index_to_operation_map);
+        gauss_msgs::NewThreats threats_msg = manageResultList(loss_results_list, geofence_results_list, index_to_operation_map);
         if (threats_msg.request.threats.size() > 0) {
             std::string cout_threats;
             for (auto threat : threats_msg.request.threats) {
