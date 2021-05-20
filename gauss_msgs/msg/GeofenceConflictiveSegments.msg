@@ -1,3 +1,6 @@
 Waypoint[] all_segments
 Waypoint[] first_contiguous_segment
-Waypoint clossest_exit_wp
+Waypoint closest_exit_wp
+geometry_msgs/Vector3 crossing_0_out_vector
+geometry_msgs/Vector3 crossing_1_out_vector
+geometry_msgs/Vector3 closest_exit_out_vector
