@@ -456,9 +456,9 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // * Assume inputs from monitoring
             // TODO: Check if init and end points have to be further apart from the geofence!
             geometry_msgs::Point p_init_conflict, p_end_conflict;
-            p_init_conflict = translateToPoint(req.threat.geofence_conflictive_segments.clossest_exit_wp);  // * Should we assume that this is the escape point?
+            p_init_conflict = translateToPoint(req.threat.geofence_conflictive_segments.closest_exit_wp);  // * Should we assume that this is the escape point?
             p_end_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.back());
-            ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.clossest_exit_wp.stamp;
+            ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.closest_exit_wp.stamp;
             ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.all_segments.back().stamp;
 
             double fake_value = 1.0;

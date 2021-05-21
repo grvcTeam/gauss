@@ -222,6 +222,16 @@ std::vector<Segment> getFirstSetOfContiguousSegments(const std::vector<Segment>&
     return output;
 }
 
+geometry_msgs::Vector3 getUnitOutwardVector(const gauss_msgs::Circle& circle, const gauss_msgs::Waypoint wp) {
+    geometry_msgs::Vector3 out;
+    out.x = wp.x - circle.x_center;
+    out.y = wp.y - circle.y_center;
+    auto len = sqrt(pow(out.x, 2) + pow(out.y, 2));
+    out.x /= len;
+    out.y /= len;
+    return out;
+}
+
 struct LossConflictiveSegments {
     LossConflictiveSegments(const Segment& first, const Segment& second) : first(first), second(second) {}
 
@@ -479,7 +489,8 @@ struct GeoConflictiveTrajectory {
 
     bool isEqual(const GeoConflictiveTrajectory& other) {
         const double check_time_margin = 10.0;
-        return (trajectory_index == other.trajectory_index && 
+        return (trajectory_index == other.trajectory_index &&
+                closest_exit_wp.mandatory == other.closest_exit_wp.mandatory &&
                (geofence_conflictive_segments.front().t_A - other.geofence_conflictive_segments.front().t_A <= check_time_margin ||
                 geofence_conflictive_segments.back().t_B - other.geofence_conflictive_segments.back().t_B <= check_time_margin));
     }
@@ -507,11 +518,6 @@ struct GeofenceResult {
         for (auto geo_conflictive_trajectory : geo_conflictive_trajectories) {
             gauss_msgs::NewThreat aux_threat;
             aux_threat.threat_id = count_id++;
-            if (geo_conflictive_trajectory.closest_exit_wp.mandatory) {
-                aux_threat.threat_type = aux_threat.GEOFENCE_INTRUSION;
-            } else {
-                aux_threat.threat_type = aux_threat.GEOFENCE_CONFLICT;
-            }
             aux_threat.geofence_ids.push_back(geofence_id);
             aux_threat.uav_ids.push_back(_index_to_operation_map.at(geo_conflictive_trajectory.trajectory_index).uav_id);
             aux_threat.conflictive_geofences.push_back(_index_to_geofence_map.at(geofence_id));
@@ -525,6 +531,21 @@ struct GeofenceResult {
                 aux_threat.geofence_conflictive_segments.all_segments.push_back(segment.point_A);
                 aux_threat.geofence_conflictive_segments.all_segments.push_back(segment.point_B);
             }
+
+            auto geo_circle = _index_to_geofence_map.at(geofence_id).circle;
+            if (geo_conflictive_trajectory.closest_exit_wp.mandatory) {
+                aux_threat.threat_type = aux_threat.GEOFENCE_INTRUSION;
+                auto closest_exit = geo_conflictive_trajectory.closest_exit_wp;
+                aux_threat.geofence_conflictive_segments.closest_exit_wp = closest_exit;
+                aux_threat.geofence_conflictive_segments.closest_exit_out_vector = getUnitOutwardVector(geo_circle, closest_exit);
+            } else {
+                aux_threat.threat_type = aux_threat.GEOFENCE_CONFLICT;
+                auto crossing_0 = aux_threat.geofence_conflictive_segments.first_contiguous_segment.front();
+                auto crossing_1 = aux_threat.geofence_conflictive_segments.first_contiguous_segment.back();
+                aux_threat.geofence_conflictive_segments.crossing_0_out_vector = getUnitOutwardVector(geo_circle, crossing_0);
+                aux_threat.geofence_conflictive_segments.crossing_1_out_vector = getUnitOutwardVector(geo_circle, crossing_1);
+            }
+            std::cout << aux_threat << '\n';
             out_threats.push_back(aux_threat);
         }
 
