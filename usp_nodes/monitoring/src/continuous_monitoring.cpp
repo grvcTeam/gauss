@@ -890,7 +890,10 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
                     ) {
                     ROS_WARN("Intrusion!");
                     current_result.closest_exit_wp.mandatory = true;
-                    auto xy_closest_exit = calculateClosestExit(translateToPoint(current_position), rectified_geofence.circle);
+                    auto exit_circle = geofence.circle;
+                    exit_circle.radius += operational_volume * 2.0;
+                    auto xy_closest_exit = calculateClosestExit(translateToPoint(current_position), exit_circle);
+                    // auto xy_closest_exit = calculateClosestExit(translateToPoint(current_position), rectified_geofence.circle);
                     current_result.closest_exit_wp.x = xy_closest_exit.x;
                     current_result.closest_exit_wp.y = xy_closest_exit.y;
                     current_result.closest_exit_wp.z = current_position.z;  // Suppose we want the closest exit with no changes in altuitude!
