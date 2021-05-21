@@ -83,6 +83,8 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
         cout_threats = cout_threats + "]";
     }
     ROS_INFO_STREAM_COND(_req.threats.size() > 0, "[EM] Threats received: [id type | uav] " + cout_threats);
+
+    gauss_msgs::Notifications notifications_msg;
     for (auto threat : _req.threats) {
         if (threat.threat_type == threat.GEOFENCE_CONFLICT || threat.threat_type == threat.GEOFENCE_INTRUSION ||
             threat.threat_type == threat.GNSS_DEGRADATION || threat.threat_type == threat.LACK_OF_BATTERY ||
@@ -93,14 +95,13 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
             if (tactical_client_.call(tactical_msg)) {
                 int uav_id_smaller_priority = threat.uav_ids.front();
                 if (threat.threat_type == threat.LOSS_OF_SEPARATION) uav_id_smaller_priority = selectSmallerPriority(threat);  // Get the UAV id with less priority
-                gauss_msgs::Notifications notifications_msg;
                 notifications_msg.request.notifications.push_back(selectBestSolution(tactical_msg, uav_id_smaller_priority));
-                if (!notification_client_.call(notifications_msg)) ROS_WARN("[EM] Failed to call USP manager");
             } else {
                 ROS_WARN("[EM] Failed to call tactical deconfliction!");
             }
         }
     }
+    if (!notification_client_.call(notifications_msg)) ROS_WARN("[EM] Failed to call USP manager");
 
     _res.success = true;
     return _res.success;
