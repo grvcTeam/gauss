@@ -126,7 +126,7 @@ struct Segment {
         marker.type = visualization_msgs::Marker::ARROW;
         marker.action = visualization_msgs::Marker::ADD;
         marker.pose.orientation.w = 1;
-        marker.scale.x = 1.0;  // shaft diameter
+        marker.scale.x = 5.0;  // shaft diameter
         marker.scale.y = 1.5;  // head diameter
         marker.scale.z = 1.0;  // head length (if not zero)
         marker.color = color;
@@ -533,6 +533,10 @@ struct GeofenceResult {
             }
 
             auto geo_circle = _index_to_geofence_map.at(geofence_id).circle;
+            auto crossing_0 = aux_threat.geofence_conflictive_segments.first_contiguous_segment.front();
+            auto crossing_1 = aux_threat.geofence_conflictive_segments.first_contiguous_segment.back();
+            aux_threat.geofence_conflictive_segments.crossing_0_out_vector = getUnitOutwardVector(geo_circle, crossing_0);
+            aux_threat.geofence_conflictive_segments.crossing_1_out_vector = getUnitOutwardVector(geo_circle, crossing_1);
             if (geo_conflictive_trajectory.closest_exit_wp.mandatory) {
                 aux_threat.threat_type = aux_threat.GEOFENCE_INTRUSION;
                 auto closest_exit = geo_conflictive_trajectory.closest_exit_wp;
@@ -540,12 +544,7 @@ struct GeofenceResult {
                 aux_threat.geofence_conflictive_segments.closest_exit_out_vector = getUnitOutwardVector(geo_circle, closest_exit);
             } else {
                 aux_threat.threat_type = aux_threat.GEOFENCE_CONFLICT;
-                auto crossing_0 = aux_threat.geofence_conflictive_segments.first_contiguous_segment.front();
-                auto crossing_1 = aux_threat.geofence_conflictive_segments.first_contiguous_segment.back();
-                aux_threat.geofence_conflictive_segments.crossing_0_out_vector = getUnitOutwardVector(geo_circle, crossing_0);
-                aux_threat.geofence_conflictive_segments.crossing_1_out_vector = getUnitOutwardVector(geo_circle, crossing_1);
             }
-            std::cout << aux_threat << '\n';
             out_threats.push_back(aux_threat);
         }
 
@@ -1045,8 +1044,8 @@ int main(int argc, char** argv) {
                 if (trajectory.closest_exit_wp.mandatory) {
                     // Means it is an intrusion!
                     Segment way_out(trajectory.closest_exit_wp, conflicts.back().point_B);
-                    marker_array.markers.push_back(way_out.translateToMarker(segment_id, segment_color));
-                    continue;
+                    marker_array.markers.push_back(way_out.translateToMarker(segment_id+1e9, segment_color));
+                    // continue;
                 }
                 // else:
                 for (int k = 0; k < conflicts.size(); k++) {

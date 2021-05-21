@@ -225,7 +225,7 @@ nav_msgs::Path translateToPath(const gauss_msgs::WaypointList &_wp_list) {
 
 std::vector<gauss_msgs::Waypoint> pathAStartToWPVector(const nav_msgs::Path &_path, const std::vector<double> &_times) {
     std::vector<gauss_msgs::Waypoint> out_wp_vector;
-    ROS_ERROR_COND(_path.poses.size() != _times.size(), "[Tactical] A Start solution must have the same amount of waypoints (space and time)!");
+    ROS_ERROR_COND(_path.poses.size() != _times.size(), "[Tactical] A Start solution must have the same amount of waypoints (space[%d] and time[%d])!", _path.poses.size(), _times.size());
     for (int i = 0; i < _path.poses.size(); i++) {
         gauss_msgs::Waypoint temp_wp;
         temp_wp.x = _path.poses.at(i).pose.position.x;
@@ -252,7 +252,7 @@ std::vector<gauss_msgs::Waypoint> findAlternativePathAStar(geometry_msgs::Point 
     }
     // Inflate polygon to take operational volume into account
     if (!_geofence.cylinder_shape) polygon_geofence.points.push_back(polygon_geofence.points.front());
-    geometry_msgs::Polygon inflated_geofence = decreasePolygon(polygon_geofence, -_conflictive_operation.operational_volume * 1.1);
+    geometry_msgs::Polygon inflated_geofence = decreasePolygon(polygon_geofence, -_conflictive_operation.operational_volume * 1.5);
     if (!_geofence.cylinder_shape) inflated_geofence.points.pop_back();
     // Get borders of a local greed for the A* path finder
     geometry_msgs::Point p_min_local_grid, p_max_local_grid;
@@ -426,12 +426,18 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
         case req.threat.GEOFENCE_CONFLICT: {
             ROS_ERROR_COND(req.threat.conflictive_geofences.size() != 1, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE CONFLICT!");
             // * Assume inputs from monitoring
-            // TODO: Check if init and end points have to be further apart from the geofence!
+            // // TODO: Check if init and end points have to be further apart from the geofence!
+            const double safety_margin = req.threat.conflictive_operations.front().operational_volume * 1.5;
             geometry_msgs::Point p_init_conflict, p_end_conflict;
-            p_init_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.front());
-            p_end_conflict = translateToPoint(req.threat.geofence_conflictive_segments.first_contiguous_segment.back());
-            ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.all_segments.front().stamp;
-            ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.all_segments.back().stamp;
+            // req.threat.geofence_conflictive_segments.crossing_0_out_vector
+            p_init_conflict.x = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().x + req.threat.geofence_conflictive_segments.crossing_0_out_vector.x * safety_margin;
+            p_init_conflict.y = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().y + req.threat.geofence_conflictive_segments.crossing_0_out_vector.y * safety_margin;
+            p_init_conflict.z = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().z + req.threat.geofence_conflictive_segments.crossing_0_out_vector.z * safety_margin;
+            p_end_conflict.x = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().x + req.threat.geofence_conflictive_segments.crossing_1_out_vector.x * safety_margin;
+            p_end_conflict.y = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().y + req.threat.geofence_conflictive_segments.crossing_1_out_vector.y * safety_margin;
+            p_end_conflict.z = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().z + req.threat.geofence_conflictive_segments.crossing_1_out_vector.z * safety_margin;
+            ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().stamp;
+            ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().stamp;
 
             double fake_value = 1.0;
             gauss_msgs::DeconflictionPlan possible_solution;
@@ -454,12 +460,17 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
         case req.threat.GEOFENCE_INTRUSION: {
             ROS_ERROR_COND(req.threat.conflictive_geofences.size() != 1, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE INTRUSION!");
             // * Assume inputs from monitoring
-            // TODO: Check if init and end points have to be further apart from the geofence!
+            // // TODO: Check if init and end points have to be further apart from the geofence!
+            const double safety_margin = req.threat.conflictive_operations.front().operational_volume * 1.5;
             geometry_msgs::Point p_init_conflict, p_end_conflict;
-            p_init_conflict = translateToPoint(req.threat.geofence_conflictive_segments.closest_exit_wp);  // * Should we assume that this is the escape point?
-            p_end_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.back());
+            p_init_conflict.x = req.threat.geofence_conflictive_segments.closest_exit_wp.x + req.threat.geofence_conflictive_segments.closest_exit_out_vector.x * safety_margin;
+            p_init_conflict.y = req.threat.geofence_conflictive_segments.closest_exit_wp.y + req.threat.geofence_conflictive_segments.closest_exit_out_vector.y * safety_margin;
+            p_init_conflict.z = req.threat.geofence_conflictive_segments.closest_exit_wp.z + req.threat.geofence_conflictive_segments.closest_exit_out_vector.z * safety_margin;
+            p_end_conflict.x = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().x + req.threat.geofence_conflictive_segments.crossing_1_out_vector.x * safety_margin;
+            p_end_conflict.y = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().y + req.threat.geofence_conflictive_segments.crossing_1_out_vector.y * safety_margin;
+            p_end_conflict.z = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().z + req.threat.geofence_conflictive_segments.crossing_1_out_vector.z * safety_margin;
             ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.closest_exit_wp.stamp;
-            ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.all_segments.back().stamp;
+            ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().stamp;
 
             double fake_value = 1.0;
             gauss_msgs::DeconflictionPlan possible_solution;
