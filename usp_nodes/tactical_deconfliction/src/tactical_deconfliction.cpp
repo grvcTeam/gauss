@@ -429,7 +429,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             // TODO: Check if init and end points have to be further apart from the geofence!
             geometry_msgs::Point p_init_conflict, p_end_conflict;
             p_init_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.front());
-            p_end_conflict = translateToPoint(req.threat.geofence_conflictive_segments.all_segments.back());
+            p_end_conflict = translateToPoint(req.threat.geofence_conflictive_segments.first_contiguous_segment.back());
             ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.all_segments.front().stamp;
             ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.all_segments.back().stamp;
 

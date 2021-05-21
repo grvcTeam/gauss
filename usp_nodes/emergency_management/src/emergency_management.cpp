@@ -69,12 +69,6 @@ int selectSmallerPriority(const gauss_msgs::NewThreat &_threat) {
     return out_uav_id_priority;
 }
 
-bool pilotAnswerCb(gauss_msgs::PilotAnswerRequest &_req, gauss_msgs::PilotAnswerResponse &_res) {
-    ROS_INFO_STREAM("[EM] The pilot decided " << _req.pilot_answers.front() << " corresponding to threat id " << (int)_req.threat_ids.front());
-    _res.success = true;
-    return _res.success;
-}
-
 bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsResponse &_res) {
     std::string cout_threats;
     for (auto threat : _req.threats) {
@@ -113,12 +107,10 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh;
 
     auto threats_srv_url = "/gauss/new_threats";
-    auto pilot_answer_srv_url = "/gauss/pilotanswer";
     auto notifications_clt_url = "/gauss/notifications";
     auto tactical_clt_url = "/gauss/new_tactical_deconfliction";
 
     ros::ServiceServer threats_server = nh.advertiseService(threats_srv_url, threatsCb);
-    ros::ServiceServer pilot_answer_server = nh.advertiseService(pilot_answer_srv_url, pilotAnswerCb);
     notification_client_ = nh.serviceClient<gauss_msgs::Notifications>(notifications_clt_url);
     tactical_client_ = nh.serviceClient<gauss_msgs::NewDeconfliction>(tactical_clt_url);
 

@@ -119,7 +119,6 @@ private:
     ros::ServiceClient write_operation_client_;
     ros::ServiceClient threats_client_;
     ros::ServiceClient read_icao_client_;
-    ros::ServiceClient send_pilot_answer_client_;
     ros::ServiceClient write_plans_client_;
     ros::ServiceClient change_flight_status_client_;
 
@@ -169,7 +168,6 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-    send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/pilotanswer");
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
     change_flight_status_client_ = nh_.serviceClient<gauss_msgs::ChangeFlightStatus>("/gauss/change_flight_status");
 
@@ -281,18 +279,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
             // ROS_INFO_STREAM(write_plans_msg.response.message);
         }
     }
-    // Send PilotAnswer to Emergency Management
-    gauss_msgs::PilotAnswer pilot_answer_msg;
-    if(msg->accept == 0)
-        pilot_answer_msg.request.pilot_answers.push_back(NO);
-    else if(msg->accept == 1)
-        pilot_answer_msg.request.pilot_answers.push_back(YES);
-
-    pilot_answer_msg.request.threat_ids.push_back(threat_flight_plan.threat_id);
-    if (!send_pilot_answer_client_.call(pilot_answer_msg) || !pilot_answer_msg.response.success)
-    {
-        ROS_WARN("Failed to send pilot answer to Emergency Management");
-    }
+    ROS_INFO_STREAM("[USPM] The pilot decided " << msg->accept << " corresponding to threat id " << (int)threat_flight_plan.threat_id);
 }
 
 // RPAStatus Callback
