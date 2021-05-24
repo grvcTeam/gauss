@@ -475,7 +475,7 @@ def main():
         flight_plan_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         track_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         landing_spots_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
-        landing_spots_viz.config_non_mandatory_wp(Marker.CUBE_LIST, Vector3(10, 10, 1))
+        landing_spots_viz.config_non_mandatory_wp(Marker.CUBE_LIST, Vector3(5, 5, 0))
         volume_viz = VolumeViz(global_frame_id, rospy.Duration(1.0/update_rate))
 
         marker_array = MarkerArray()
