@@ -25,3 +25,7 @@ simulation:
 
   change_param:
     - {icao: 3434000, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
+
+  cruising_speed:
+    - {icao: 3434009, speed: 0.0}
+    - {icao: 3434000, speed: 0.0}
