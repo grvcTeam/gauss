@@ -1,13 +1,15 @@
+#include <gauss_msgs/AirspaceUpdate.h>
 #include <gauss_msgs/NewDeconfliction.h>
 #include <gauss_msgs/NewThreat.h>
 #include <gauss_msgs/NewThreats.h>
 #include <gauss_msgs/Notifications.h>
 #include <gauss_msgs/PilotAnswer.h>
+#include <gauss_msgs/WriteGeofences.h>
 #include <ros/ros.h>
 
 #include <Eigen/Eigen>
 
-ros::ServiceClient tactical_client_, notification_client_;
+ros::ServiceClient tactical_client_, notification_client_, write_geofences_client_;
 
 gauss_msgs::Threat translateToThreat(const gauss_msgs::NewThreat _threat) {
     gauss_msgs::Threat out_threat;
@@ -69,6 +71,38 @@ int selectSmallerPriority(const gauss_msgs::NewThreat &_threat) {
     return out_uav_id_priority;
 }
 
+gauss_msgs::Geofence geofenceFromThreat(const gauss_msgs::NewThreat &_threat) {
+    gauss_msgs::Geofence out_geofence;
+    out_geofence.circle.x_center = _threat.location.x;
+    out_geofence.circle.y_center = _threat.location.y;
+    out_geofence.circle.radius = 500.0;
+    out_geofence.cylinder_shape = true;
+    out_geofence.id = _threat.threat_id;
+    out_geofence.min_altitude = 0.0;
+    out_geofence.max_altitude = 600.0;
+    out_geofence.start_time = ros::Time::now();
+    out_geofence.end_time.fromSec(ros::Time::now().toSec() + 600.0);
+
+    return out_geofence;
+}
+
+void airspaceAlertCb(const gauss_msgs::AirspaceUpdate &_alert) {
+    gauss_msgs::Geofence aux_geofence;
+    gauss_msgs::WriteGeofences write_geofences_msg;
+    aux_geofence.circle = _alert.circle;
+    aux_geofence.cylinder_shape = _alert.cylinder_shape;
+    aux_geofence.id = static_cast<uint8_t>(std::stoul(_alert.id));  // String -> int -> uint8_t
+    aux_geofence.min_altitude = 0.0;
+    aux_geofence.max_altitude = 600.0;
+    aux_geofence.polygon = _alert.polygon;
+    aux_geofence.start_time.fromSec(_alert.date_effective / 1000);
+    aux_geofence.end_time.fromSec(_alert.last_updated / 1000 + 600);
+    write_geofences_msg.request.geofence_ids.push_back(aux_geofence.id);
+    write_geofences_msg.request.geofences.push_back(aux_geofence);
+
+    if (!write_geofences_client_.call(write_geofences_msg)) ROS_WARN("[EM] Failed to call Database!");
+}
+
 bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsResponse &_res) {
     std::string cout_threats;
     for (auto threat : _req.threats) {
@@ -79,6 +113,7 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
     ROS_INFO_STREAM_COND(_req.threats.size() > 0, "[EM] Threats received: [id type | uav] " + cout_threats);
 
     gauss_msgs::Notifications notifications_msg;
+    gauss_msgs::WriteGeofences write_geo_msg;
     for (auto threat : _req.threats) {
         if (threat.threat_type == threat.GEOFENCE_CONFLICT || threat.threat_type == threat.GEOFENCE_INTRUSION ||
             threat.threat_type == threat.GNSS_DEGRADATION || threat.threat_type == threat.LACK_OF_BATTERY ||
@@ -94,9 +129,17 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
                 ROS_WARN("[EM] Failed to call tactical deconfliction!");
             }
         }
+        if (threat.threat_type == threat.JAMMING_ATTACK || threat.threat_type == threat.SPOOFING_ATTACK) {
+            write_geo_msg.request.geofence_ids.push_back(static_cast<uint8_t>(threat.threat_id));
+            write_geo_msg.request.geofences.push_back(geofenceFromThreat(threat));
+        }
     }
-    if (!notification_client_.call(notifications_msg)) ROS_WARN("[EM] Failed to call USP manager");
-
+    if (notifications_msg.request.notifications.size() > 0) {
+        if(!notification_client_.call(notifications_msg)) ROS_WARN("[EM] Failed to call USP manager!");
+    } 
+    if (write_geo_msg.request.geofences.size() > 0) {
+        if(!write_geofences_client_.call(write_geo_msg)) ROS_WARN("[EM] Failed to call Database!");
+    }
     _res.success = true;
     return _res.success;
 }
@@ -107,12 +150,16 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh;
 
     auto threats_srv_url = "/gauss/new_threats";
+    auto airspace_sub_url = "/gauss/airspace_alert";
     auto notifications_clt_url = "/gauss/notifications";
     auto tactical_clt_url = "/gauss/new_tactical_deconfliction";
+    auto write_geofences_clt_utl = "/gauss/write_geofences";
 
+    ros::Subscriber airspace_sub = nh.subscribe(airspace_sub_url, 10, airspaceAlertCb);
     ros::ServiceServer threats_server = nh.advertiseService(threats_srv_url, threatsCb);
     notification_client_ = nh.serviceClient<gauss_msgs::Notifications>(notifications_clt_url);
     tactical_client_ = nh.serviceClient<gauss_msgs::NewDeconfliction>(tactical_clt_url);
+    write_geofences_client_ = nh.serviceClient<gauss_msgs::WriteGeofences>(write_geofences_clt_utl);
 
     ROS_INFO("[EM] Waiting for required services...");
     ros::service::waitForService(notifications_clt_url, -1);
