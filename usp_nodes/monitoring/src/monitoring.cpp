@@ -104,7 +104,7 @@ Monitoring::Monitoring()
     double cell_diagonal = sqrt(pow(dX, 2) + pow(dY, 2) + pow(dZ, 2));
 
     if (minDist > cell_diagonal){
-        ROS_ERROR("Safety distance (%.2f) can not be bigger than the diagonal of the 3D cell (%.2f). Check delta XYZ values and safety distance to fix it.", minDist, cell_diagonal);
+        ROS_ERROR("[Monitoring] Safety distance (%.2f) can not be bigger than the diagonal of the 3D cell (%.2f). Check delta XYZ values and safety distance to fix it.", minDist, cell_diagonal);
         minDist = cell_diagonal;
     }
 
@@ -217,7 +217,7 @@ gauss_msgs::Threats Monitoring::manageThreatList(const gauss_msgs::Threats &_in_
         for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
         cout_threats = cout_threats + "]";
     } 
-    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] New threats detected: (id type | uav) " + cout_threats);
+    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[Monitoring] Threats detected: (id type | uav) " + cout_threats);
 
     return out_threats;
 }
@@ -409,7 +409,7 @@ bool Monitoring::updateThreatsCB(gauss_msgs::UpdateThreats::Request &req, gauss_
 
     if (msg_op.request.uav_ids.size() > 0){
         if (!read_operation_client_.call(msg_op) || !msg_op.response.success){
-            ROS_ERROR("Failed to read operations on data base");
+            ROS_ERROR("[Monitoring] Failed to read operations on data base");
         } else {
             res.uav_ids = msg_op.request.uav_ids;
             threats_msg.request.uav_ids = msg_op.request.uav_ids;
@@ -417,7 +417,7 @@ bool Monitoring::updateThreatsCB(gauss_msgs::UpdateThreats::Request &req, gauss_
     }
     if (msg_geo.request.geofences_ids.size() > 0){
         if (!read_geofence_client_.call(msg_geo) || !msg_geo.response.success){
-            ROS_ERROR("Failed to read geofences on data base");
+            ROS_ERROR("[Monitoring] Failed to read geofences on data base");
         } else {
             res.geofences = msg_geo.response.geofences;
         }
@@ -442,7 +442,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
     gauss_msgs::ReadIcao msg_ids;
     if (!(read_icao_client_.call(msg_ids)) || !(msg_ids.response.success))
     {
-        ROS_ERROR("Failed to ask for number of missions and geofences");
+        ROS_ERROR("[Monitoring] Failed to ask for number of missions and geofences");
         return false;
     }
 
@@ -450,7 +450,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
     for (int i = 0; i < msg_ids.response.uav_id.size(); i++) msg_op.request.uav_ids.push_back(i);
     if(!(read_operation_client_.call(msg_op)) || !(msg_op.response.success))
     {
-        ROS_ERROR("Failed to read a trajectory");
+        ROS_ERROR("[Monitoring] Failed to read a trajectory");
         return false;
     }
 
@@ -459,7 +459,7 @@ bool Monitoring::checkConflictsCB(gauss_msgs::CheckConflicts::Request &req, gaus
         for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(i);
         if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
         {
-            ROS_ERROR("Failed to read a geofence");
+            ROS_ERROR("[Monitoring] Failed to read a geofence");
             return false;
         }
     }
@@ -525,7 +525,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     gauss_msgs::ReadIcao msg_ids;
     if (!(read_icao_client_.call(msg_ids)) || !(msg_ids.response.success))
     {
-        ROS_ERROR("Failed to ask for number of missions and geofences");
+        ROS_ERROR("[Monitoring] Failed to ask for number of missions and geofences");
         return;
     }
     else
@@ -553,7 +553,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
     for (int i = 0; i < msg_ids.response.uav_id.size(); i++) msg_op.request.uav_ids.push_back(i);
     if(!(read_operation_client_.call(msg_op)) || !(msg_op.response.success))
     {
-        ROS_ERROR("Failed to read a trajectory");
+        ROS_ERROR("[Monitoring] Failed to read a trajectory");
         return;
     }
     gauss_msgs::ReadGeofences msg_geofence;
@@ -561,7 +561,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
         for (int i = 0; i < msg_ids.response.geofence_id.size(); i++) msg_geofence.request.geofences_ids.push_back(msg_ids.response.geofence_id.at(i));
         if(!(read_geofence_client_.call(msg_geofence)) || !(msg_geofence.response.success))
         {
-            ROS_ERROR_STREAM("[MON] " + msg_geofence.response.message);
+            ROS_ERROR_STREAM("[Monitoring] " + msg_geofence.response.message);
             return;
         }
     }
@@ -717,7 +717,7 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
             // ROS_INFO("[Monitoring] Computational time: %0.4f", ros::Time::now().toSec() - start_computational_time);
             if(!(threats_client_.call(new_threats_msgs)) || !(new_threats_msgs.response.success))
             {
-                ROS_ERROR("Failed to send alert message");
+                ROS_ERROR("[Monitoring] Failed to send alert message");
                 return;
             }
         }
@@ -728,19 +728,19 @@ void Monitoring::timerCallback(const ros::TimerEvent &)
 
 bool Monitoring::posIndicesAreInRange(int x, int y, int z, int t) {
     if (!indexIsInRange(x, X)) {
-        ROS_ERROR("Index x is out of range: %d out of [0, %d)", x, X);
+        ROS_ERROR("[Monitoring] Index x is out of range: %d out of [0, %d)", x, X);
         return false;
     }
     if (!indexIsInRange(y, Y)) {
-        ROS_ERROR("Index y is out of range: %d out of [0, %d)", y, Y);
+        ROS_ERROR("[Monitoring] Index y is out of range: %d out of [0, %d)", y, Y);
         return false;
     }
     if (!indexIsInRange(z, Z)) {
-        ROS_ERROR("Index z is out of range: %d out of [0, %d)", z, Z);
+        ROS_ERROR("[Monitoring] Index z is out of range: %d out of [0, %d)", z, Z);
         return false;
     }
     if (!indexIsInRange(t, T)) {
-        ROS_ERROR("Index t is out of range: %d out of [0, %d)", t, T);
+        ROS_ERROR("[Monitoring] Index t is out of range: %d out of [0, %d)", t, T);
         return false;
     }
     return true;

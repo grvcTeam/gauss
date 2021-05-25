@@ -57,7 +57,7 @@ gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &
 int selectSmallerPriority(const gauss_msgs::NewThreat &_threat) {
     int out_uav_id_priority;
     int smaller_priority = std::numeric_limits<int>::max();
-    ROS_ERROR_COND(_threat.uav_ids.size() != _threat.priority_ops.size(), "[EM] Threat uav_ids size [%zd] should match priority_ops size [%zd]!", _threat.uav_ids.size(), _threat.priority_ops.size());
+    ROS_ERROR_COND(_threat.uav_ids.size() != _threat.priority_ops.size(), "[Emergency] Threat uav_ids size [%zd] should match priority_ops size [%zd]!", _threat.uav_ids.size(), _threat.priority_ops.size());
     for (int idx = 0; idx < _threat.uav_ids.size(); idx++) {
         if (smaller_priority > _threat.priority_ops.at(idx)) {
             smaller_priority = _threat.priority_ops.at(idx);
@@ -100,7 +100,7 @@ void airspaceAlertCb(const gauss_msgs::AirspaceUpdate &_alert) {
     write_geofences_msg.request.geofence_ids.push_back(aux_geofence.id);
     write_geofences_msg.request.geofences.push_back(aux_geofence);
 
-    if (!write_geofences_client_.call(write_geofences_msg)) ROS_WARN("[EM] Failed to call Database!");
+    if (!write_geofences_client_.call(write_geofences_msg)) ROS_WARN("[Emergency] Failed to call Database!");
 }
 
 bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsResponse &_res) {
@@ -110,7 +110,7 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
         for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
         cout_threats = cout_threats + "]";
     }
-    ROS_INFO_STREAM_COND(_req.threats.size() > 0, "[EM] Threats received: [id type | uav] " + cout_threats);
+    ROS_INFO_STREAM_COND(_req.threats.size() > 0, "[Emergency] Threats received: [id type | uav] " + cout_threats);
 
     gauss_msgs::Notifications notifications_msg;
     gauss_msgs::WriteGeofences write_geo_msg;
@@ -126,7 +126,7 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
                 if (threat.threat_type == threat.LOSS_OF_SEPARATION) uav_id_smaller_priority = selectSmallerPriority(threat);  // Get the UAV id with less priority
                 notifications_msg.request.notifications.push_back(selectBestSolution(tactical_msg, uav_id_smaller_priority));
             } else {
-                ROS_WARN("[EM] Failed to call tactical deconfliction!");
+                ROS_WARN("[Emergency] Failed to call tactical deconfliction!");
             }
         }
         if (threat.threat_type == threat.JAMMING_ATTACK || threat.threat_type == threat.SPOOFING_ATTACK) {
@@ -135,10 +135,10 @@ bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsRespon
         }
     }
     if (notifications_msg.request.notifications.size() > 0) {
-        if(!notification_client_.call(notifications_msg)) ROS_WARN("[EM] Failed to call USP manager!");
+        if(!notification_client_.call(notifications_msg)) ROS_WARN("[Emergency] Failed to call USP manager!");
     } 
     if (write_geo_msg.request.geofences.size() > 0) {
-        if(!write_geofences_client_.call(write_geo_msg)) ROS_WARN("[EM] Failed to call Database!");
+        if(!write_geofences_client_.call(write_geo_msg)) ROS_WARN("[Emergency] Failed to call Database!");
     }
     _res.success = true;
     return _res.success;
@@ -161,11 +161,11 @@ int main(int argc, char **argv) {
     tactical_client_ = nh.serviceClient<gauss_msgs::NewDeconfliction>(tactical_clt_url);
     write_geofences_client_ = nh.serviceClient<gauss_msgs::WriteGeofences>(write_geofences_clt_utl);
 
-    ROS_INFO("[EM] Waiting for required services...");
+    ROS_INFO("[Emergency] Waiting for required services...");
     ros::service::waitForService(notifications_clt_url, -1);
-    ROS_INFO("[EM] %s: ok", notifications_clt_url);
+    ROS_INFO("[Emergency] %s: ok", notifications_clt_url);
     ros::service::waitForService(tactical_clt_url, -1);
-    ROS_INFO("[EM] %s: ok", tactical_clt_url);
+    ROS_INFO("[Emergency] %s: ok", tactical_clt_url);
 
     ros::Rate rate(1);  // [Hz]
     while (ros::ok()) {

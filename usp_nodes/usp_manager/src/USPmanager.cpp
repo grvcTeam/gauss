@@ -173,7 +173,7 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     change_flight_status_client_ = nh_.serviceClient<gauss_msgs::ChangeFlightStatus>("/gauss/change_flight_status");
 
     ROS_INFO("[USPM] Started USPManager node!");
-    ROS_INFO_STREAM("Origin (Latitude, Longitude): (" << lat0_ << "," << lon0_ << ")");
+    ROS_INFO_STREAM("[USPM] Origin (Latitude, Longitude): (" << lat0_ << "," << lon0_ << ")");
 
     this->initializeICAOIDMap();
 }
@@ -264,7 +264,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
                     write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
                     write_plans_msg.request.uav_ids.push_back((*it).second);
                 } else {
-                    ROS_WARN("USP Manager can not find the uav id associated with icao address %06x", msg->icao);
+                    ROS_WARN("[USPM] Can not find the uav id associated with icao address %06x", msg->icao);
                 }
             }
         }
@@ -273,7 +273,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
 
         if (!write_plans_client_.call(write_plans_msg) || !write_plans_msg.response.success)
         {
-            ROS_WARN("Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
+            ROS_WARN("[USPM] Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
         }
         else
         {
@@ -334,7 +334,7 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     }
     else
     {
-        ROS_WARN("USP Manager can not find the uav id associated with icao address %s", position_report_msg.icao_address.c_str());
+        ROS_WARN("[USPM] Can not find the uav id associated with icao address %s", position_report_msg.icao_address.c_str());
     }
     
 }
@@ -552,7 +552,7 @@ gauss_msgs::NewThreats USPManager::manageThreatList(const bool &_flag_new_threat
     std::string cout_threats;
     for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
                                                               ", " + std::to_string(i.threat_type) + "]";
-    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[USPM] New threats detected: (id, type) " + cout_threats);
+    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[USPM] Threats detected: (id, type) " + cout_threats);
 
     return out_threats;
 }

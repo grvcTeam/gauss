@@ -17,7 +17,7 @@ bool in_range(double x, double min_x, double max_x) {
 
 double clamp(double x, double min_x, double max_x) {
     if (min_x > max_x) {
-        ROS_ERROR("min_x[%lf] > max_x[%lf], swapping!", min_x, max_x);
+        ROS_ERROR("[Monitoring] min_x[%lf] > max_x[%lf], swapping!", min_x, max_x);
         std::swap(min_x, max_x);
     }
     return std::max(std::min(x, max_x), min_x);
@@ -76,25 +76,25 @@ struct Segment {
         t_A = A.stamp.toSec();
         t_B = B.stamp.toSec();
         if (t_A >= t_B) {
-            ROS_WARN("t_A[%lf] >= t_B[%lf]", t_A, t_B);
+            // ROS_WARN("t_A[%lf] >= t_B[%lf]", t_A, t_B);
         }
     }
 
     gauss_msgs::Waypoint point_at_time(double t) const {
         if (t < t_A) {
-            ROS_WARN("t[%lf] < t_A[%lf]", t, t_A);
+            // ROS_WARN("t[%lf] < t_A[%lf]", t, t_A);
             return point_A;
         }
         if (t > t_B) {
-            ROS_WARN("t[%lf] > t_B[%lf]", t, t_B);
+            // ROS_WARN("t[%lf] > t_B[%lf]", t, t_B);
             return point_B;
         }
         if (t_A == t_B) {
-            ROS_WARN("t_A == t_B == %lf", t_A);
+            // ROS_WARN("t_A == t_B == %lf", t_A);
             return point_A;
         }
         if (std::isnan(t)) {
-            ROS_WARN("t is NaN");
+            // ROS_WARN("t is NaN");
             return point_A;
         }
 
@@ -162,12 +162,12 @@ std::pair<geometry_msgs::Vector3, geometry_msgs::Vector3> delta(const Segment& f
 
 double sq_distance(const Segment& first, const Segment& second, double mu) {
     if (mu < 0) {
-        ROS_WARN("mu[%lf] < 0, clamping!", mu);
+        // ROS_WARN("mu[%lf] < 0, clamping!", mu);
         mu = 0;
     }
 
     if (mu > 1) {
-        ROS_WARN("mu[%lf] > 1, clamping!", mu);
+        // ROS_WARN("mu[%lf] > 1, clamping!", mu);
         mu = 1;
     }
 
@@ -180,15 +180,15 @@ double sq_distance(const Segment& first, const Segment& second, double mu) {
 
 std::pair<double, double> quadratic_roots(double a, double b, double c) {
     if ((a == 0) && (b == 0) && (c == 0)) {
-        ROS_WARN("a = b = c = 0, any number is a solution!");
+        // ROS_WARN("a = b = c = 0, any number is a solution!");
         return std::make_pair(std::nan(""), std::nan(""));
     }
     if ((a == 0) && (b == 0) && (c != 0)) {
-        ROS_WARN("a = b = 0, there is no solution!");
+        // ROS_WARN("a = b = 0, there is no solution!");
         return std::make_pair(std::nan(""), std::nan(""));
     }
     if ((a == 0) && (b != 0)) {
-        ROS_WARN("a = 0, non quadratic!");
+        // ROS_WARN("a = 0, non quadratic!");
         return std::make_pair(-c / b, -c / b);
     }
 
@@ -204,7 +204,7 @@ std::pair<double, double> quadratic_roots(double a, double b, double c) {
 std::vector<Segment> getFirstSetOfContiguousSegments(const std::vector<Segment>& input) {
     std::vector<Segment> output;
     if (input.size() < 1) {
-        ROS_ERROR("input.size() < 1");
+        ROS_ERROR("[Monitoring] input.size() < 1");
         return output;
     }
 
@@ -280,7 +280,7 @@ LossConflictiveSegments checkUnifiedSegmentsLoss(Segment first, Segment second, 
 
     double mu_min, t_min, s_min;
     if (a == 0) {
-        ROS_WARN("a = 0");
+        // ROS_WARN("a = 0");
         if (b >= 0) {
             mu_min = 0;
             t_min = first.t_A;
@@ -365,12 +365,12 @@ std::vector<LossConflictiveSegments> checkTrajectoriesLoss(const std::pair<gauss
     std::vector<LossConflictiveSegments> segment_loss_results;
     if (trajectories.first.waypoints.size() < 2) {
         // TODO: Warn and push the same point twice?
-        ROS_ERROR("[Monitoring]: trajectory must contain at least 2 points, [%ld] found in first argument", trajectories.first.waypoints.size());
+        ROS_ERROR("[Monitoring] Trajectory must contain at least 2 points, [%ld] found in first argument", trajectories.first.waypoints.size());
         return segment_loss_results;
     }
     if (trajectories.second.waypoints.size() < 2) {
         // TODO: Warn and push the same point twice?
-        ROS_ERROR("[Monitoring]: trajectory must contain at least 2 points, [%ld] found in second argument", trajectories.second.waypoints.size());
+        ROS_ERROR("[Monitoring] Trajectory must contain at least 2 points, [%ld] found in second argument", trajectories.second.waypoints.size());
         return segment_loss_results;
     }
 
@@ -385,7 +385,7 @@ std::vector<LossConflictiveSegments> checkTrajectoriesLoss(const std::pair<gauss
             // std::cout << segments.second.point_A << "_____________\n" << segments.second.point_B << '\n';
             auto loss_check = checkSegmentsLoss(segments, s_threshold);
             if (loss_check.threshold_is_violated) {
-                ROS_ERROR("Loss of separation! [i = %d, j = %d]", i, j);
+                ROS_ERROR("[Monitoring] Loss of separation! [i = %d, j = %d]", i, j);
                 // std::cout << loss_check << '\n';
                 segment_loss_results.push_back(loss_check);
             }
@@ -555,7 +555,7 @@ struct GeofenceResult {
 std::vector<LossResult> getContiguousResults(const LossResult& input) {
     std::vector<LossResult> output;
     if (input.loss_conflictive_segments.size() < 1) {
-        ROS_ERROR("input.loss_conflictive_segments.size() < 1");
+        ROS_ERROR("[Monitoring] input.loss_conflictive_segments.size() < 1");
         return output;
     }
 
@@ -581,7 +581,7 @@ std::vector<LossResult> getContiguousResults(const LossResult& input) {
 std::pair<LossExtreme, LossExtreme> calculateExtremes(const LossResult& result) {
     std::pair<LossExtreme, LossExtreme> extremes;
     if (result.loss_conflictive_segments.size() < 1) {
-        ROS_ERROR("result.loss_conflictive_segments.size() < 1");
+        ROS_ERROR("[Monitoring] result.loss_conflictive_segments.size() < 1");
         return extremes;
     }
 
@@ -655,11 +655,11 @@ std::ostream& operator<<(std::ostream& out, const LossResult& r) {
 
 bool happensBefore(const LossResult& a, const LossResult& b) {
     if (a.loss_conflictive_segments.size() < 1) {
-        ROS_ERROR("a.loss_conflictive_segments.size() < 1");
+        ROS_ERROR("[Monitoring] a.loss_conflictive_segments.size() < 1");
         return false;
     }
     if (b.loss_conflictive_segments.size() < 1) {
-        ROS_ERROR("b.loss_conflictive_segments.size() < 1");
+        ROS_ERROR("[Monitoring] b.loss_conflictive_segments.size() < 1");
         return true;
     }
 
@@ -805,7 +805,7 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
 
     if (!geofence.cylinder_shape) {
         // TODO: implement also for polygons
-        ROS_WARN("Polygon geofences not implemented yet");
+        ROS_ERROR("[Monitoring] Polygon geofences not implemented yet");
         return result;
         // float64 min_altitude	# meters
         // float64 max_altitude	# meters
@@ -815,7 +815,7 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
     }
 
     if (trajectories.size() != volumes.size()) {
-        ROS_ERROR("Sizes do not match: trajectories.size() = %ld, volumes.size() = %ld", trajectories.size(), volumes.size());
+        ROS_ERROR("[Monitoring] Sizes do not match: trajectories.size() = %ld, volumes.size() = %ld", trajectories.size(), volumes.size());
         return result;
     }
 
@@ -908,7 +908,7 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
                     && in_range(current_position.z, rectified_geofence.min_altitude, rectified_geofence.max_altitude)
                     && (pow(current_position.x - rectified_geofence.circle.x_center, 2) + pow(current_position.y - rectified_geofence.circle.y_center, 2) < pow(rectified_geofence.circle.radius, 2))
                     ) {
-                    ROS_WARN("Intrusion!");
+                    ROS_ERROR("[Monitoring] Geofence intrusion! [i = %d]", current_result.trajectory_index);
                     current_result.closest_exit_wp.mandatory = true;
                     auto exit_circle = geofence.circle;
                     exit_circle.radius += operational_volume * 2.0;

@@ -97,7 +97,7 @@ ConflictSolver::ConflictSolver() {
     // Cient
     check_client_ = nh_.serviceClient<gauss_msgs::CheckConflicts>("/gauss/check_conflicts");
 
-    ROS_INFO("[Tactical] Started ConflictSolver node!");
+    ROS_INFO("[Tactical] Started Tactical Deconfliction node!");
 }
 
 int ConflictSolver::pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy) {
@@ -446,18 +446,14 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
     }
 
     if (!check_client_.call(check_conflict) || !check_conflict.response.success)
-        ROS_ERROR("Failed checking conflicts");
+        ROS_ERROR("[Tactical] Failed checking conflicts");
 
     return 100 * check_conflict.response.threats.size() / interp_path.poses.size();
 }
 
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res) {
-    std::string cout_request;
-    cout_request = cout_request + " [" + std::to_string(req.threat.threat_id) + " " + std::to_string(req.threat.threat_type) + " |";
-    for (auto uav_id : req.threat.uav_ids) cout_request = cout_request + " " + std::to_string(uav_id);
-    cout_request = cout_request + "]";
-    ROS_INFO_STREAM("[Tactical] New conflict received!" + cout_request);
+    ROS_INFO("[Tactical] Threat to solve [%d, %d]", req.threat.threat_id, req.threat.threat_type);
     //Deconfliction
     if (req.tactical) {
         double start_computational_time = ros::Time::now().toSec();
@@ -473,8 +469,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
 
         if (req.threat.threat_type == req.threat.LOSS_OF_SEPARATION) {
-            if (req.operations.size() != 2) ROS_ERROR("[Monitoring] Loss of separation. Operation size should be equal to 2 not %zd", req.operations.size());
-            if (req.threat.times.size() != 2) ROS_ERROR("[Monitoring] Loss of separation. Threat times size should be equal to 2 not %zd", req.threat.times.size());
+            if (req.operations.size() != 2) ROS_ERROR("[Tactical] Loss of separation. Operation size should be equal to 2 not %zd", req.operations.size());
+            if (req.threat.times.size() != 2) ROS_ERROR("[Tactical] Loss of separation. Threat times size should be equal to 2 not %zd", req.threat.times.size());
             gauss_msgs::WaypointList traj1 = conflictive_operations.front().estimated_trajectory;
             gauss_msgs::WaypointList traj2 = conflictive_operations.back().estimated_trajectory;
             gauss_msgs::Waypoint wp1, wp2;
