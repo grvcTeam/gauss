@@ -163,6 +163,18 @@ geometry_msgs::Polygon decreasePolygon(const geometry_msgs::Polygon &p, double t
     return q;
 }
 
+bool pointInCircle(const geometry_msgs::Point &_point, const gauss_msgs::Geofence &_geofence) {
+    if (!_geofence.cylinder_shape) {
+        ROS_ERROR("[Tactical] pointInCircle function: This is not a cylinder!");
+        return false;
+    }
+    if (sqrt(pow(_point.x - _geofence.circle.x_center, 2) + pow(_point.y - _geofence.circle.y_center, 2)) <= _geofence.circle.radius) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, geometry_msgs::Point _init_point, geometry_msgs::Point _goal_point, double _operational_volume) {
     geometry_msgs::Point obs_min, obs_max, out_point;
     std::vector<float> vert_x, vert_y;
@@ -442,12 +454,15 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             double fake_value = 1.0;
             gauss_msgs::DeconflictionPlan possible_solution;
             // [1] Ruta a mi destino evitando una geofence
-            possible_solution.maneuver_type = 1;
-            possible_solution.uav_id = req.threat.uav_ids.front();
-            possible_solution.cost = possible_solution.riskiness = fake_value;
-            std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
-            possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.front().flight_plan_updated, req.threat.conflictive_operations.front().actual_wp);
-            res.deconfliction_plans.push_back(possible_solution);
+            // Just do it if end point is outside the geofence
+            if (!pointInCircle(p_end_conflict, req.threat.conflictive_geofences.front())) {
+                possible_solution.maneuver_type = 1;
+                possible_solution.uav_id = req.threat.uav_ids.front();
+                possible_solution.cost = possible_solution.riskiness = fake_value;
+                std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+                possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.front().flight_plan_updated, req.threat.conflictive_operations.front().actual_wp);
+                res.deconfliction_plans.push_back(possible_solution);
+            }
             // [3] Ruta que me manda devuelta a casa
             possible_solution.maneuver_type = 3;
             possible_solution.waypoint_list.clear();
@@ -476,12 +491,15 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             gauss_msgs::DeconflictionPlan possible_solution;
             possible_solution.uav_id = req.threat.conflictive_operations.front().uav_id;
             // [6] Ruta a mi destino saliendo lo antes posible de la geofence
-            possible_solution.maneuver_type = 1;
-            possible_solution.uav_id = req.threat.uav_ids.front();
-            possible_solution.cost = possible_solution.riskiness = fake_value;
-            std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
-            possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.front().flight_plan_updated, req.threat.conflictive_operations.front().actual_wp);
-            res.deconfliction_plans.push_back(possible_solution);
+            // Just do it if end point is outside the geofence
+            if (!pointInCircle(p_end_conflict, req.threat.conflictive_geofences.front())) {
+                possible_solution.maneuver_type = 1;
+                possible_solution.uav_id = req.threat.uav_ids.front();
+                possible_solution.cost = possible_solution.riskiness = fake_value;
+                std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+                possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.front().flight_plan_updated, req.threat.conflictive_operations.front().actual_wp);
+                res.deconfliction_plans.push_back(possible_solution);
+            }
             // [2] Ruta a mi destino por el camino mas corto
             possible_solution.maneuver_type = 2;
             possible_solution.waypoint_list.clear();
@@ -497,6 +515,15 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             possible_solution.cost = possible_solution.riskiness = fake_value * 3;
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().flight_plan.waypoints.front());
+            res.deconfliction_plans.push_back(possible_solution);
+            // [?] Ruta a un landing spot
+            possible_solution.maneuver_type = 3;
+            possible_solution.waypoint_list.clear();
+            possible_solution.uav_id = req.threat.uav_ids.front();
+            possible_solution.cost = possible_solution.riskiness = fake_value * 0;  // ! Forcing this solution to be selected
+            possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
+            req.threat.conflictive_operations.front().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
+            possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().landing_spots.waypoints.front());
             res.deconfliction_plans.push_back(possible_solution);
         } break;
         case req.threat.UAS_OUT_OV: {
