@@ -77,8 +77,8 @@ private:
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
 
     // Auxiliary methods
-    bool checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat, const gauss_msgs::PositionReport &pos_report);
-    gauss_msgs::Threats manageThreatList(const bool &_flag_new_threat, gauss_msgs::Threat &_in_threat);
+    bool checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::NewThreat &threat, const gauss_msgs::PositionReport &pos_report);
+    gauss_msgs::NewThreats manageThreatList(const bool &_flag_new_threat, gauss_msgs::NewThreat &_in_threat);
 
     bool initializeICAOIDMap();
     bool initializeIDOperationMap();
@@ -100,7 +100,7 @@ private:
 
     std::map<uint8_t, std::vector<ThreatFlightPlan>> id_threat_flight_plan_map_;
 
-    std::vector<gauss_msgs::Threat> threat_list_;
+    std::vector<gauss_msgs::NewThreat> threat_list_;
 
     // Timer
     //ros::Timer timer_sub_;
@@ -166,7 +166,7 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
 
     // Client
     write_operation_client_ = nh_.serviceClient<gauss_msgs::WriteOperation>("/gauss/write_operation");
-    threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
+    threats_client_ = nh_.serviceClient<gauss_msgs::NewThreats>("/gauss/new_threats");
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
@@ -183,7 +183,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
 {
     for (auto msg : req.notifications){
         // TODO: Treat all possible notifications properly
-        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_CONFLICT || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_INTRUSION)
+        if(msg.threat.threat_type == gauss_msgs::NewThreat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::NewThreat::GEOFENCE_CONFLICT || msg.threat.threat_type == gauss_msgs::NewThreat::GEOFENCE_INTRUSION)
         {
             gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
             std::string uav_id_string = std::to_string(msg.uav_id);
@@ -221,7 +221,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
                 id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
             } 
         }
-        else if(msg.threat.threat_type == gauss_msgs::Threat::JAMMING_ATTACK)
+        else if(msg.threat.threat_type == gauss_msgs::NewThreat::JAMMING_ATTACK)
         {
             // TODO: Set properly alert message and title
             gauss_msgs_mqtt::UTMAlert utm_alert_msg;
@@ -327,9 +327,9 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
         // std::cout << "z: " << position_report_msg.position.z << "\n";
         position_report_pub_.publish(position_report_msg);
 
-        gauss_msgs::Threat temp_threat;
+        gauss_msgs::NewThreat temp_threat;
         bool flag_new_threat = checkRPAHealth(msg, temp_threat, position_report_msg);
-        gauss_msgs::Threats new_threats_msgs = manageThreatList(flag_new_threat, temp_threat);
+        gauss_msgs::NewThreats new_threats_msgs = manageThreatList(flag_new_threat, temp_threat);
         if (flag_new_threat) threats_client_.call(new_threats_msgs);
     }
     else
@@ -464,7 +464,7 @@ void USPManager::airspaceUpdateCB(const gauss_msgs_mqtt::AirspaceUpdate::ConstPt
     airspace_alert_pub_.publish(alert_msg);
 }
 
-bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat, const gauss_msgs::PositionReport &pos_report){
+bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::NewThreat &threat, const gauss_msgs::PositionReport &pos_report){
     bool result = false;
     // Define threshold
     static double threshold_jamming = 0.5;
@@ -475,11 +475,11 @@ bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &r
     threat.times.push_back(ros::Time::now());
     threat.location = pos_report.position;
     if (rpa_state->jamming >= threshold_jamming) {
-        threat.threat_type = gauss_msgs::Threat::JAMMING_ATTACK;
+        threat.threat_type = gauss_msgs::NewThreat::JAMMING_ATTACK;
         result = true;
     }
     if (rpa_state->spoofing >= threshold_spoofing) {
-        threat.threat_type = gauss_msgs::Threat::SPOOFING_ATTACK;
+        threat.threat_type = gauss_msgs::NewThreat::SPOOFING_ATTACK;
         result = true;
     }
 
@@ -494,8 +494,8 @@ bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &r
     return result;
 }
 
-gauss_msgs::Threats USPManager::manageThreatList(const bool &_flag_new_threat, gauss_msgs::Threat &_in_threat){
-    gauss_msgs::Threats out_threats;
+gauss_msgs::NewThreats USPManager::manageThreatList(const bool &_flag_new_threat, gauss_msgs::NewThreat &_in_threat){
+    gauss_msgs::NewThreats out_threats;
     static int threat_list_id_ = 0;
     if (_flag_new_threat){
         if (threat_list_.size() == 0) {
@@ -509,8 +509,8 @@ gauss_msgs::Threats USPManager::manageThreatList(const bool &_flag_new_threat, g
         if (threat_list_.size() > 0){
             bool save_threat = false;
             // Using lambda, check if threat_type of in_threat is in threat_list
-            std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
-                                                                        [_in_threat](gauss_msgs::Threat threat){return (threat.threat_type == _in_threat.threat_type);});
+            std::vector<gauss_msgs::NewThreat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
+                                                                        [_in_threat](gauss_msgs::NewThreat threat){return (threat.threat_type == _in_threat.threat_type);});
             if (it != threat_list_.end()){
                 // Type found!
                 if (_in_threat.uav_ids.front() != it->uav_ids.front()){
@@ -535,8 +535,8 @@ gauss_msgs::Threats USPManager::manageThreatList(const bool &_flag_new_threat, g
     }
     // Delete non-updated threats from threat_list
     for (auto saved_threat = threat_list_.begin(); saved_threat != threat_list_.end();){
-        std::vector<gauss_msgs::Threat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
-                                                                    [](gauss_msgs::Threat threat){
+        std::vector<gauss_msgs::NewThreat>::iterator it = std::find_if(threat_list_.begin(), threat_list_.end(), 
+                                                                    [](gauss_msgs::NewThreat threat){
                                                                         double time_to_delete = 2.0;
                                                                         return (ros::Time::now().toSec() - threat.times.front().toSec()) >= time_to_delete;
                                                                         });

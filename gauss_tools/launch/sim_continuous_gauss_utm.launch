@@ -8,7 +8,7 @@
     <!-- GAUSS -->
     <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
-    <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
+    <node pkg="usp_manager" type="continuous_uspm" name="usp_manager" output="screen" required="true"/>
     <!-- New continuous nodes -->
     <node pkg="tracking" type="continuous_tracking" name="continuous_tracking" output="screen" required="true">
         <param name="timing_file" value="$(find usp_testers)/config/$(arg use_case_yaml).yaml"/>

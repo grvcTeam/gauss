@@ -554,8 +554,9 @@ bool Tracking::writeTrackingInfoToDatabase()
                 write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
                 write_tracking_msg_.request.tracks.push_back(it->second.track);
                 write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-                write_tracking_msg_.request.is_started.push_back(true);
-                it->second.is_started = true;
+                bool ended = uav_id_flight_status_map_[it->first] == FlightStatus::ENDED;
+                write_tracking_msg_.request.is_started.push_back(!ended);
+                it->second.is_started = !ended;
                 /*
                 std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
                 for(int i = 0; i<it->second.estimated_trajectory.waypoints.size(); i++)
@@ -598,17 +599,6 @@ bool Tracking::writeTrackingInfoToDatabase()
 
             updated_flight_plan_flag_map_[it->first] = false;
             modified_cooperative_operations_flags_[it->first] = false;
-        }
-        else if(uav_id_flight_status_map_[it->first] == FlightStatus::ENDED)
-        {
-            it->second.is_started = false;
-            write_tracking_msg_.request.uav_ids.push_back(it->first);
-            write_tracking_msg_.request.current_wps.push_back(it->second.current_wp);
-            write_tracking_msg_.request.estimated_trajectories.push_back(it->second.estimated_trajectory);
-            write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
-            write_tracking_msg_.request.tracks.push_back(it->second.track);
-            write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-            write_tracking_msg_.request.is_started.push_back(false);
         }
 	}
     write_tracking_msg_.response.message.clear();
