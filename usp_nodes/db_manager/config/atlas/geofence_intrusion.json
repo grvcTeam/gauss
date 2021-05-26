@@ -2,7 +2,7 @@
     "operations": [
         {
             "uav_id": 0,
-			"icao_address": "3434000",
+			"icao_address": "3434008",
 			"frame": "",
 			"autonomy": 10,
 			"priority": 0,

@@ -21,7 +21,7 @@ just_one_threat: true # Monitoring sends just one threat. Careful!
 
 simulation:
   auto_start:
-    - {icao: 3434000, delay: 5.0}
+    - {icao: 3434008, delay: 5.0}
 
   # change_param:
   #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
