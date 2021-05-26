@@ -2,6 +2,7 @@
     <!-- Arguments -->
     <arg name="use_case_yaml" default="continuous_loss_separation"/>
     <arg name="rviz_name" default="continuous"/>
+    <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml).yaml" />
     <!-- GAUSS -->
     <include file="$(find gauss_tools)/launch/gauss_continuous_utm.launch">
         <arg name="use_case_yaml" value="$(arg use_case_yaml)"/>
