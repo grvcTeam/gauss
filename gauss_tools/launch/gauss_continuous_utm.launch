@@ -3,6 +3,8 @@
     <arg name="rviz_name" default="leon"/>
     <arg name="use_case_yaml" default="leon/loss_separation"/>
     <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml).yaml" />
+    <arg name="bag_dir" default="/home/hector/ros/bags"/>
+    <arg name="bag_name" default="$(arg use_case_yaml)"/>
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/rviz/$(arg rviz_name).rviz" required="true"/>
     <!-- GAUSS -->
@@ -15,4 +17,8 @@
     <node pkg="monitoring" type="continuous_monitoring" name="monitoring" required="true" output="screen"/>
     <node pkg="tactical_deconfliction" type="tactical_deconfliction" name="tactical_deconfliction" output="screen" required="true"/>
     <node pkg="emergency_management" type="emergency_management" output="screen" name="emergency_management" required="true"/>
+    <!-- ROSBAG -->
+    <node pkg="rosbag" type="record" name="rosbag_record" output="screen"
+          args="-o $(arg bag_dir)/$(arg bag_name) -a"
+    />
 </launch>
