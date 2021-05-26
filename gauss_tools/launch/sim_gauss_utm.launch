@@ -2,7 +2,6 @@
     <!-- Arguments -->
     <arg name="rviz_name" default="leon"/>
     <arg name="use_case_yaml" default="leo/loss_separation"/>
-    <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml).yaml" />
     <!-- GAUSS -->
     <include file="$(find gauss_tools)/launch/gauss_utm.launch">
         <arg name="use_case_yaml" value="$(arg use_case_yaml)"/>

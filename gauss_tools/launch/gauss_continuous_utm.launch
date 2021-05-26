@@ -2,6 +2,7 @@
     <!-- Arguments -->
     <arg name="rviz_name" default="leon"/>
     <arg name="use_case_yaml" default="leon/loss_separation"/>
+    <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml).yaml" />
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/rviz/$(arg rviz_name).rviz" required="true"/>
     <!-- GAUSS -->
