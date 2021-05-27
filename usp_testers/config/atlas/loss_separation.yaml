@@ -19,9 +19,9 @@ deltaZ: 500.0
 safetyDistance: 550
 
 simulation:
-  auto_start:
-    - {icao: 3434009, delay: 5.0}
-    - {icao: 3434000, delay: 16.0}
+  # auto_start:
+  #   - {icao: 3434009, delay: 5.0}
+  #   - {icao: 3434000, delay: 16.0}
 
   # change_param:
   #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}

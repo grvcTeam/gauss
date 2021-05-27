@@ -20,15 +20,15 @@ safetyDistance: 10
 just_one_threat: true # Monitoring sends just one threat. Careful! 
 
 simulation:
-  auto_start:
-    - {icao: 3434008, delay: 5.0}
+  # auto_start:
+  #   - {icao: 3434008, delay: 5.0}
 
   # change_param:
   #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
 
   cruising_speed:
     - {icao: 3434008, speed: 0.0}
-    - {icao: 3434000, speed: 0.0}
+    # - {icao: 3434000, speed: 0.0}
 
 # Copy paste to test a wildfire (geofence). Check times.
 # rostopic pub /gauss/airspace_update gauss_msgs_mqtt/AirspaceUpdate "{id: '0', name: '0', type: '0', country: '0', state: '0', city: '0', last_updated: 1621946000000, date_effective: 1621844600000, geometry: 'CIRCLE(38.142447,-3.150833,2200.32)'}" 
