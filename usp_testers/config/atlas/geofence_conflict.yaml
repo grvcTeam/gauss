@@ -6,7 +6,7 @@ origin_longitude: -3.17358946
 origin_ellipsoidal_height: 498.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
 init_time: 0.0  # https://time.is/Unix_time_now
 time_horizon: 800
-dT: 50
+dT: 20
 minX: -10000
 minY: -2500
 minZ: 0
