@@ -182,34 +182,21 @@ std::vector<double> findGridBorders(geometry_msgs::Polygon &_polygon, geometry_m
         vert_x.push_back(_polygon.points.at(i).x);
         vert_y.push_back(_polygon.points.at(i).y);
     }
-    vert_x.push_back(_polygon.points.front().x);
-    vert_y.push_back(_polygon.points.front().y);
+    vert_x.push_back(_init_point.x);
+    vert_y.push_back(_init_point.y);
+    vert_x.push_back(_goal_point.x);
+    vert_y.push_back(_goal_point.y);
+
     obs_min.x = *std::min_element(vert_x.begin(), vert_x.end());
     obs_min.y = *std::min_element(vert_y.begin(), vert_y.end());
     obs_max.x = *std::max_element(vert_x.begin(), vert_x.end());
     obs_max.y = *std::max_element(vert_y.begin(), vert_y.end());
 
-    std::vector<double> out_grid_borders, temp_x, temp_y;
-    temp_x.push_back(_init_point.x);
-    temp_x.push_back(_goal_point.x);
-    temp_y.push_back(_init_point.y);
-    temp_y.push_back(_goal_point.y);
-    double min_x = *std::min_element(temp_x.begin(), temp_x.end());
-    double min_y = *std::min_element(temp_y.begin(), temp_y.end());
-    double max_x = *std::max_element(temp_x.begin(), temp_x.end());
-    double max_y = *std::max_element(temp_y.begin(), temp_y.end());
-
-    while (min_x >= obs_min.x || min_y >= obs_min.y || max_x <= obs_max.x || max_y <= obs_max.y) {
-        if (min_x >= obs_min.x) min_x = min_x - _operational_volume * 2;
-        if (min_y >= obs_min.y) min_y = min_y - _operational_volume * 2;
-        if (max_x <= obs_max.x) max_x = _operational_volume * 2 + max_x;
-        if (max_y <= obs_max.y) max_y = _operational_volume * 2 + max_y;
-    }
-
-    out_grid_borders.push_back(min_x);
-    out_grid_borders.push_back(min_y);
-    out_grid_borders.push_back(max_x);
-    out_grid_borders.push_back(max_y);
+    std::vector<double> out_grid_borders;
+    out_grid_borders.push_back(obs_min.x - 5 * _operational_volume);
+    out_grid_borders.push_back(obs_min.y - 5 * _operational_volume);
+    out_grid_borders.push_back(obs_max.x + 5 * _operational_volume);
+    out_grid_borders.push_back(obs_max.y + 5 * _operational_volume);
 
     return out_grid_borders;
 }
@@ -247,6 +234,33 @@ std::vector<gauss_msgs::Waypoint> pathAStartToWPVector(const nav_msgs::Path &_pa
         out_wp_vector.push_back(temp_wp);
     }
     return out_wp_vector;
+}
+
+std::vector<gauss_msgs::Waypoint> findAlternativePathRadial(geometry_msgs::Point &_p_init, geometry_msgs::Point &_p_end, ros::Time &_t_init, ros::Time &_t_end, gauss_msgs::Geofence &_geofence, gauss_msgs::ConflictiveOperation &_conflictive_operation, const geometry_msgs::Vector3& _init_vector, const geometry_msgs::Vector3& _final_vector, double _safety_margin) {
+    std::vector<gauss_msgs::Waypoint> out;
+    auto init_angle = atan2(_init_vector.y, _init_vector.x);
+    auto final_angle = atan2(_final_vector.y, _final_vector.x);
+    auto delta_angle = atan2(sin(final_angle - init_angle), cos(final_angle - init_angle));
+    auto arc_lenght = _geofence.circle.radius * std::fabs(delta_angle);
+    float min_solution_segment_lenght = 100.0;  // [m] TODO: as a param?
+    int segment_count = static_cast<int>(std::max(2.0, std::floor(arc_lenght/min_solution_segment_lenght)));
+    auto step_angle = delta_angle / segment_count;
+    auto z_step = (_p_end.z - _p_init.z) / segment_count;
+    auto t_step = (_t_init.toSec() - _t_end.toSec()) / segment_count;
+    std::cout << init_angle << ", " << final_angle << ", " << delta_angle << ", " << arc_lenght << ", " << segment_count << ", " << step_angle << '\n';
+    for (int i = 0; i < segment_count + 1; i++) {
+        auto i_angle = init_angle + i * step_angle;
+        std::cout << "["  << i << "]: " << i_angle << '\n';
+        gauss_msgs::Waypoint wp;
+        wp.x = _geofence.circle.x_center + (_geofence.circle.radius + _safety_margin) * cos(i_angle);
+        wp.y = _geofence.circle.y_center + (_geofence.circle.radius + _safety_margin) * sin(i_angle);
+        wp.z = _p_init.z + i * z_step;
+        wp.stamp.fromSec(_t_init.toSec() + i * t_step);
+        std::cout << wp << '\n';
+        out.push_back(wp);
+    }
+
+    return out;
 }
 
 std::vector<gauss_msgs::Waypoint> findAlternativePathAStar(geometry_msgs::Point &_p_init, geometry_msgs::Point &_p_end, ros::Time &_t_init, ros::Time &_t_end, gauss_msgs::Geofence &_geofence, gauss_msgs::ConflictiveOperation &_conflictive_operation) {
@@ -439,17 +453,16 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             ROS_ERROR_COND(req.threat.conflictive_geofences.size() != 1, "[Tactical] Deconflictive server should receive 1 geofence to solve GEOFENCE CONFLICT!");
             // * Assume inputs from monitoring
             // // TODO: Check if init and end points have to be further apart from the geofence!
-            const double safety_margin = req.threat.conflictive_operations.front().operational_volume * 1.5;
             geometry_msgs::Point p_init_conflict, p_end_conflict;
-            // req.threat.geofence_conflictive_segments.crossing_0_out_vector
-            p_init_conflict.x = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().x + req.threat.geofence_conflictive_segments.crossing_0_out_vector.x * safety_margin;
-            p_init_conflict.y = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().y + req.threat.geofence_conflictive_segments.crossing_0_out_vector.y * safety_margin;
-            p_init_conflict.z = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().z + req.threat.geofence_conflictive_segments.crossing_0_out_vector.z * safety_margin;
-            p_end_conflict.x = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().x + req.threat.geofence_conflictive_segments.crossing_1_out_vector.x * safety_margin;
-            p_end_conflict.y = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().y + req.threat.geofence_conflictive_segments.crossing_1_out_vector.y * safety_margin;
-            p_end_conflict.z = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().z + req.threat.geofence_conflictive_segments.crossing_1_out_vector.z * safety_margin;
+            p_init_conflict.x = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().x;
+            p_init_conflict.y = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().y;
+            p_init_conflict.z = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().z;
+            p_end_conflict.x = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().x;
+            p_end_conflict.y = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().y;
+            p_end_conflict.z = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().z;
             ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.first_contiguous_segment.front().stamp;
             ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.first_contiguous_segment.back().stamp;
+            const double safety_margin = req.threat.conflictive_operations.front().operational_volume * 2.0;
 
             double fake_value = 1.0;
             gauss_msgs::DeconflictionPlan possible_solution;
@@ -459,7 +472,8 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 possible_solution.maneuver_type = 1;
                 possible_solution.uav_id = req.threat.uav_ids.front();
                 possible_solution.cost = possible_solution.riskiness = fake_value;
-                std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+                // std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathAStar(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front());
+                std::vector<gauss_msgs::Waypoint> temp_solution = findAlternativePathRadial(p_init_conflict, p_end_conflict, t_init_conflict, t_end_conflict, req.threat.conflictive_geofences.front(), req.threat.conflictive_operations.front(), req.threat.geofence_conflictive_segments.crossing_0_out_vector, req.threat.geofence_conflictive_segments.crossing_1_out_vector, safety_margin);
                 possible_solution.waypoint_list = mergeSolutionWithFlightPlan(temp_solution, req.threat.conflictive_operations.front().flight_plan_updated, req.threat.conflictive_operations.front().actual_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }

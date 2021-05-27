@@ -773,6 +773,11 @@ std::pair<double, double> checkGeofence2D(const Segment& segment, const gauss_ms
         return std::make_pair(std::nan(""), std::nan(""));
     }
 
+    if ((m_crossing.first > 1) || (m_crossing.second < 0)) {
+        // ROS_INFO("Intersection is out of the segment");
+        return std::make_pair(std::nan(""), std::nan(""));
+    }
+
     auto t_crossing_0 = translated_segment.t_A + clamp(m_crossing.first,  0, 1) * (translated_segment.t_B - translated_segment.t_A);
     auto t_crossing_1 = translated_segment.t_A + clamp(m_crossing.second, 0, 1) * (translated_segment.t_B - translated_segment.t_A);
     return std::make_pair(t_crossing_0, t_crossing_1);
