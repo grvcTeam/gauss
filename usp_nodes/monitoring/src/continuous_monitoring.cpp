@@ -938,7 +938,9 @@ int main(int argc, char** argv) {
     // ros::NodeHandle np("~");
     ROS_INFO("[Monitoring] Started monitoring node!");
     double safety_distance;
+    bool just_one_threat;
     n.param("safetyDistance", safety_distance, 10.0);
+    n.param("just_one_threat", just_one_threat, false);
     double safety_distance_sq = pow(safety_distance, 2);
 
     auto read_icao_srv_url = "/gauss/read_icao";
@@ -1076,8 +1078,11 @@ int main(int argc, char** argv) {
         }
 
         std::sort(loss_results_list.begin(), loss_results_list.end(), happensBefore);
-
-        gauss_msgs::NewThreats threats_msg = manageResultList(loss_results_list, geofence_results_list, index_to_operation_map, index_to_geofence_map);
+        gauss_msgs::NewThreats threats_msg;
+        if (just_one_threat && (loss_results_list.size() > 0 || geofence_results_list.size() > 0)) {
+            threats_msg = manageResultList(loss_results_list, geofence_results_list, index_to_operation_map, index_to_geofence_map);
+            just_one_threat = false;
+        }
         if (threats_msg.request.threats.size() > 0) {
             std::string cout_threats;
             for (auto threat : threats_msg.request.threats) {
