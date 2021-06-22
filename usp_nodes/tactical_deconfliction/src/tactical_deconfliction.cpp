@@ -503,7 +503,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             ros::Time t_init_conflict = req.threat.geofence_conflictive_segments.closest_exit_wp.stamp;
             ros::Time t_end_conflict = req.threat.geofence_conflictive_segments.all_segments.back().stamp;
 
-            double fake_value = 1.0;
+            double fake_value = 0.0;
             gauss_msgs::DeconflictionPlan possible_solution;
             possible_solution.uav_id = req.threat.conflictive_operations.front().uav_id;
             // [6] Ruta a mi destino saliendo lo antes posible de la geofence
@@ -538,7 +538,7 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
             possible_solution.maneuver_type = 3;
             possible_solution.waypoint_list.clear();
             possible_solution.uav_id = req.threat.uav_ids.front();
-            possible_solution.cost = possible_solution.riskiness = fake_value * 4;  // ! Forcing this solution to be selected
+            possible_solution.cost = possible_solution.riskiness = fake_value * 1;  // ! Forcing this solution to be selected
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
             req.threat.conflictive_operations.front().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
             possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().landing_spots.waypoints.front());
