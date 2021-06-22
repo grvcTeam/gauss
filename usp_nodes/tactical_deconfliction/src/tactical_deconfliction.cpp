@@ -306,16 +306,11 @@ std::vector<gauss_msgs::Waypoint> findAlternativePathAStar(geometry_msgs::Point 
 
 std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_msgs::Waypoint> &_solution, gauss_msgs::WaypointList &_flight_plan, gauss_msgs::Waypoint &_actual_wp, const uint8_t &_threat_type) {
     std::vector<gauss_msgs::Waypoint> out_merged_solution;
-    std::cout << std::setprecision(10) << "FP : ";
-    for (auto a : _flight_plan.waypoints) std::cout << a.stamp.toSec() << " ";
-    std::cout << "\nAlt: ";
-    for (auto a : _solution) std::cout << a.stamp.toSec() << " ";
-    std::cout << "\ncWP: " << _actual_wp.stamp.toSec() << "\n";
     bool do_once = true;
     if (actual_wp_on_merge_) out_merged_solution.push_back(_actual_wp);  // Insert the actual wp
     for (auto fp_wp : _flight_plan.waypoints) {
-        if (_flight_plan.waypoints.front().stamp <= fp_wp.stamp) {  // Do nothing before current wp. Current wp (it is refered to flight plan) is equal than flight_plan_updated[0]
-            if (fp_wp.stamp <= _solution.front().stamp) {           // Between current wp and first wp of the solution
+        if (_flight_plan.waypoints.front().stamp <= fp_wp.stamp) {              // Do nothing before current wp. Current wp (it is refered to flight plan) is equal than flight_plan_updated[0]
+            if (fp_wp.stamp <= _solution.front().stamp && _threat_type != 5) {  // Between current wp and first wp of the solution if threat type is not GEOFENCE INTRUSION
                 out_merged_solution.push_back(fp_wp);
             } else if (do_once && _solution.back().stamp < fp_wp.stamp) {  // Insert all the solution wps
                 for (auto solution_wp : _solution) {
@@ -328,9 +323,6 @@ std::vector<gauss_msgs::Waypoint> mergeSolutionWithFlightPlan(std::vector<gauss_
             }
         }
     }
-    std::cout << "Sol: ";
-    for (auto a : out_merged_solution) std::cout << a.stamp.toSec() << " ";
-    std::cout << "\n";
     return out_merged_solution;
 }
 
