@@ -12,7 +12,7 @@ from gauss_msgs.srv import ReadIcao, ReadIcaoRequest
 from gauss_light_sim.srv import ChangeFlightPlan, ChangeFlightPlanRequest
 
 class GaussPlugin(Plugin):
-    pop_up = Signal()
+    pop_up = Signal(int)
 
     def __init__(self, context):
         super(GaussPlugin, self).__init__(context)
@@ -46,15 +46,15 @@ class GaussPlugin(Plugin):
         # Do connections and stuff here. For complex plugins, consider
         # creating custom helper classes instead of QWidget
         self.status_pub = rospy.Publisher('/gauss/flight', RPSChangeFlightStatus, queue_size=1)
-        self.acceptance_pub = rospy.Publisher('/gauss/flightacceptance', RPSFlightPlanAccept, queue_size=1)
-        rospy.Subscriber('/gauss/alternative_flight_plan', UTMAlternativeFlightPlan, self.alternative_flight_plan_callback)
+        self.acceptance_pub = rospy.Publisher('/gauss/flightacceptance', RPSFlightPlanAccept, queue_size=10)
+        rospy.Subscriber('/gauss/alternative_flight_plan', UTMAlternativeFlightPlan, self.alternative_flight_plan_callback, queue_size=10)
         self.read_icao_service = rospy.ServiceProxy('/gauss/read_icao', ReadIcao)
 
         self._widget.refresh_button.clicked.connect(self.handle_refresh_button_clicked)
         self._widget.start_button.clicked.connect(self.handle_start_button_clicked)
         self._widget.stop_button.clicked.connect(self.handle_stop_button_clicked)
         self.pop_up.connect(self.show_pop_up)
-        self.alternative_flight_plan = None
+        self.alternative_flight_plan_cache = []
 
         self.handle_refresh_button_clicked()  # Try to refresh here
 
@@ -102,41 +102,38 @@ class GaussPlugin(Plugin):
         self.change_flight_status('stop')
 
     def alternative_flight_plan_callback(self, data):
-        if self.alternative_flight_plan is None:
-            self.alternative_flight_plan = data
-            rospy.loginfo('[RQt] Received: [{}]'.format(data))
-            self.pop_up.emit()
-        else:
-            rospy.loginfo('[RQt] Waiting for pilot response...')
+        cached_count = len(self.alternative_flight_plan_cache)
+        self.alternative_flight_plan_cache.append(copy.deepcopy(data))
+        rospy.loginfo('[RQt] Received: [{}]'.format(data))
+        self.pop_up.emit(cached_count)
 
-    def show_pop_up(self):
+    def show_pop_up(self, index):
         msg = QMessageBox()
-        msg.setWindowTitle('Alternative flight plan received')
-        msg.setText('Accept alternative flight plan?')
+        msg.setWindowTitle('Alternative flight plan received [' + str(index) + ']')
+        msg.setText('Accept alternative flight plan for [' + str(self.alternative_flight_plan_cache[index].icao) + '] ?')
         msg.setIcon(QMessageBox.Question)
         msg.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
-        msg.setDefaultButton(QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.Yes)
         # msg.setInformativeText('Accept new plan?')
-        msg.setDetailedText('{}'.format(self.alternative_flight_plan))
+        msg.setDetailedText('{}'.format(self.alternative_flight_plan_cache[index]))
         # msg.buttonClicked.connect(self.handle_message_box)  # TODO: do handling here?
         pop_up_response = msg.exec_()
         ros_response = RPSFlightPlanAccept()
-        ros_response.icao = self.alternative_flight_plan.icao
-        ros_response.flight_plan_id = self.alternative_flight_plan.flight_plan_id
+        ros_response.icao = self.alternative_flight_plan_cache[index].icao
+        ros_response.flight_plan_id = self.alternative_flight_plan_cache[index].flight_plan_id
 
         if pop_up_response == QMessageBox.Yes:
             ros_response.accept = True
             # Try to call light_sim service to change flight plan
             try:
                 light_sim_change_flight_plan = rospy.ServiceProxy('/gauss_light_sim/change_flight_plan', ChangeFlightPlan)
-                light_sim_change_flight_plan(ChangeFlightPlanRequest(alternative=copy.deepcopy(self.alternative_flight_plan)))
+                light_sim_change_flight_plan(ChangeFlightPlanRequest(alternative=self.alternative_flight_plan_cache[index]))
             except rospy.ServiceException as e:
                 print("[RQt] Service call failed: %s"%e)
 
         if pop_up_response == QMessageBox.No:
             ros_response.accept = False
         self.acceptance_pub.publish(ros_response)
-        self.alternative_flight_plan = None
 
     def shutdown_plugin(self):
         # TODO unregister all publishers here

@@ -150,6 +150,10 @@ add_executable(USPmanager src/USPmanager.cpp)
 target_link_libraries(USPmanager ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES})
 add_dependencies(USPmanager ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
+add_executable(continuous_uspm src/continuous_uspm.cpp)
+target_link_libraries(continuous_uspm ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES})
+add_dependencies(continuous_uspm ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
 add_executable(usp_manager_ual_bridge src/usp_manager_ual_bridge.cpp)
 target_link_libraries(usp_manager_ual_bridge ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${GeographicLib_LIBRARIES})
 add_dependencies(usp_manager_ual_bridge ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})

@@ -1,0 +1,5 @@
+int8[] uav_ids
+NewThreat[] threats
+---
+bool success
+string message

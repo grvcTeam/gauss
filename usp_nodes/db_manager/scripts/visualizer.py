@@ -83,11 +83,11 @@ class WaypointListViz(object):
         self.lifetime = lifetime
         # Default values for markers:
         self.path_type = Marker.LINE_STRIP
-        self.path_scale = Vector3(1, 0, 0)
+        self.path_scale = Vector3(1, 1, 1)
         self.mandatory_wp_type = Marker.CUBE_LIST
         self.mandatory_wp_scale = Vector3(1.5, 1.5, 1.5)
         self.non_mandatory_wp_type = Marker.SPHERE_LIST
-        self.non_mandatory_wp_scale = Vector3(1.5, 0, 0)
+        self.non_mandatory_wp_scale = Vector3(1.5, 1.5, 1.5)
         self.stamp_font_size = 2
         self.stamp_offset = Vector3(0, 0, 2)
 
@@ -113,6 +113,7 @@ class WaypointListViz(object):
         marker_common.header.frame_id = self.frame_id
         marker_common.ns = ns
         marker_common.lifetime = self.lifetime
+        marker_common.pose.orientation.w = 1
 
         path_marker = copy.deepcopy(marker_common)
         path_marker.id = 0
@@ -200,6 +201,7 @@ class GeofenceViz(object):
         marker_common.header.frame_id = self.frame_id
         marker_common.ns = ns
         marker_common.lifetime = self.lifetime
+        marker_common.pose.orientation.w = 1
 
         markerarray = MarkerArray()
         text_point = Point()
@@ -346,6 +348,7 @@ class VolumeViz(object):
         marker_common.lifetime = self.lifetime
         marker_common.type = Marker.ARROW
         marker_common.action = Marker.ADD
+        marker_common.pose.orientation.w = 1
 
         flight_geometry_marker_array = MarkerArray()
         operational_volume_marker_array = MarkerArray()
@@ -472,7 +475,7 @@ def main():
         flight_plan_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         track_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         landing_spots_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
-        landing_spots_viz.config_non_mandatory_wp(Marker.CUBE_LIST, Vector3(0.5, 0.5, 0))
+        landing_spots_viz.config_non_mandatory_wp(Marker.CUBE_LIST, Vector3(5, 5, 0))
         volume_viz = VolumeViz(global_frame_id, rospy.Duration(1.0/update_rate))
 
         marker_array = MarkerArray()
@@ -488,6 +491,7 @@ def main():
         map_marker.mesh_resource = 'package://db_manager/maps/loring.dae'
         map_marker.action = Marker.ADD
         map_marker.pose.position.y = -30  # TODO: visual correction
+        map_marker.pose.orientation.w = 1
         map_marker.scale.x = 3048
         map_marker.scale.y = 3048
         map_marker.scale.z = 3048
@@ -496,6 +500,11 @@ def main():
 
         for operation in read_operation_response.operation:
             operation_ns = operation.icao_address
+            # Change alpha depending on is_started value
+            if (operation.is_started) :
+                is_started_alpha = 1.0
+            else :
+                is_started_alpha = 0.1
 
             # Visualize non-trajectory information
             if operation.track.waypoints:
@@ -510,6 +519,7 @@ def main():
                 info_marker.type = Marker.TEXT_VIEW_FACING
                 info_marker.action = Marker.ADD
                 info_marker.scale.z = 2  # TODO: param font_size
+                info_marker.pose.orientation.w = 1
                 info_marker.color = palette.get_color(id_to_color[operation.uav_id % 10])  # TODO: param!
 
                 current_point = Point()
@@ -546,6 +556,7 @@ def main():
                 frame_marker.type = Marker.MESH_RESOURCE
                 frame_marker.action = Marker.ADD
                 frame_marker.pose.position = current_point
+                frame_marker.pose.orientation.w = 1  # TODO: yaw!
                 frame_marker.scale.x = 4  # TODO: Param!
                 frame_marker.scale.y = 4
                 frame_marker.scale.z = 4
@@ -574,6 +585,7 @@ def main():
                     current_wp_marker.pose.position.x = current_wp.x
                     current_wp_marker.pose.position.y = current_wp.y
                     current_wp_marker.pose.position.z = current_wp.z
+                    current_wp_marker.pose.orientation.w = 1
                     current_wp_marker.scale.x = 4  # TODO: Param!
                     current_wp_marker.scale.y = 4
                     current_wp_marker.scale.z = 4
@@ -586,7 +598,7 @@ def main():
 
             # Visualize flight_plan
             ns = operation_ns + '/flight_plan'
-            color = palette.get_color(id_to_color[operation.uav_id % 10])
+            color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha)
             color_scheme = WaypointListColorScheme(color, color, color, color)
             flight_plan_viz.path_scale = Vector3(1, 0, 0)
             flight_plan = flight_plan_viz.get_markerarray(operation.flight_plan.waypoints, ns, color_scheme)
@@ -622,16 +634,19 @@ def main():
 
             # Visualize volumes (flight geometry, operational volume)
             ns = operation_ns + '/volumes'
-            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.7)
-            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], 0.5)
+            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha-0.8)
+            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha-0.5)
             volume = volume_viz.get_markerarray(operation, ns, fg_color, ov_color)
             marker_array.markers.extend(volume.markers)
 
         geofence_viz = GeofenceViz(global_frame_id, rospy.Duration(1.0/update_rate))
         for geofence in read_geofences_response.geofences:
             ns = 'geofence_' + str(geofence.id)
-            color = palette.get_color('red')  # TODO: Force red?
-            if geofence.start_time.secs < rospy.get_rostime().secs and rospy.get_rostime().secs < geofence.end_time.secs: 
+            if geofence.start_time.secs < rospy.get_rostime().secs and rospy.get_rostime().secs < geofence.end_time.secs:
+                color = palette.get_color('red')  # TODO: Force red? 
+                marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
+            else:
+                color = palette.get_color('yellow')  # TODO: other?
                 marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
 
         visualization_pub.publish(marker_array)

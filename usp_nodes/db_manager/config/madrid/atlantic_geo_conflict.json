@@ -1,0 +1,58 @@
+{
+    "operations": [ 
+        {
+            "uav_id": 0,
+			"icao_address": "3434009",
+			"frame": "",
+			"autonomy": 10,
+			"priority": 0,
+			"is_started": false,
+			"current_wp": 1,
+            "flight_plan" : 
+            {
+				"waypoints" : 
+				[
+					{
+						"mandatory" : 0,
+						"stamp" : 0,
+						"x" : 9486.6398808193644,
+						"y" : 1712.8883966604212,
+						"z" : 392.72485880462114
+					},
+					{
+						"mandatory" : 0,
+						"stamp" : 361.0,
+						"x" : -371.8744465161738,
+						"y" : -64.072124505864195,
+						"z" : 399.98885251736317
+					}
+				]
+            },
+            "dT": 20.0,
+			"time_tracked": 10,
+			"track": {
+				"waypoints": [
+				]
+			},
+			"time_horizon": 600,
+			"estimated_trajectory": {
+				"waypoints": [
+				]
+			},			
+			"landing_spots": {
+				"waypoints": [
+                    {
+                        "mandatory" : 0,
+                        "stamp" : 0,
+                        "x" : -14.588147089974557,
+                        "y" : -22.691585716874354,
+                        "z" : 0.999942877249225
+                    }
+				]
+			},
+			"flight_geometry": 80.0,
+			"operational_volume": 100.0,
+			"conop": "Long Forest Surveillance"
+        }
+    ]
+}

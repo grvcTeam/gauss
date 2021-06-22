@@ -1,0 +1,30 @@
+# Old madrid_large_geo_light_sim.launch
+operations_json: "madrid/geo_intrusion"
+geofences_json: "no_geofences" # madrid_geofence_intrusion
+origin_latitude: 40.65974645776713
+origin_longitude: -3.59689676974471
+origin_ellipsoidal_height: 675.0  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
+init_time: 0.0  # https://time.is/Unix_time_now
+time_horizon: 800
+dT: 40
+minX: -1500
+minY: -1500
+minZ: 0
+maxX: 1200
+maxY: 1200
+maxZ: 500
+deltaX: 10.0
+deltaY: 10.0
+deltaZ: 10.0
+safetyDistance: 10
+just_one_threat: true
+
+simulation:
+  auto_start:
+    - {icao: 3434000, delay: 2.0}
+
+  # change_param:
+  #   - {icao: 3434009, delay: 23.5, yaml: {name: jamming, type: float, value: 0.6}}
+
+# Copy paste to test a wildfire (geofence). Check times. 
+# rostopic pub /gauss/airspace_update gauss_msgs_mqtt/AirspaceUpdate "{id: '0', name: '0', type: '0', country: '0', state: '0', city: '0', last_updated: 1620116200, date_effective: 1620116184, geometry: 'CIRCLE(40.656147,-3.618381,1968.57)'}" 

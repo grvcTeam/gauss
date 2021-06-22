@@ -8,6 +8,7 @@
 #include <gauss_msgs_mqtt/ADSBSurveillance.h>
 #include <gauss_msgs_mqtt/RPAStateInfo.h>
 #include <gauss_msgs_mqtt/UTMAlert.h>
+#include <gauss_msgs_mqtt/AirspaceUpdate.h>
 #include <gauss_msgs_mqtt/UTMAlternativeFlightPlan.h>
 #include <gauss_msgs_mqtt/RPSFlightPlanAccept.h>
 #include <gauss_msgs_mqtt/RPSChangeFlightStatus.h>
@@ -16,12 +17,14 @@
 #include <gauss_msgs/PositionReport.h>
 #include <gauss_msgs/Notifications.h>
 // #include <gauss_msgs/Alert.h>
+#include <gauss_msgs/AirspaceUpdate.h>
 #include <gauss_msgs/Operation.h>
 #include <gauss_msgs/Waypoint.h>
 #include <gauss_msgs/WaypointList.h>
 #include <gauss_msgs/ReadOperation.h>
 #include <gauss_msgs/WriteOperation.h>
 #include <gauss_msgs/Threats.h>
+#include <gauss_msgs/NewThreats.h>
 #include <gauss_msgs/Threat.h>
 #include <gauss_msgs/ReadIcao.h>
 #include <gauss_msgs/ReadIcaoRequest.h>
@@ -68,6 +71,7 @@ private:
     // Server Callbacks
     bool notificationsCB(gauss_msgs::Notifications::Request &req, gauss_msgs::Notifications::Response &res); // UTM -> RPS
     void RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightStatus::ConstPtr& msg); // RPS -> UTM
+    void airspaceUpdateCB(const gauss_msgs_mqtt::AirspaceUpdate::ConstPtr& msg); // RPS -> UTM
 
     // TODO: Think how to implement this
     void RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccept::ConstPtr& msg); // RPS -> UTM
@@ -106,6 +110,7 @@ private:
     ros::Subscriber adsb_sub_;
     ros::Subscriber flight_plan_accept_sub_;
     ros::Subscriber flight_status_sub_;
+    ros::Subscriber airspace_update_sub_;
 
     // Server 
     ros::ServiceServer notification_server_;
@@ -115,7 +120,6 @@ private:
     ros::ServiceClient write_operation_client_;
     ros::ServiceClient threats_client_;
     ros::ServiceClient read_icao_client_;
-    ros::ServiceClient send_pilot_answer_client_;
     ros::ServiceClient write_plans_client_;
     ros::ServiceClient change_flight_status_client_;
 
@@ -124,6 +128,7 @@ private:
     ros::Publisher position_report_pub_;
     ros::Publisher alternative_flight_plan_pub_;
     ros::Publisher alert_pub_;
+    ros::Publisher airspace_alert_pub_;
     ros::Publisher flight_status_pub_;
 
 
@@ -146,14 +151,16 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     // Publish
     rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
     position_report_pub_ = nh_.advertise<gauss_msgs::PositionReport>("/gauss/position_report", 10);
-    alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 1);
+    alternative_flight_plan_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlternativeFlightPlan>("/gauss/alternative_flight_plan", 10);
     alert_pub_ = nh_.advertise<gauss_msgs_mqtt::UTMAlert>("/gauss/alert", 1);
+    airspace_alert_pub_ = nh_.advertise<gauss_msgs::AirspaceUpdate>("/gauss/airspace_alert", 1);
     flight_status_pub_ = nh_.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10);
 
     rpaState_sub_= nh_.subscribe<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo",10,&USPManager::RPAStateCB,this);
     adsb_sub_ = nh_.subscribe<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 10, &USPManager::ADSBSurveillanceCB, this);
     flight_plan_accept_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSFlightPlanAccept>("/gauss/flightacceptance", 10, &USPManager::RPSFlightPlanAcceptCB, this);
     flight_status_sub_ = nh_.subscribe<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10, &USPManager::RPSChangeFlightStatusCB, this);
+    airspace_update_sub_ = nh_.subscribe<gauss_msgs_mqtt::AirspaceUpdate>("/gauss/airspace_update", 10, &USPManager::airspaceUpdateCB, this);
     // Server 
     notification_server_ = nh_.advertiseService("/gauss/notifications", &USPManager::notificationsCB, this);
 
@@ -162,12 +169,11 @@ proj_(lat0_, lon0_, ellipsoidal_height_, earth_)
     threats_client_ = nh_.serviceClient<gauss_msgs::Threats>("/gauss/threats");
     read_icao_client_ = nh_.serviceClient<gauss_msgs::ReadIcao>("/gauss/read_icao");
     read_operation_client_ = nh_.serviceClient<gauss_msgs::ReadOperation>("/gauss/read_operation");
-    send_pilot_answer_client_ = nh_.serviceClient<gauss_msgs::PilotAnswer>("/gauss/pilotanswer");
     write_plans_client_ = nh_.serviceClient<gauss_msgs::WritePlans>("/gauss/update_flight_plans");
     change_flight_status_client_ = nh_.serviceClient<gauss_msgs::ChangeFlightStatus>("/gauss/change_flight_status");
 
     ROS_INFO("[USPM] Started USPManager node!");
-    ROS_INFO_STREAM("Origin (Latitude, Longitude): (" << lat0_ << "," << lon0_ << ")");
+    ROS_INFO_STREAM("[USPM] Origin (Latitude, Longitude): (" << lat0_ << "," << lon0_ << ")");
 
     this->initializeICAOIDMap();
 }
@@ -177,7 +183,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
 {
     for (auto msg : req.notifications){
         // TODO: Treat all possible notifications properly
-        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_CONFLICT)
+        if(msg.threat.threat_type == gauss_msgs::Threat::LOSS_OF_SEPARATION || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_CONFLICT || msg.threat.threat_type == gauss_msgs::Threat::GEOFENCE_INTRUSION)
         {
             gauss_msgs_mqtt::UTMAlternativeFlightPlan alternative_flight_plan_msg;
             std::string uav_id_string = std::to_string(msg.uav_id);
@@ -200,6 +206,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
             }
 
             alternative_flight_plan_pub_.publish(alternative_flight_plan_msg);
+            ROS_INFO("[USPM] Alternative flight plan proposed.");
 
             ThreatFlightPlan threat_flight_plan;
             threat_flight_plan.threat_id = msg.threat.threat_id;
@@ -257,7 +264,7 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
                     write_plans_msg.request.flight_plans.push_back(threat_flight_plan.new_flight_plan);
                     write_plans_msg.request.uav_ids.push_back((*it).second);
                 } else {
-                    ROS_WARN("USP Manager can not find the uav id associated with icao address %06x", msg->icao);
+                    ROS_WARN("[USPM] Can not find the uav id associated with icao address %06x", msg->icao);
                 }
             }
         }
@@ -266,25 +273,14 @@ void USPManager::RPSFlightPlanAcceptCB(const gauss_msgs_mqtt::RPSFlightPlanAccep
 
         if (!write_plans_client_.call(write_plans_msg) || !write_plans_msg.response.success)
         {
-            ROS_WARN("Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
+            ROS_WARN("[USPM] Failed to send updated flight plan to tracking after receiving alternative flight plan acknowledge from pilot");
         }
         else
         {
             // ROS_INFO_STREAM(write_plans_msg.response.message);
         }
     }
-    // Send PilotAnswer to Emergency Management
-    gauss_msgs::PilotAnswer pilot_answer_msg;
-    if(msg->accept == 0)
-        pilot_answer_msg.request.pilot_answers.push_back(NO);
-    else if(msg->accept == 1)
-        pilot_answer_msg.request.pilot_answers.push_back(YES);
-
-    pilot_answer_msg.request.threat_ids.push_back(threat_flight_plan.threat_id);
-    if (!send_pilot_answer_client_.call(pilot_answer_msg) || !pilot_answer_msg.response.success)
-    {
-        ROS_WARN("Failed to send pilot answer to Emergency Management");
-    }
+    ROS_INFO_STREAM("[USPM] The pilot decided " << msg->accept << " corresponding to threat id " << (int)threat_flight_plan.threat_id);
 }
 
 // RPAStatus Callback
@@ -338,7 +334,7 @@ void USPManager::RPAStateCB(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr& msg)
     }
     else
     {
-        ROS_WARN("USP Manager can not find the uav id associated with icao address %s", position_report_msg.icao_address.c_str());
+        ROS_WARN("[USPM] Can not find the uav id associated with icao address %s", position_report_msg.icao_address.c_str());
     }
     
 }
@@ -390,6 +386,84 @@ void USPManager::RPSChangeFlightStatusCB(const gauss_msgs_mqtt::RPSChangeFlightS
     change_flight_status_client_.call(change_flight_status_msg);
 }
 
+void USPManager::airspaceUpdateCB(const gauss_msgs_mqtt::AirspaceUpdate::ConstPtr& msg) 
+{
+    gauss_msgs::AirspaceUpdate alert_msg;
+    // Convert
+    alert_msg.id = msg->id;
+    alert_msg.name = msg->name;
+    alert_msg.type = msg->type;
+    alert_msg.country = msg->country;
+    alert_msg.state = msg->state;
+    alert_msg.city = msg->city;
+    alert_msg.last_updated = msg->last_updated;
+    alert_msg.date_effective = msg->date_effective;
+
+    geometry_msgs::Point cartesian_translation;
+    double latitude, longitude;
+
+    std::string geometry;
+    geometry = msg->geometry;
+    geometry.pop_back();
+    std::stringstream reading_strstream;
+
+    if(geometry.substr(0, std::string("CIRCLE").size()) == "CIRCLE")
+    {
+        geometry = geometry.substr(std::string("CIRCLE").size()+1, geometry.size() - std::string("CIRCLE").size() - 1);
+        reading_strstream << geometry;
+        double latitude, longitude, radius;
+        sscanf(geometry.c_str(), "%lf,%lf,%lf", &latitude, &longitude, &radius);
+        proj_.Forward(latitude, longitude, ellipsoidal_height_, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
+        alert_msg.circle.radius = radius;
+        alert_msg.circle.x_center = cartesian_translation.x;
+        alert_msg.circle.y_center = cartesian_translation.y;
+        alert_msg.cylinder_shape = true;
+    }
+    else if(geometry.substr(0, std::string("POLYGON").size()) == "POLYGON")
+    {
+        geometry = geometry.substr(std::string("POLYGON").size()+1, geometry.size() - std::string("POLYGON").size() - 1);
+        std::vector<std::string> comma_separated_strings;
+        comma_separated_strings.push_back("");
+        int comma_counter = 0;
+        for(int i=0; i<geometry.size(); i++)
+        {
+            if(geometry[i] == ' ')
+            {
+                // Do nothing
+            }
+            else if(geometry[i] == ',')
+            {
+                comma_counter++;
+                comma_separated_strings.push_back("");
+            } else {
+                comma_separated_strings.at(comma_counter) += geometry[i];
+            }
+        }
+
+        uint8_t pair_counter = 0;
+        double vertex_latitude, vertex_longitude;
+        for(auto it = comma_separated_strings.begin(); it != comma_separated_strings.end(); it++)
+        {
+            if(pair_counter == 0)
+            {
+                vertex_latitude = atof((*it).c_str());
+                pair_counter++;
+            }
+            else
+            {
+                vertex_longitude = atof((*it).c_str());
+                pair_counter = 0;
+                proj_.Forward(vertex_latitude, vertex_longitude, ellipsoidal_height_, cartesian_translation.x, cartesian_translation.y, cartesian_translation.z);
+                alert_msg.polygon.x.push_back(cartesian_translation.x);
+                alert_msg.polygon.y.push_back(cartesian_translation.y);
+            }
+        }
+        alert_msg.cylinder_shape = false;
+    }
+ 
+    airspace_alert_pub_.publish(alert_msg);
+}
+
 bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &rpa_state, gauss_msgs::Threat &threat, const gauss_msgs::PositionReport &pos_report){
     bool result = false;
     // Define threshold
@@ -407,6 +481,14 @@ bool USPManager::checkRPAHealth(const gauss_msgs_mqtt::RPAStateInfo::ConstPtr &r
     if (rpa_state->spoofing >= threshold_spoofing) {
         threat.threat_type = gauss_msgs::Threat::SPOOFING_ATTACK;
         result = true;
+    }
+
+    if (result){
+        // Finish threatened operation
+        gauss_msgs_mqtt::RPSChangeFlightStatus change_flight_status_msg;
+        change_flight_status_msg.status = "stop";
+        change_flight_status_msg.icao = rpa_state->icao;
+        flight_status_pub_.publish(change_flight_status_msg);
     }
 
     return result;
@@ -470,7 +552,7 @@ gauss_msgs::Threats USPManager::manageThreatList(const bool &_flag_new_threat, g
     std::string cout_threats;
     for (auto i : out_threats.request.threats) cout_threats = cout_threats + " [" + std::to_string(i.threat_id) +
                                                               ", " + std::to_string(i.threat_type) + "]";
-    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[USPM] New threats detected: (id, type) " + cout_threats);
+    ROS_INFO_STREAM_COND(out_threats.request.threats.size() > 0, "[USPM] Threats detected: (id, type) " + cout_threats);
 
     return out_threats;
 }

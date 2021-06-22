@@ -97,7 +97,7 @@ ConflictSolver::ConflictSolver() {
     // Cient
     check_client_ = nh_.serviceClient<gauss_msgs::CheckConflicts>("/gauss/check_conflicts");
 
-    ROS_INFO("[Tactical] Started ConflictSolver node!");
+    ROS_INFO("[Tactical] Started Tactical Deconfliction node!");
 }
 
 int ConflictSolver::pnpoly(int nvert, std::vector<float> &vertx, std::vector<float> &verty, float testx, float testy) {
@@ -446,18 +446,14 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
     }
 
     if (!check_client_.call(check_conflict) || !check_conflict.response.success)
-        ROS_ERROR("Failed checking conflicts");
+        ROS_ERROR("[Tactical] Failed checking conflicts");
 
     return 100 * check_conflict.response.threats.size() / interp_path.poses.size();
 }
 
 // deconflictCB callback
 bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss_msgs::Deconfliction::Response &res) {
-    std::string cout_request;
-    cout_request = cout_request + " [" + std::to_string(req.threat.threat_id) + " " + std::to_string(req.threat.threat_type) + " |";
-    for (auto uav_id : req.threat.uav_ids) cout_request = cout_request + " " + std::to_string(uav_id);
-    cout_request = cout_request + "]";
-    ROS_INFO_STREAM("[Tactical] New conflict received!" + cout_request);
+    ROS_INFO("[Tactical] Threat to solve [%d, %d]", req.threat.threat_id, req.threat.threat_type);
     //Deconfliction
     if (req.tactical) {
         double start_computational_time = ros::Time::now().toSec();
@@ -473,8 +469,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
         }
 
         if (req.threat.threat_type == req.threat.LOSS_OF_SEPARATION) {
-            if (req.operations.size() != 2) ROS_ERROR("[Monitoring] Loss of separation. Operation size should be equal to 2 not %zd", req.operations.size());
-            if (req.threat.times.size() != 2) ROS_ERROR("[Monitoring] Loss of separation. Threat times size should be equal to 2 not %zd", req.threat.times.size());
+            if (req.operations.size() != 2) ROS_ERROR("[Tactical] Loss of separation. Operation size should be equal to 2 not %zd", req.operations.size());
+            if (req.threat.times.size() != 2) ROS_ERROR("[Tactical] Loss of separation. Threat times size should be equal to 2 not %zd", req.threat.times.size());
             gauss_msgs::WaypointList traj1 = conflictive_operations.front().estimated_trajectory;
             gauss_msgs::WaypointList traj2 = conflictive_operations.back().estimated_trajectory;
             gauss_msgs::Waypoint wp1, wp2;
@@ -775,115 +771,138 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             // [6] Ruta a mi destino saliendo lo antes posible de la geofence
             // Get min distance to polygon border
-            gauss_msgs::Waypoint conflict_point;
-            conflict_point.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
-            conflict_point.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
-            conflict_point.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
-            std::map<std::vector<double>, double> point_and_distance;
-            for (auto vertex : res_polygon.points) {
-                std::vector<double> point;
-                point.push_back(vertex.x);
-                point.push_back(vertex.y);
-                point_and_distance.insert(std::make_pair(point, sqrt(pow(vertex.x - conflict_point.x, 2) +
-                                                                     pow(vertex.y - conflict_point.y, 2))));
-            }
-            for (int i = 0; i < res_polygon.points.size() - 1; i++) {
-                point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y,
-                                                                    res_polygon.points.at(i).x, res_polygon.points.at(i).y,
-                                                                    res_polygon.points.at(i + 1).x, res_polygon.points.at(i + 1).y));
-            }
-            point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y,
-                                                                res_polygon.points.front().x, res_polygon.points.front().y,
-                                                                res_polygon.points.back().x, res_polygon.points.back().y));
-            auto min_distance_coordinate = get_min(point_and_distance);
-            Eigen::Vector2f p_conflict, p_min_distance, unit_vec, v_out_polygon;
-            p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
-            p_min_distance = Eigen::Vector2f(min_distance_coordinate.first.front(), min_distance_coordinate.first.back());
-            unit_vec = (p_min_distance - p_conflict) / (p_min_distance - p_conflict).norm();
-            double safety_distance = conflictive_operations.front().operational_volume;
-            v_out_polygon = unit_vec * safety_distance;
-            geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
-            init_astar_point.x = min_distance_coordinate.first.front() + v_out_polygon(0);
-            init_astar_point.y = min_distance_coordinate.first.back() + v_out_polygon(1);
-            geometry_msgs::Polygon polygon_test_input = res_polygon;
-            if (!geofences.front().cylinder_shape) {
-                polygon_test_input.points.push_back(polygon_test_input.points.front());
-            }
-            geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*1.1, polygon_test_output);
-            if (!geofences.front().cylinder_shape) {
-                polygon_test_output.points.pop_back();
-            }
-            int init_astar_pos, goal_astar_pos;
-            goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
-            std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
-            min_grid_point.x = minX_;
-            min_grid_point.y = minY_;
-            max_grid_point.x = maxX_;
-            max_grid_point.y = maxY_;
-            PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
-            nav_msgs::Path a_star_path_res = path_finder.findNewPath();
-            std::vector<double> interp_times, a_star_times_res;
-            interp_times.push_back(conflictive_operations.front().estimated_trajectory.waypoints.front().stamp.toSec());  // init astar pos time
-            interp_times.push_back(res_times.at(goal_astar_pos));
-            a_star_times_res = path_finder.interpWaypointList(interp_times, a_star_path_res.poses.size() - 1);
-            a_star_times_res.push_back(res_times.at(goal_astar_pos));
-            // Solutions of conflict solver are a_star_path_res and a_star_times_res
+            // gauss_msgs::Waypoint conflict_point;
+            // conflict_point.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+            // conflict_point.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+            // conflict_point.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+            // std::map<std::vector<double>, double> point_and_distance;
+            // for (auto vertex : res_polygon.points) {
+            //     std::vector<double> point;
+            //     point.push_back(vertex.x);
+            //     point.push_back(vertex.y);
+            //     point_and_distance.insert(std::make_pair(point, sqrt(pow(vertex.x - conflict_point.x, 2) +
+            //                                                          pow(vertex.y - conflict_point.y, 2))));
+            // }
+            // for (int i = 0; i < res_polygon.points.size() - 1; i++) {
+            //     point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y,
+            //                                                         res_polygon.points.at(i).x, res_polygon.points.at(i).y,
+            //                                                         res_polygon.points.at(i + 1).x, res_polygon.points.at(i + 1).y));
+            // }
+            // point_and_distance.insert(getCoordinatesAndDistance(conflict_point.x, conflict_point.y,
+            //                                                     res_polygon.points.front().x, res_polygon.points.front().y,
+            //                                                     res_polygon.points.back().x, res_polygon.points.back().y));
+            // auto min_distance_coordinate = get_min(point_and_distance);
+            // Eigen::Vector2f p_conflict, p_min_distance, unit_vec, v_out_polygon;
+            // p_conflict = Eigen::Vector2f(conflict_point.x, conflict_point.y);
+            // p_min_distance = Eigen::Vector2f(min_distance_coordinate.first.front(), min_distance_coordinate.first.back());
+            // unit_vec = (p_min_distance - p_conflict) / (p_min_distance - p_conflict).norm();
+            // double safety_distance = conflictive_operations.front().operational_volume;
+            // v_out_polygon = unit_vec * safety_distance;
+            // geometry_msgs::Point init_astar_point, goal_astar_point, min_grid_point, max_grid_point;
+            // init_astar_point.x = min_distance_coordinate.first.front() + v_out_polygon(0);
+            // init_astar_point.y = min_distance_coordinate.first.back() + v_out_polygon(1);
+            // geometry_msgs::Polygon polygon_test_input = res_polygon;
+            // if (!geofences.front().cylinder_shape) {
+            //     polygon_test_input.points.push_back(polygon_test_input.points.front());
+            // }
+            // geometry_msgs::Polygon polygon_test_output;
+            // decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*1.1, polygon_test_output);
+            // if (!geofences.front().cylinder_shape) {
+            //     polygon_test_output.points.pop_back();
+            // }
+            // int init_astar_pos, goal_astar_pos;
+            // goal_astar_point = findGoalAStarPoint(polygon_test_output, res_path, goal_astar_pos);
+            // std::vector<double> grid_borders = findGridBorders(polygon_test_output, res_path, init_astar_point, goal_astar_point);
+            // min_grid_point.x = minX_;
+            // min_grid_point.y = minY_;
+            // max_grid_point.x = maxX_;
+            // max_grid_point.y = maxY_;
+            // PathFinder path_finder(res_path, init_astar_point, goal_astar_point, polygon_test_output, min_grid_point, max_grid_point);
+            // nav_msgs::Path a_star_path_res = path_finder.findNewPath();
+            // std::vector<double> interp_times, a_star_times_res;
+            // interp_times.push_back(conflictive_operations.front().estimated_trajectory.waypoints.front().stamp.toSec());  // init astar pos time
+            // interp_times.push_back(res_times.at(goal_astar_pos));
+            // a_star_times_res = path_finder.interpWaypointList(interp_times, a_star_path_res.poses.size() - 1);
+            // a_star_times_res.push_back(res_times.at(goal_astar_pos));
+            // // Solutions of conflict solver are a_star_path_res and a_star_times_res
             gauss_msgs::Waypoint temp_wp;
             gauss_msgs::DeconflictionPlan temp_wp_list;
-            temp_wp.x = conflict_point.x;
-            temp_wp.y = conflict_point.y;
-            temp_wp.z = conflict_point.z;
-            temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            for (int i = 0; i < a_star_path_res.poses.size(); i++) {
-                temp_wp.x = a_star_path_res.poses.at(i).pose.position.x;
-                temp_wp.y = a_star_path_res.poses.at(i).pose.position.y;
-                temp_wp.z = a_star_path_res.poses.at(i).pose.position.z;
-                temp_wp.stamp = ros::Time(a_star_times_res.at(i));
-                temp_wp_list.waypoint_list.push_back(temp_wp);
-            }
-            temp_wp_list.maneuver_type = 6;
-            temp_wp_list.cost = pathDistance(temp_wp_list);
-            gauss_msgs::Waypoint intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.at(1), res_polygon);
-            temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
-            temp_wp_list.uav_id = req.threat.uav_ids.front();
-            res.deconfliction_plans.push_back(temp_wp_list);
+            // temp_wp.x = conflict_point.x;
+            // temp_wp.y = conflict_point.y;
+            // temp_wp.z = conflict_point.z;
+            // temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // for (int i = 0; i < a_star_path_res.poses.size(); i++) {
+            //     temp_wp.x = a_star_path_res.poses.at(i).pose.position.x;
+            //     temp_wp.y = a_star_path_res.poses.at(i).pose.position.y;
+            //     temp_wp.z = a_star_path_res.poses.at(i).pose.position.z;
+            //     temp_wp.stamp = ros::Time(a_star_times_res.at(i));
+            //     temp_wp_list.waypoint_list.push_back(temp_wp);
+            // }
+            // temp_wp_list.maneuver_type = 6;
+            // temp_wp_list.cost = pathDistance(temp_wp_list);
+            // gauss_msgs::Waypoint intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.at(1), res_polygon); // ! This is making conflicsolver.cpp to explode
+            // temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
+            // temp_wp_list.uav_id = req.threat.uav_ids.front();
+            // res.deconfliction_plans.push_back(temp_wp_list);
             // [2] Ruta a mi destino por el camino mas corto
-            temp_wp_list.waypoint_list.clear();
-            temp_wp.x = conflict_point.x;
-            temp_wp.y = conflict_point.y;
-            temp_wp.z = conflict_point.z;
-            temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp.x = conflictive_operations.front().flight_plan.waypoints.back().x;
-            temp_wp.y = conflictive_operations.front().flight_plan.waypoints.back().y;
-            temp_wp.z = conflictive_operations.front().flight_plan.waypoints.back().z;
-            temp_wp.stamp = conflictive_operations.front().flight_plan.waypoints.back().stamp;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp_list.maneuver_type = 2;
-            temp_wp_list.cost = pathDistance(temp_wp_list);
-            intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
-            temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
-            temp_wp_list.uav_id = req.threat.uav_ids.front();
-            res.deconfliction_plans.push_back(temp_wp_list);
+            // temp_wp_list.waypoint_list.clear();
+            // temp_wp.x = conflict_point.x;
+            // temp_wp.y = conflict_point.y;
+            // temp_wp.z = conflict_point.z;
+            // temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp.x = conflictive_operations.front().flight_plan.waypoints.back().x;
+            // temp_wp.y = conflictive_operations.front().flight_plan.waypoints.back().y;
+            // temp_wp.z = conflictive_operations.front().flight_plan.waypoints.back().z;
+            // temp_wp.stamp = conflictive_operations.front().flight_plan.waypoints.back().stamp;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp_list.maneuver_type = 2;
+            // temp_wp_list.cost = pathDistance(temp_wp_list);
+            // intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
+            // temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
+            // temp_wp_list.uav_id = req.threat.uav_ids.front();
+            // res.deconfliction_plans.push_back(temp_wp_list);
+            // std::cout << "4\n";
             // [3] Ruta que me manda de vuelta a casa
-            temp_wp_list.waypoint_list.clear();
-            temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
-            temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp_list.maneuver_type = 3;
-            temp_wp_list.cost = pathDistance(temp_wp_list);
-            intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
-            temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
-            temp_wp_list.uav_id = req.threat.uav_ids.front();
-            res.deconfliction_plans.push_back(temp_wp_list);
+            // temp_wp_list.waypoint_list.clear();
+            // temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+            // temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+            // temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+            // temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+            // temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+            // temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+            // temp_wp_list.waypoint_list.push_back(temp_wp);
+            // temp_wp_list.maneuver_type = 3;
+            // temp_wp_list.cost = pathDistance(temp_wp_list);
+            // intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
+            // temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
+            // temp_wp_list.uav_id = req.threat.uav_ids.front();
+            // res.deconfliction_plans.push_back(temp_wp_list);
+            // [?] Ruta que me manda a un landing spot
+            if (conflictive_operations.front().landing_spots.waypoints.size() > 0) {
+                temp_wp_list.waypoint_list.clear();
+                temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+                temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+                temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+                temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+                temp_wp.x = conflictive_operations.front().landing_spots.waypoints.front().x;
+                temp_wp.y = conflictive_operations.front().landing_spots.waypoints.front().y;
+                temp_wp.z = conflictive_operations.front().landing_spots.waypoints.front().z;
+                temp_wp.stamp = ros::Time(conflictive_operations.front().estimated_trajectory.waypoints.front().stamp.toSec() + 300.0); // * Random addition
+                temp_wp_list.waypoint_list.push_back(temp_wp);
+                temp_wp_list.maneuver_type = 5;
+                // temp_wp_list.cost = pathDistance(temp_wp_list);
+                // intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
+                // temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
+                temp_wp_list.cost = 0.0;        // ! Forcing this solution to be the one of choice
+                temp_wp_list.riskiness = 0.0;   // ! Forcing this solution to be the one of choice
+                temp_wp_list.uav_id = req.threat.uav_ids.front();
+                res.deconfliction_plans.push_back(temp_wp_list);
+            }
 
             res.message = "Conflict solved";
             res.success = true;

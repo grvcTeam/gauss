@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   geometry_msgs
+  visualization_msgs
   nav_msgs
   std_msgs
 )
@@ -144,6 +145,10 @@ include_directories(
 add_executable(monitoring src/monitoring.cpp)
 target_link_libraries(monitoring ${catkin_LIBRARIES})
 add_dependencies(monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
+
+add_executable(continuous_monitoring src/continuous_monitoring.cpp)
+target_link_libraries(continuous_monitoring ${catkin_LIBRARIES})
+add_dependencies(continuous_monitoring ${catkin_EXPORTED_TARGETS} ${catkin_DEPENDS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

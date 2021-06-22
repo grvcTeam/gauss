@@ -249,7 +249,7 @@ bool Tracking::update(std::vector<Candidate*> &cand_list)
         // Check if Candidate information comes from a non cooperative uav, in that case the info is discarded
         if ((*candidates_it)->uav_id != std::numeric_limits<uint8_t>::max() )
         {
-            if(uav_id_flight_status_map_[((*candidates_it)->uav_id)] == FlightStatus::STARTED)
+            if(uav_id_flight_status_map_[((*candidates_it)->uav_id)] != FlightStatus::NOT_STARTED)
             {
                 auto it_target_tracker = cooperative_targets_.find((*candidates_it)->uav_id);
                 if(it_target_tracker != cooperative_targets_.end())
@@ -356,7 +356,7 @@ void Tracking::positionReportCB(const gauss_msgs::PositionReport::ConstPtr &msg)
     
     if (msg->header.stamp != ros::Time(0))
     {
-        if(uav_id_flight_status_map_[msg->uav_id] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[msg->uav_id] != FlightStatus::NOT_STARTED) // Flight status Started & Ended
         {
             bool create_candidate = false;
             if (use_position_report_ && msg->source == msg->SOURCE_RPA)
@@ -533,7 +533,7 @@ bool Tracking::writeTrackingInfoToDatabase()
     // Write cooperative uavs operations
     for(auto it = cooperative_operations_.begin(); it != cooperative_operations_.end(); ++it)
 	{
-        if(uav_id_flight_status_map_[it->first] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[it->first] != FlightStatus::NOT_STARTED)
         {
             if(updated_flight_plan_flag_map_[it->first])
             {
@@ -554,8 +554,9 @@ bool Tracking::writeTrackingInfoToDatabase()
                 write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
                 write_tracking_msg_.request.tracks.push_back(it->second.track);
                 write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-                write_tracking_msg_.request.is_started.push_back(true);
-                it->second.is_started = true;
+                bool ended = uav_id_flight_status_map_[it->first] == FlightStatus::ENDED;
+                write_tracking_msg_.request.is_started.push_back(!ended);
+                it->second.is_started = !ended;
                 /*
                 std::cout << "Estimated trajectory size: " << it->second.estimated_trajectory.waypoints.size() << "\n";
                 for(int i = 0; i<it->second.estimated_trajectory.waypoints.size(); i++)
@@ -598,17 +599,6 @@ bool Tracking::writeTrackingInfoToDatabase()
 
             updated_flight_plan_flag_map_[it->first] = false;
             modified_cooperative_operations_flags_[it->first] = false;
-        }
-        else if(uav_id_flight_status_map_[it->first] == FlightStatus::ENDED)
-        {
-            it->second.is_started = false;
-            write_tracking_msg_.request.uav_ids.push_back(it->first);
-            write_tracking_msg_.request.current_wps.push_back(it->second.current_wp);
-            write_tracking_msg_.request.estimated_trajectories.push_back(it->second.estimated_trajectory);
-            write_tracking_msg_.request.times_tracked.push_back(it->second.time_tracked);
-            write_tracking_msg_.request.tracks.push_back(it->second.track);
-            write_tracking_msg_.request.flight_plans_updated.push_back(it->second.flight_plan_updated);
-            write_tracking_msg_.request.is_started.push_back(false);
         }
 	}
     write_tracking_msg_.response.message.clear();
@@ -694,7 +684,7 @@ void Tracking::fillTrackingWaypointList()
     // First we fill tracking waypoint list of cooperative UAVs
     for(auto it=cooperative_targets_.begin(); it!=cooperative_targets_.end(); ++it)
     {
-        if(uav_id_flight_status_map_[it->first] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[it->first] != FlightStatus::NOT_STARTED)
         {
             gauss_msgs::Waypoint waypoint_aux;
             waypoint_aux.stamp = it->second->currentPositionTimestamp();
@@ -739,7 +729,7 @@ void Tracking::estimateTrajectory()
     {
         uint8_t uav_id = it->first;
         bool started_flight = false;
-        if(uav_id_flight_status_map_[uav_id] == FlightStatus::STARTED)
+        if(uav_id_flight_status_map_[uav_id] != FlightStatus::NOT_STARTED)
             started_flight = true;
         bool estimate_flag = already_tracked_cooperative_operations_[uav_id] && started_flight;
         if ( estimate_flag )
@@ -1114,6 +1104,7 @@ void Tracking::findSegmentWaypointsIndices(gauss_msgs::Waypoint &current_positio
         x.x() = current_position.x - waypoint_a.x;
         x.y() = current_position.y - waypoint_a.y;
         x.z() = current_position.z - waypoint_a.z;
+        x.w() = 0.0;
 
         b = A.inverse()*x;
 
