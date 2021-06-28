@@ -12,11 +12,12 @@ float32 hpl
 float32 hal
 float32 vpl
 float32 val
-string solution_mode
-uint32 timestamp # UTC in ms
+uint32 solution_mode
+uint64 timestamp # UTC in ms
 float32 jamming
 float32 spoofing
 bool anomalous_clock_drift
 bool anomalous_pos_drift
+bool integrity_alarm
 float32 signal_noise_ratio
 float32 received_power

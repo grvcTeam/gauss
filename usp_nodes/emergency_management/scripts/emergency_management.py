@@ -16,6 +16,7 @@ from gauss_msgs.msg import Threat, Circle, Notification, Waypoint, WaypointList
 from gauss_msgs.msg import Operation, Geofence, DeconflictionPlan, ConflictiveOperation
 from gauss_msgs.srv import Deconfliction, DeconflictionRequest
 from gauss_msgs.srv import UpdateThreats, UpdateThreatsRequest
+from gauss_msgs.msg import AirspaceUpdate
 
 class EmergencyManagement():
 
@@ -33,6 +34,9 @@ class EmergencyManagement():
         self._notifications_list = []   
         self._conflictive_operations = []
         self._conflictive_geofences = []    
+
+        # Subscriber
+        self._airspace_alert_sub = rospy.Subscriber('/gauss/airspace_alert', AirspaceUpdate, self.airspace_alert_cb)
         
         # Server     
 
@@ -56,15 +60,16 @@ class EmergencyManagement():
 
         # Timer
 
-        self.timer = rospy.Timer(rospy.Duration(10), self.timer_cb)
+        self.timer = rospy.Timer(rospy.Duration(1), self.timer_cb)
         
-        print("Started Emergency Management(EM) module!. This module proposes threats solutions to the USP module.")
+        rospy.loginfo("[EM] Started Emergency Management(EM) module!")
 
     def send_notifications(self, notifications):
         request = NotificationsRequest()
         request.notifications = self._notifications_list
         request.operations = self._conflictive_operations
         response = self._notifications_service_handle(request)
+        self._notifications_list = [] # DO NOT DELETE THIS LINE
         return response
     
     def send_threat2deconfliction(self, threat2deconflicted): 
@@ -123,6 +128,9 @@ class EmergencyManagement():
             elif maneuver == 3: # Route for going back home.
                 merge2end = False
                 flighplansection = 2
+            elif maneuver == 5: # Route to a landing spot.
+                merge2end = False
+                flighplansection = 2   
             elif maneuver == 6: # Route to my destination leaving the geofence asap.
                 merge2end = True
                 flighplansection = 2   
@@ -206,7 +214,6 @@ class EmergencyManagement():
                 temp_pose.z = flightplan.waypoints[i].z
                 temp_pose.stamp = flightplan.waypoints[i].stamp
                 new_flight_plan.waypoints.append(temp_pose)
-        
         return new_flight_plan
         
 
@@ -297,7 +304,8 @@ class EmergencyManagement():
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
                 geofence = Geofence()          
-                geofence.id = 3
+                geofence.id = 1
+                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
                 geofence.max_altitude = 50.0
                 geofence.circle = geofence_base
@@ -365,7 +373,8 @@ class EmergencyManagement():
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
                 geofence = Geofence()
-                geofence.id = 3
+                geofence.id = 2
+                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
                 geofence.max_altitude = 100.0
                 geofence.circle = geofence_base
@@ -414,8 +423,9 @@ class EmergencyManagement():
             if threat_type == Threat.JAMMING_ATTACK: 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
-                notification.description = 'Land within the geofence created around the UAV.'
+                notification.description = 'Attention: Jamming attack. Land now'
                 notification.uav_id = uav_threatened
+                notification.threat.threat_type = Threat.JAMMING_ATTACK
                 self._notifications_list.append(notification) 
                 
                 # We create a geofence.
@@ -423,11 +433,15 @@ class EmergencyManagement():
                 alarm_center = threat.location
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
+                geofence_base.radius = 500
                 geofence = Geofence()
-                geofence.id = 3
+                geofence.id = 1
                 geofence.min_altitude = 0.0
-                geofence.max_altitude = 100.0
+                geofence.max_altitude = 600.0
                 geofence.circle = geofence_base
+                geofence.cylinder_shape = True
+                geofence.start_time = rospy.Time().now()
+                geofence.end_time = rospy.Time().from_sec(rospy.Time.now().to_sec() + 800.0)
     
                 # We write a geofence.
                 req = WriteGeofencesRequest()
@@ -452,7 +466,8 @@ class EmergencyManagement():
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
                 geofence = Geofence()
-                geofence.id = 3
+                geofence.id = 4
+                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
                 geofence.max_altitude = 100.0
                 geofence.circle = geofence_base
@@ -486,16 +501,37 @@ class EmergencyManagement():
                 notification.new_flight_plan = self.create_new_flight_plan(conflictive_operations, threat, notification.action, best_solution.waypoint_list)
                 self._notifications_list.append(notification) 
         self.send_notifications(self._notifications_list)
+    
+    def airspace_alert_cb(self, alert): 
+        geofence_base = Circle()
+        geofence_base.x_center = alert.circle.x_center
+        geofence_base.y_center = alert.circle.y_center
+        geofence_base.radius = alert.circle.radius
+        geofence = Geofence()
+        geofence.id = 0 # TODO: Fix this. Input is a string
+        geofence.min_altitude = 0.0
+        geofence.max_altitude = 500.0
+        geofence.circle = geofence_base
+        geofence.cylinder_shape = True
+        geofence.start_time = rospy.Time().from_sec(alert.date_effective/1000)
+        geofence.end_time = rospy.Time().from_sec(alert.last_updated/1000 + 600.0)
+
+        req = WriteGeofencesRequest()
+        req.geofence_ids = [geofence.id]
+        req.geofences = [geofence]
+        res = self._writeGeofences_service_handle(req)
+        res.message = "Geofence stored in the Data Base."  
 
     def service_threats_cb(self, request):
         req = ThreatsRequest()
         req = copy.deepcopy(request)
         num = len(req.threats) 
-        rospy.loginfo("EM has received %d threats!", num) 
+        rospy.loginfo("[EM] %d threats received!", num) 
         zero_time = rospy.Time()
         for i in range(num):
             threat = EmergencyManagement.Threat2Solve(rospy.Time.now(), 'TODO', req.threats[i])
             self._threats_list.append(threat)
+        self._conflictive_operations = [] # DO NOT DELETE THIS LINE
         for i in range(len(req.operations)):
             self._conflictive_operations.append(req.operations[i])
         for i in range(len(req.geofences)):
@@ -507,11 +543,10 @@ class EmergencyManagement():
     def service_pilot_answer_cb(self, request):
         req = PilotAnswerRequest()
         req = copy.deepcopy(request)
-        rospy.loginfo("There are new pilot answers")
+        str_out = "[EM] The pilot decided " + str(req.pilot_answers) + " corresponding to threat id " + str(req.threat_ids)
+        rospy.loginfo(str_out)
         threat_ids = list(req.threat_ids)
-        print("THE PILOT CORRESPONDING TO THREAT_ID:", threat_ids)
         answers = req.pilot_answers 
-        print("THE PILOT DECIDES WHAT TO DO WITH REGARD THE UTM PROPOSAL:", req.pilot_answers)
         num = len(threat_ids)
         if num > 0:
             for i in range(num):
@@ -522,7 +557,7 @@ class EmergencyManagement():
 
     def timer_cb(self, timer):
         num = len(self._threats_list)
-        rospy.loginfo("Right now, there are %d active threats in the U-space", num)
+        # rospy.loginfo("Right now, there are %d active threats in the U-space", num)
         if num > 0:
             for threat in self._threats_list:           
                 if threat.status == 'TODO': 
@@ -536,7 +571,7 @@ class EmergencyManagement():
                     self.action_decision_maker(threat.threat_msg, conflictive_operations_updated)
                     threat.status = 'DONE'
                         
-        rospy.loginfo("The number of Threats active in the U-space is %d", num)
+        # rospy.loginfo("The number of Threats active in the U-space is %d", num)
 
 ''' The node and the EmergencyManagement class are initialized'''
 

@@ -1,0 +1,12 @@
+{
+    "id":"e25bed06-ba8e-488c-9ff7-06a54c644ae9",
+     "name": "Wildfire",
+     "type": "wildfire",
+     "country": "SPAIN",
+     "state": "a",        
+     "city": "Madrid",
+     "last_updated": 121332, // ms UTC
+      "date_effective": 1234345, // ms UTC
+      "geometry": "CIRCLE(lat, long, radius)"
+}
+    

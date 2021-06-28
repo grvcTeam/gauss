@@ -1,0 +1,20 @@
+<library path="src">
+  <class name="Gauss" type="rqt_gauss.gauss_module.GaussPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for the Gauss Project.
+    </description>
+    <qtgui>
+      <!-- optional grouping...
+      <group>
+        <label>Group</label>
+      </group>
+      <group>
+        <label>Subgroup</label>
+      </group>
+      -->
+      <label>Gauss Python Plugin</label>
+      <icon type="theme">system-help</icon>
+      <statustip>A Python GUI plugin for the Gauss Project.</statustip>
+    </qtgui>
+  </class>
+</library>

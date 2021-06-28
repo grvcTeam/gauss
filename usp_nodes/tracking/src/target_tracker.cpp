@@ -171,7 +171,7 @@ void TargetTracker::predictNTimes(uint8_t n, double time_step, gauss_msgs::Waypo
 
 	for(int i=0; i<n; ++i)
 	{
-		waypoint_aux.stamp += duration_aux.fromSec((i+1)*time_step);
+		waypoint_aux.stamp += duration_aux.fromSec(time_step);
 		waypoint_aux.x += pose_(3,0)*time_step;
 		waypoint_aux.y += pose_(4,0)*time_step;
 		waypoint_aux.z += pose_(5,0)*time_step;

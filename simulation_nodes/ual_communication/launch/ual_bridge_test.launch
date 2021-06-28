@@ -1,0 +1,160 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="mode" default="sitl"/>
+    <arg name="ns_prefix" default="uav_"/>
+    <arg name="robot_model" default="iris"/>
+    <arg name="pub_rate" default="100.0"/>
+    <arg name="debug" default="false"/>
+    <arg name="store_data" default="false"/>
+    <arg name="save_test_data" default="false"/>
+    <arg name="save_experiment_data" default="false"/>
+    <arg name="trajectory" default="true"/>
+    <arg name="reach_tolerance" default="0.4"/>
+    <arg name="sitl_take_off_height" default="0.5"/>
+    <arg name="path" default="optitrack2"/>
+    <arg name="generator_mode" default="0"/>
+    <arg name="pkg_name" default="usp_manager"/>
+    <arg name="use_class" default="true"/>
+    <arg name="multi" default="true"/>
+    <arg name="cruising_speed" default="3.0"/>
+    <arg name="look_ahead" default="3.0"/>
+    <arg name="light" default="false"/>
+    <arg name="sitl" default="true"/>
+    <arg name="ual_server" default="true"/>
+    <arg name="ual_pub_rate" default="30.0"/>    
+    <arg name="pose_frame_id" default="map"/>
+    <arg name="mavros_offboard_rate" default="30.0"/>
+    <arg name="position_th" default="0.33"/>
+    <arg name="orientation_th" default="0.65"/>
+    <arg name="hold_pose_time" default="3.0"/>
+    <arg name="operations_json" default="loss_operations"/>
+    <arg name="geofences_json"  default="no_geofences"/>
+
+    <!-- RVIZ -->
+    <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/tester.rviz" required="true"/>
+    <!-- GAUSS -->
+    <node pkg="db_manager" type="DBmanager" name="data_base_manager" output="screen" required="true">
+        <param name="operations_json" value="$(arg operations_json)"/>
+        <param name="geofences_json" value= "$(arg geofences_json)"/>
+    </node>
+    <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
+    <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/>
+    <node pkg="tracking" type="tracking" name="tracking" output="screen" required="true"/>
+    <!-- <node pkg="ual_communication" type="notificationBridge" name="notification_bridge" output="screen" required="true"/> -->
+    <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
+    <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
+    <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>
+    <!-- Wait 30 seconds before launching monitoring -->
+    <!-- <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 35.0; $0 $@'; xterm -e gdb -ex run - -args"/> -->
+    <node pkg="monitoring" type="monitoring" name="monitoring"  required="true" output="screen" launch-prefix="bash -c 'sleep 40.0; $0 $@';"/>
+    <!-- PX4 -->
+    <group if="$(eval mode=='sitl')">
+        <!-- Launch Gazebo simulation -->
+        <rosparam param="/use_sim_time">true</rosparam>
+        <node pkg="px4_bringup" type="launch_gzworld.py" name="gazebo_world" output="screen" args="-physics=ode -world=$(find px4_bringup)/config/empty_light.world">
+            <rosparam param="sim_origin">[37.558542, -5.931074, 7.89]</rosparam>            <!-- [lat,lon,alt] -->
+        </node>
+    </group>
+    <!-- Launch robot id=1 -->
+    <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="$(arg ns_prefix)0">
+        <arg name="id" value="1"/>
+        <arg name="material" value="Red"/>
+        <arg name="mode" value="$(arg mode)"/>
+        <arg name="x" value="0"/>
+        <arg name="y" value="0"/>
+        <arg name="z" value="0"/>
+        <arg name="yaw" value="0"/>
+        <arg name="robot_model" value="$(arg robot_model)"/>
+    </include>
+    <!-- Launch robot id=2 -->
+    <include file="$(find px4_bringup)/launch/spawn_robot.launch" ns="$(arg ns_prefix)1" if="$(arg multi)">
+        <arg name="id" value="2"/>
+        <arg name="material" value="Blue"/>
+        <arg name="mode" value="$(arg mode)"/>
+        <arg name="x" value="80"/>
+        <arg name="y" value="-80"/>
+        <arg name="z" value="0"/>
+        <arg name="yaw" value="0"/>
+        <arg name="robot_model" value="$(arg robot_model)"/>
+    </include>
+
+    <!-- Launch UAL server for uav id=1 -->
+    <node pkg="ual_backend_mavros" type="ual_backend_mavros_server" name="ual" ns="$(arg ns_prefix)0" output="screen">
+        <param name="uav_id" value="0"/>
+        <param name="ual_server" value="$(arg ual_server)"/>
+        <param name="ual_pub_rate" value="$(arg ual_pub_rate)"/>
+        <param name="mavros_offboard_rate" value="$(arg mavros_offboard_rate)"/>
+        <param name="position_th" value="$(arg position_th)"/>
+        <param name="orientation_th" value="$(arg orientation_th)"/>
+        <param name="hold_pose_time" value="$(arg hold_pose_time)"/>
+        <param name="pose_frame_id" value="$(arg pose_frame_id)"/>
+        <param name="home_pose_parent_frame" value="map"/>
+        <!-- default= map -->
+        <!-- Define home pose relative to global map frame -->
+        <rosparam param="home_pose">[0, 0, 0]</rosparam>        <!-- [x,y,z] -->
+        <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
+        <!-- <rosparam param="map_origin_geo">[37.558542, -5.931074, 7.89]</rosparam> -->        <!-- [lat,lon,alt] -->
+    </node>
+    <!-- Launch UAL server for uav id=1 -->
+    <node pkg="ual_backend_mavros" type="ual_backend_mavros_server" name="ual" ns="$(arg ns_prefix)1" output="screen" if="$(arg multi)">
+        <param name="uav_id" value="1"/>
+        <param name="ual_server" value="$(arg ual_server)"/>
+        <param name="ual_pub_rate" value="$(arg ual_pub_rate)"/>
+        <param name="mavros_offboard_rate" value="$(arg mavros_offboard_rate)"/>
+        <param name="position_th" value="$(arg position_th)"/>
+        <param name="orientation_th" value="$(arg orientation_th)"/>
+        <param name="hold_pose_time" value="$(arg hold_pose_time)"/>
+        <param name="pose_frame_id" value="$(arg pose_frame_id)"/>
+        <param name="home_pose_parent_frame" value="map"/>
+        <!-- default= map -->
+        <!-- Define home pose relative to global map frame -->
+        <rosparam param="home_pose">[80, -80, 0]</rosparam>        <!-- [x,y,z] -->
+        <!-- Define the global map frame geo position and let the UAL estimate the relative home pose -->
+        <!-- <rosparam param="map_origin_geo">[37.558542, -5.931074, 7.89]</rosparam> -->        <!-- [lat,lon,alt] -->
+    </node>
+
+    <!-- UAV Path Manager nodes -->
+    <group ns="upat_follower">
+        <group ns="$(arg ns_prefix)0">
+            <node pkg="$(arg pkg_name)" type="usp_manager_ual_bridge" name="usp_manager_ual_bridge" output="screen" required="true">
+                <param name="uav_id" value="0"/>
+                <param name="ns_prefix" value="$(arg ns_prefix)"/>
+                <param name="store_data" value="$(arg store_data)"/>
+                <param name="save_test_data" value="$(arg save_test_data)"/>
+                <param name="trajectory" value="$(arg trajectory)"/>
+                <param name="pub_rate" value="$(arg pub_rate)"/>
+                <param name="path" value="$(arg path)"/>
+                <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
+                <param name="sitl_take_off_height" value="$(arg sitl_take_off_height)"/>
+                <param name="use_class" value="true"/>
+                <param name="generator_mode" value="$(arg generator_mode)"/>
+                <param name="debug" value="$(arg debug)"/>
+                <param name="cruising_speed" value="$(arg cruising_speed)"/>
+                <param name="look_ahead" value="$(arg look_ahead)"/>
+                <param name="light" value="$(arg light)"/>
+                <param name="sitl" value="$(arg sitl)"/>
+            </node>
+        </group>
+        <group ns="$(arg ns_prefix)1">
+            <node pkg="$(arg pkg_name)" type="usp_manager_ual_bridge" name="usp_manager_ual_bridge" output="screen" required="true" if="$(arg multi)">
+                <param name="uav_id" value="1"/>
+                <param name="ns_prefix" value="$(arg ns_prefix)"/>
+                <param name="store_data" value="$(arg store_data)"/>
+                <param name="save_test_data" value="$(arg save_test_data)"/>
+                <param name="trajectory" value="$(arg trajectory)"/>
+                <param name="pub_rate" value="$(arg pub_rate)"/>
+                <param name="path" value="$(arg path)"/>
+                <param name="reach_tolerance" value="$(arg reach_tolerance)"/>
+                <param name="sitl_take_off_height" value="$(arg sitl_take_off_height)"/>
+                <param name="use_class" value="true"/>
+                <param name="generator_mode" value="$(arg generator_mode)"/>
+                <param name="debug" value="$(arg debug)"/>
+                <param name="cruising_speed" value="$(arg cruising_speed)"/>
+                <param name="look_ahead" value="$(arg look_ahead)"/>
+                <param name="light" value="$(arg light)"/>
+                <param name="sitl" value="$(arg sitl)"/>
+            </node>
+        </group>
+    </group>
+
+</launch>

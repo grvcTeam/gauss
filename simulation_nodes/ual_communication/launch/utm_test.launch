@@ -27,7 +27,7 @@
     <arg name="orientation_th" default="0.65"/>
     <arg name="hold_pose_time" default="3.0"/>
     <arg name="operations_json" default="loss_operations"/>
-    <arg name="geofences_json"  default="loss_geofences"/>
+    <arg name="geofences_json"  default="no_geofences"/>
 
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/tester.rviz" required="true"/>
@@ -38,7 +38,7 @@
     </node>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
     <node pkg="emergency_management" type="emergency_management.py" name="emergency_management" output="screen" required="true"/>
-    <node pkg="tracking" type="tracking" name="tracking" required="true"/>
+    <node pkg="tracking" type="tracking" name="tracking" required="true" output="screen" />
     <node pkg="ual_communication" type="notificationBridge" name="notification_bridge" output="screen" required="true"/>
     <node pkg="db_manager" type="visualizer.py" name="visualizer" output="screen" required="true"/>
     <!-- Wait 30 seconds before launching monitoring -->

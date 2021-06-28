@@ -23,20 +23,20 @@ class ColorPalette(object):
             (r, g, b) = self.colors[label]
             return ColorRGBA(r/255.0, g/255.0, b/255.0, alpha)
         else:
-            rospy.logwarn('Color [{}] not found in palette, using black'.format(label))
+            rospy.logwarn('[Viz] Color [{}] not found in palette, using black'.format(label))
             return ColorRGBA(0, 0, 0, alpha)
 
     # def set_color_index(self, label, index):
     #     if label in self.colors:
     #         self.indexed_colors[index] = label            
     #     else:
-    #         rospy.logwarn('Color [{}] not found in palette, ignoring indexing'.format(label))
+    #         rospy.logwarn('[Viz] Color [{}] not found in palette, ignoring indexing'.format(label))
 
     # def get_indexed_color(self, index, alpha = 1.0):
     #     if index in self.indexed_colors:
     #         return self.get_color(self.indexed_colors[index], alpha)
     #     else:
-    #         rospy.logwarn('Index [{}] not found in palette, using black'.format(index))
+    #         rospy.logwarn('[Viz] Index [{}] not found in palette, using black'.format(index))
     #         return ColorRGBA(0, 0, 0, alpha)
 
 
@@ -83,13 +83,13 @@ class WaypointListViz(object):
         self.lifetime = lifetime
         # Default values for markers:
         self.path_type = Marker.LINE_STRIP
-        self.path_scale = Vector3(0.1, 0, 0)
+        self.path_scale = Vector3(1, 1, 1)
         self.mandatory_wp_type = Marker.CUBE_LIST
-        self.mandatory_wp_scale = Vector3(0.15, 0.15, 0.15)
+        self.mandatory_wp_scale = Vector3(1.5, 1.5, 1.5)
         self.non_mandatory_wp_type = Marker.SPHERE_LIST
-        self.non_mandatory_wp_scale = Vector3(0.15, 0, 0)
-        self.stamp_font_size = 0.2
-        self.stamp_offset = Vector3(0, 0, 0.2)
+        self.non_mandatory_wp_scale = Vector3(1.5, 1.5, 1.5)
+        self.stamp_font_size = 2
+        self.stamp_offset = Vector3(0, 0, 2)
 
     def config_path(self, marker_type, marker_scale):
         self.path_type = marker_type
@@ -113,6 +113,7 @@ class WaypointListViz(object):
         marker_common.header.frame_id = self.frame_id
         marker_common.ns = ns
         marker_common.lifetime = self.lifetime
+        marker_common.pose.orientation.w = 1
 
         path_marker = copy.deepcopy(marker_common)
         path_marker.id = 0
@@ -162,7 +163,7 @@ class WaypointListViz(object):
             text_point.y += self.stamp_offset.y
             text_point.z += self.stamp_offset.z
             stamp_marker.pose.position = text_point
-            stamp_marker.text = 't = {}s'.format(waypoint.stamp.to_sec())
+            stamp_marker.text = 't = {:.0f}s'.format(waypoint.stamp.to_sec())
             stamp_marker_array.markers.append(copy.deepcopy(stamp_marker))
 
         markerarray = MarkerArray()
@@ -190,9 +191,9 @@ class GeofenceViz(object):
         # Default values for markers:
         self.surface_type = Marker.CYLINDER
         self.line_type = Marker.LINE_STRIP
-        self.line_scale = Vector3(0.1, 0, 0)
-        self.stamp_font_size = 0.2
-        self.stamp_offset = Vector3(0, 0, 0.2)
+        self.line_scale = Vector3(1, 0, 0)
+        self.stamp_font_size = 2
+        self.stamp_offset = Vector3(0, 0, 2)
 
     def get_markerarray(self, geofence, ns, color):
         marker_common = Marker()
@@ -200,6 +201,7 @@ class GeofenceViz(object):
         marker_common.header.frame_id = self.frame_id
         marker_common.ns = ns
         marker_common.lifetime = self.lifetime
+        marker_common.pose.orientation.w = 1
 
         markerarray = MarkerArray()
         text_point = Point()
@@ -255,11 +257,11 @@ class GeofenceViz(object):
             bottom_surface_marker.id = 6
 
             if len(geofence.polygon.x) != len(geofence.polygon.y):
-                rospy.logerr('Length mismatch at geofence polygon description: x[{}] != y[{}]'.format(len(geofence.polygon.x), len(geofence.polygon.y)))
+                rospy.logerr('[Viz] Length mismatch at geofence polygon description: x[{}] != y[{}]'.format(len(geofence.polygon.x), len(geofence.polygon.y)))
                 return
             point_count = len(geofence.polygon.x)
             if point_count <= 0:
-                rospy.logerr('Unexpected length at geofence polygon description: point_count = {}'.format(point_count))
+                rospy.logerr('[Viz] Unexpected length at geofence polygon description: point_count = {}'.format(point_count))
                 return
 
             x_sum = 0.0
@@ -333,8 +335,81 @@ class GeofenceViz(object):
 
         return markerarray
 
+
+class VolumeViz(object):
+    def __init__(self, frame_id, lifetime):
+        self.frame_id = frame_id
+        self.lifetime = lifetime
+
+    def get_markerarray(self, operation, ns, fg_color, ov_color):
+        marker_common = Marker()
+        marker_common.header.stamp = rospy.Time.now()
+        marker_common.header.frame_id = self.frame_id
+        marker_common.lifetime = self.lifetime
+        marker_common.type = Marker.ARROW
+        marker_common.action = Marker.ADD
+        marker_common.pose.orientation.w = 1
+
+        flight_geometry_marker_array = MarkerArray()
+        operational_volume_marker_array = MarkerArray()
+
+        flight_geometry = operation.flight_geometry * 2 # Flight geometry is a radius, the marker needs a diameter 
+        operational_volume = operation.operational_volume * 2 # Operational volume is a radius, the marker needs a diameter
+        waypointlist = operation.flight_plan.waypoints
+        for i, (prev, current) in enumerate(zip(waypointlist, waypointlist[1:])):
+            prev_point    = Point(prev.x,    prev.y,    prev.z)
+            current_point = Point(current.x, current.y, current.z)
+
+            flight_geometry_marker = copy.deepcopy(marker_common)
+            flight_geometry_marker.ns = ns + '/flight_geometry'
+            flight_geometry_marker.id = i
+            flight_geometry_marker.color = fg_color
+            flight_geometry_marker.points.append(prev_point)
+            flight_geometry_marker.points.append(current_point)
+            flight_geometry_marker.scale = Vector3(flight_geometry, flight_geometry, 0.01)
+            flight_geometry_marker_array.markers.append(copy.deepcopy(flight_geometry_marker))
+
+            operational_volume_marker = copy.deepcopy(marker_common)
+            operational_volume_marker.ns = ns + '/operational_volume'
+            operational_volume_marker.id = i
+            operational_volume_marker.color = ov_color
+            operational_volume_marker.points.append(prev_point)
+            operational_volume_marker.points.append(current_point)
+            operational_volume_marker.scale = Vector3(operational_volume, operational_volume, 0.01)
+            operational_volume_marker_array.markers.append(copy.deepcopy(operational_volume_marker))
+
+        flight_geometry_spheres = copy.deepcopy(marker_common)
+        flight_geometry_spheres.type = Marker.SPHERE_LIST
+        flight_geometry_spheres.ns = ns + '/flight_geometry_spheres'
+        flight_geometry_spheres.color = fg_color
+        # flight_geometry_spheres.color.a *= 2.0
+        flight_geometry_spheres.id = 1
+        flight_geometry_spheres.scale = Vector3(flight_geometry, flight_geometry, flight_geometry)
+
+        operational_volume_spheres = copy.deepcopy(marker_common)
+        operational_volume_spheres.type = Marker.SPHERE_LIST
+        operational_volume_spheres.ns = ns + '/operational_volume_spheres'
+        operational_volume_spheres.color = ov_color
+        # operational_volume_spheres.color.a *= 2.0
+        operational_volume_spheres.id = 1
+        operational_volume_spheres.scale = Vector3(operational_volume, operational_volume, operational_volume)
+
+        for current in waypointlist:
+            point = Point(current.x, current.y, current.z)
+            flight_geometry_spheres.points.append(point)
+            operational_volume_spheres.points.append(point)
+        flight_geometry_marker_array.markers.append(flight_geometry_spheres)
+        operational_volume_marker_array.markers.append(operational_volume_spheres)
+
+        markerarray = MarkerArray()
+        markerarray.markers.extend(flight_geometry_marker_array.markers)
+        markerarray.markers.extend(operational_volume_marker_array.markers)
+
+        return markerarray
+
 def main():
     rospy.init_node('visualizer')
+    rospy.loginfo('[Viz] Started Visualizer node!')
  
     # TODO: From param
     update_rate = 1.0
@@ -345,40 +420,40 @@ def main():
     visualization_topic = 'visualization_marker_array'
     id_to_color = {}
     id_to_color[0] = 'orange'
-    id_to_color[1] = 'yellow'
-    id_to_color[2] = 'light_green'
-    id_to_color[3] = 'cyan'
-    id_to_color[4] = 'light_blue'
-    id_to_color[5] = 'pink'
+    id_to_color[1] = 'light_green'
+    id_to_color[2] = 'light_blue'
+    id_to_color[3] = 'pink'
+    id_to_color[4] = 'yellow'
+    id_to_color[5] = 'cyan'
     id_to_color[6] = 'purple'
     id_to_color[7] = 'tan'
     id_to_color[8] = 'brown'
     id_to_color[9] = 'light_gray'
 
-    rospy.loginfo('Waiting for service {}'.format(read_icao_srv_url))
+    rospy.loginfo('[Viz] Waiting for service {}'.format(read_icao_srv_url))
     rospy.wait_for_service(read_icao_srv_url)
     read_icao_service = rospy.ServiceProxy(read_icao_srv_url, ReadIcao)
-    rospy.loginfo('Successfully connected to service {}'.format(read_icao_srv_url))
+    rospy.loginfo('[Viz] Successfully connected to service {}'.format(read_icao_srv_url))
 
-    rospy.loginfo('Waiting for service {}'.format(read_operation_srv_url))
+    rospy.loginfo('[Viz] Waiting for service {}'.format(read_operation_srv_url))
     rospy.wait_for_service(read_operation_srv_url)
     read_operation_service = rospy.ServiceProxy(read_operation_srv_url, ReadOperation)
-    rospy.loginfo('Successfully connected to service {}'.format(read_operation_srv_url))
+    rospy.loginfo('[Viz] Successfully connected to service {}'.format(read_operation_srv_url))
 
-    rospy.loginfo('Waiting for service {}'.format(read_geofences_srv_url))
+    rospy.loginfo('[Viz] Waiting for service {}'.format(read_geofences_srv_url))
     rospy.wait_for_service(read_geofences_srv_url)
     read_geofences_service = rospy.ServiceProxy(read_geofences_srv_url, ReadGeofences)
-    rospy.loginfo('Successfully connected to service {}'.format(read_geofences_srv_url))
+    rospy.loginfo('[Viz] Successfully connected to service {}'.format(read_geofences_srv_url))
 
     visualization_pub = rospy.Publisher(visualization_topic, MarkerArray, queue_size=1)
 
-    rospy.loginfo('Started visualization node!')
+    rospy.loginfo('[Viz] Started visualization node!')
     rate = rospy.Rate(update_rate)
     while not rospy.is_shutdown():
 
         read_icao_response = read_icao_service.call(ReadIcaoRequest())  # TODO: try/catch
         if not read_icao_response.success:
-            rospy.logwarn('Read icao did not succeed')
+            rospy.logwarn('[Viz] Read icao did not succeed')
             rospy.logwarn(read_icao_response.message)
 
         read_operation_request = ReadOperationRequest()
@@ -386,7 +461,7 @@ def main():
         read_operation_response = read_operation_service.call(read_operation_request)
 
         if not read_operation_response.success:
-            rospy.logwarn('Read operation did not succeed')
+            rospy.logwarn('[Viz] Read operation did not succeed')
             rospy.logwarn(read_operation_response.message)
 
         read_geofences_request = ReadGeofencesRequest()
@@ -394,17 +469,42 @@ def main():
         read_geofences_response = read_geofences_service.call(read_geofences_request)
 
         if not read_geofences_response.success:
-            rospy.logwarn('Read geofences did not succeed')
+            rospy.logwarn('[Viz] Read geofences did not succeed')
             rospy.logwarn(read_geofences_response.message)
 
         flight_plan_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         track_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
         landing_spots_viz = WaypointListViz(global_frame_id, rospy.Duration(1.0/update_rate))
-        landing_spots_viz.config_non_mandatory_wp(Marker.CUBE_LIST, Vector3(0.5, 0.5, 0))
+        landing_spots_viz.config_non_mandatory_wp(Marker.CUBE_LIST, Vector3(5, 5, 0))
+        volume_viz = VolumeViz(global_frame_id, rospy.Duration(1.0/update_rate))
 
         marker_array = MarkerArray()
+
+        # Add map marker
+        map_marker = Marker()
+        map_marker.header.stamp = rospy.Time.now()
+        map_marker.header.frame_id = global_frame_id
+        map_marker.ns = 'map'
+        map_marker.lifetime = rospy.Duration()
+        map_marker.id = 0
+        map_marker.type = Marker.MESH_RESOURCE
+        map_marker.mesh_resource = 'package://db_manager/maps/loring.dae'
+        map_marker.action = Marker.ADD
+        map_marker.pose.position.y = -30  # TODO: visual correction
+        map_marker.pose.orientation.w = 1
+        map_marker.scale.x = 3048
+        map_marker.scale.y = 3048
+        map_marker.scale.z = 3048
+        map_marker.mesh_use_embedded_materials = True
+        marker_array.markers.append(map_marker)
+
         for operation in read_operation_response.operation:
             operation_ns = operation.icao_address
+            # Change alpha depending on is_started value
+            if (operation.is_started) :
+                is_started_alpha = 1.0
+            else :
+                is_started_alpha = 0.1
 
             # Visualize non-trajectory information
             if operation.track.waypoints:
@@ -418,7 +518,8 @@ def main():
                 info_marker.id = 0
                 info_marker.type = Marker.TEXT_VIEW_FACING
                 info_marker.action = Marker.ADD
-                info_marker.scale.z = 0.2  # TODO: param font_size
+                info_marker.scale.z = 2  # TODO: param font_size
+                info_marker.pose.orientation.w = 1
                 info_marker.color = palette.get_color(id_to_color[operation.uav_id % 10])  # TODO: param!
 
                 current_point = Point()
@@ -434,12 +535,12 @@ def main():
                 # TODO: Check unused information
                 info_marker.pose.position = text_point
                 info_marker.text = '{} [{}]\n'.format(operation.icao_address, operation.uav_id)
-                info_marker.text += 'autonomy: {}m\n'.format(operation.autonomy)
+                #info_marker.text += 'autonomy: {}m\n'.format(operation.autonomy)
                 info_marker.text += 'priority: {}\n'.format(operation.priority)
-                info_marker.text += 'dt: {}s\n'.format(operation.dT)
-                info_marker.text += 't_mod: {}s\n'.format(operation.flight_plan_mod_t)
-                info_marker.text += 't_tracked: {}s\n'.format(operation.time_tracked)
-                info_marker.text += 't_horizon: {}s\n'.format(operation.time_horizon)
+                #info_marker.text += 'dt: {}s\n'.format(operation.dT)
+                #info_marker.text += 't_mod: {}s\n'.format(operation.flight_plan_mod_t)
+                #info_marker.text += 't_tracked: {}s\n'.format(operation.time_tracked)
+                #info_marker.text += 't_horizon: {}s\n'.format(operation.time_horizon)
                 info_marker.text += 'flight_geom: {}m\n'.format(operation.flight_geometry)
                 info_marker.text += 'operational_vol: {}m\n'.format(operation.operational_volume)
                 info_marker.text += 'conop: {}\n'.format(operation.conop)
@@ -455,16 +556,17 @@ def main():
                 frame_marker.type = Marker.MESH_RESOURCE
                 frame_marker.action = Marker.ADD
                 frame_marker.pose.position = current_point
-                frame_marker.scale.x = 0.4  # TODO: Param!
-                frame_marker.scale.y = 0.4
-                frame_marker.scale.z = 0.4
-                frame_marker.color = palette.get_color(id_to_color[operation.uav_id % 10])
+                frame_marker.pose.orientation.w = 1  # TODO: yaw!
+                frame_marker.scale.x = 4  # TODO: Param!
+                frame_marker.scale.y = 4
+                frame_marker.scale.z = 4
+                frame_marker.color = palette.get_color('black')
                 if operation.frame == Operation.FRAME_ROTOR:
                     frame_marker.mesh_resource = 'package://db_manager/config/rotor.dae'
                 elif operation.frame == Operation.FRAME_FIXEDWING:
                     frame_marker.mesh_resource = 'package://db_manager/config/fixedwing.dae'
                 else:
-                    rospy.logwarn('Unkwown frame type [{}]'.format(operation.frame))
+                    rospy.logwarn('[Viz] Unkwown frame type [{}]'.format(operation.frame))
                     frame_marker.mesh_resource = 'package://db_manager/config/arrow.dae'
 
                 marker_array.markers.append(frame_marker)
@@ -483,20 +585,22 @@ def main():
                     current_wp_marker.pose.position.x = current_wp.x
                     current_wp_marker.pose.position.y = current_wp.y
                     current_wp_marker.pose.position.z = current_wp.z
-                    current_wp_marker.scale.x = 0.4  # TODO: Param!
-                    current_wp_marker.scale.y = 0.4
-                    current_wp_marker.scale.z = 0.4
+                    current_wp_marker.pose.orientation.w = 1
+                    current_wp_marker.scale.x = 4  # TODO: Param!
+                    current_wp_marker.scale.y = 4
+                    current_wp_marker.scale.z = 4
                     current_wp_marker.color = palette.get_color('white', 0.4)
 
                     marker_array.markers.append(current_wp_marker)
 
             else:
-                rospy.logwarn('Tracking information from {} is empty!'.format(operation.icao_address))
+                rospy.logwarn('[Viz] Tracking information from {} is empty!'.format(operation.icao_address))
 
             # Visualize flight_plan
             ns = operation_ns + '/flight_plan'
-            color = palette.get_color(id_to_color[operation.uav_id % 10])
+            color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha)
             color_scheme = WaypointListColorScheme(color, color, color, color)
+            flight_plan_viz.path_scale = Vector3(1, 0, 0)
             flight_plan = flight_plan_viz.get_markerarray(operation.flight_plan.waypoints, ns, color_scheme)
             marker_array.markers.extend(flight_plan.markers)
 
@@ -528,11 +632,22 @@ def main():
             landing_spots = landing_spots_viz.get_markerarray(operation.landing_spots.waypoints, ns, color_scheme)
             marker_array.markers.extend(landing_spots.markers)
 
+            # Visualize volumes (flight geometry, operational volume)
+            ns = operation_ns + '/volumes'
+            fg_color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha-0.8)
+            ov_color = palette.get_color(id_to_color[operation.uav_id % 10], is_started_alpha-0.5)
+            volume = volume_viz.get_markerarray(operation, ns, fg_color, ov_color)
+            marker_array.markers.extend(volume.markers)
+
         geofence_viz = GeofenceViz(global_frame_id, rospy.Duration(1.0/update_rate))
         for geofence in read_geofences_response.geofences:
             ns = 'geofence_' + str(geofence.id)
-            color = palette.get_color('red')  # TODO: Force red?
-            marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
+            if geofence.start_time.secs < rospy.get_rostime().secs and rospy.get_rostime().secs < geofence.end_time.secs:
+                color = palette.get_color('red')  # TODO: Force red? 
+                marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
+            else:
+                color = palette.get_color('yellow')  # TODO: other?
+                marker_array.markers.extend(geofence_viz.get_markerarray(geofence, ns, color).markers)
 
         visualization_pub.publish(marker_array)
 

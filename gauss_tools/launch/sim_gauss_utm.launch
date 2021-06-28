@@ -1,0 +1,15 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="rviz_name" default="leon"/>
+    <arg name="use_case_yaml" default="leo/loss_separation"/>
+    <!-- GAUSS -->
+    <include file="$(find gauss_tools)/launch/gauss_utm.launch">
+        <arg name="use_case_yaml" value="$(arg use_case_yaml)"/>
+        <arg name="rviz_name" value="$(arg rviz_name)"/>
+    </include>
+    <!-- GAUSS LIGHT SIM -->
+    <node pkg="rqt_gui" type="rqt_gui" name="rqt_gauss" args="--perspective-file $(find rqt_gauss)/config/gauss.perspective"/>
+    <node pkg="gauss_light_sim" type="gauss_light_sim_node" name="gauss_light_sim_node" output="screen" required="true">
+        <param name="timing_file" value="$(find usp_testers)/config/$(arg use_case_yaml).yaml"/>
+    </node>
+</launch>

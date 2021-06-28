@@ -1,7 +1,7 @@
 <launch>
     <!-- Arguments -->
     <arg name="operations_json" default="loss_operations"/>
-    <arg name="geofences_json"  default="loss_geofences"/>
+    <arg name="geofences_json"  default="no_geofences"/>
     <!--arg name="operations_json" default="operations_test_geofence"/-->
     <!--arg name="geofences_json"  default="geofences_test"/-->
     <!--arg name="operations_json" default="geo_conflict_operations"/-->

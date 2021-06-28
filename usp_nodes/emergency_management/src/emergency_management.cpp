@@ -1,154 +1,178 @@
+#include <gauss_msgs/AirspaceUpdate.h>
+#include <gauss_msgs/NewDeconfliction.h>
+#include <gauss_msgs/NewThreat.h>
+#include <gauss_msgs/NewThreats.h>
+#include <gauss_msgs/Notifications.h>
+#include <gauss_msgs/PilotAnswer.h>
+#include <gauss_msgs/WriteGeofences.h>
 #include <ros/ros.h>
-#include "gauss_msgs/Threats.h"
-#include "gauss_msgs/Deconfliction.h"
-#include <list>
 
-using namespace std;
+#include <Eigen/Eigen>
 
+ros::ServiceClient tactical_client_, notification_client_, write_geofences_client_;
 
-// Class definition
-class EmergencyManagement
-{
-public:
-    EmergencyManagement();
+gauss_msgs::Threat translateToThreat(const gauss_msgs::NewThreat _threat) {
+    gauss_msgs::Threat out_threat;
+    out_threat.geofence_ids = _threat.geofence_ids;
+    out_threat.header = _threat.header;
+    out_threat.location = _threat.location;
+    out_threat.priority_ops = _threat.priority_ops;
+    out_threat.threat_id = _threat.threat_id;
+    out_threat.threat_type = _threat.threat_type;
+    out_threat.times = _threat.times;
+    out_threat.uav_ids = _threat.uav_ids;
 
-private:
-    // Topic Callbacks
-
-    // Service Callbacks
-    bool alertEmergencyCB(gauss_msgs::Threats::Request &req, gauss_msgs::Threats::Response &res);
-    // Timer Callbacks
-    void timerCallback(const ros::TimerEvent&);
-
-    // Auxilary methods
-
-
-    // Auxilary variables
-
-    ros::NodeHandle nh_;
-    list<gauss_msgs::Threat> lista;
-
-    
-
-
-    // Subscribers
-
-    // Publisher
-    ros::Publisher dec_pub_;
-
-    // Timer
-    ros::Timer timer_sub_;
-
-    // Server
-    ros::ServiceServer alert_server_;
-
-    // Client
-    ros::ServiceClient deconfliction_client_;
-};
-
-// EmergencyManagement Constructor
-EmergencyManagement::EmergencyManagement()
-{
-    // Read parameters
-    //nh_.param("desired_altitude",desired_altitude,0.5);
-
-
-    // Initialization
-
-
-    // Publish
-     dec_pub_ = nh_.advertise<gauss_msgs::DeconflictionPlan>("/gauss/deconfliction_plan", 10);
-
-    // Subscribe
-
-    // Server
-    alert_server_=nh_.advertiseService("/gauss/threats",&EmergencyManagement::alertEmergencyCB,this);
-
-    // Clients
-    deconfliction_client_=nh_.serviceClient<gauss_msgs::Deconfliction>("/gauss/tactical_deconfliction");
-    
-    timer_sub_=nh_.createTimer(ros::Duration(2),&EmergencyManagement::timerCallback,this);
-
-    ROS_INFO("Started EmergencyManagement node!");
+    return out_threat;
 }
 
-// Auxilary methods
+gauss_msgs::Notification selectBestSolution(const gauss_msgs::NewDeconfliction &_msg, const int &_uav_id) {
+    gauss_msgs::Notification out_solution;
+    double check_cost_risk = std::numeric_limits<double>::max();
+    for (auto possible_solution : _msg.response.deconfliction_plans) {
+        // If both UAV have the same priority, uav_id value is -1. We should check all the solutions.
+        // If not, just check solution for the UAV with less priority.
+        if ((possible_solution.uav_id == _uav_id || _uav_id == -1) && check_cost_risk >= (possible_solution.cost + possible_solution.riskiness)) {
+            out_solution.description = "";
+            out_solution.threat = translateToThreat(_msg.request.threat);
+            out_solution.uav_id = possible_solution.uav_id;
+            out_solution.action = possible_solution.maneuver_type;
+            out_solution.maneuver_type = possible_solution.maneuver_type;
+            out_solution.waypoints = possible_solution.waypoint_list;
+            out_solution.new_flight_plan.waypoints = possible_solution.waypoint_list;
 
+            check_cost_risk = possible_solution.cost + possible_solution.riskiness;
+        }
+    }
+    for (auto operation : _msg.request.threat.conflictive_operations) {
+        if (operation.uav_id == out_solution.uav_id) {
+            out_solution.actual_wp = operation.actual_wp;
+            out_solution.current_wp = operation.current_wp;
+            out_solution.flight_plan = operation.flight_plan;
+        }
+    }
 
-// Alert callback
- bool EmergencyManagement::alertEmergencyCB(gauss_msgs::Threats::Request &req, gauss_msgs::Threats::Response &res)
- {
-     int num = req.threats.size();
-     ROS_INFO("recevied %d threats from monitoring", num);
-     for (int i=0; i<num; i++)
-     {
-         lista.push_back(req.threats.at(i));
-     }
+    return out_solution;
+}
 
-     res.success=true;
-     return true;
- }
+int selectSmallerPriority(const gauss_msgs::NewThreat &_threat) {
+    int out_uav_id_priority;
+    int smaller_priority = std::numeric_limits<int>::max();
+    ROS_ERROR_COND(_threat.uav_ids.size() != _threat.priority_ops.size(), "[Emergency] Threat uav_ids size [%zd] should match priority_ops size [%zd]!", _threat.uav_ids.size(), _threat.priority_ops.size());
+    for (int idx = 0; idx < _threat.uav_ids.size(); idx++) {
+        if (smaller_priority > _threat.priority_ops.at(idx)) {
+            smaller_priority = _threat.priority_ops.at(idx);
+            out_uav_id_priority = _threat.uav_ids.at(idx);
+        } else if (smaller_priority == _threat.priority_ops.at(idx)) {
+            smaller_priority = _threat.priority_ops.at(idx);
+            out_uav_id_priority = -1;  // Both UAVs have the same priority, we should check all the posible solutions
+        }
+    }
 
- void EmergencyManagement::timerCallback(const ros::TimerEvent &)
- {
+    return out_uav_id_priority;
+}
 
-     int num = lista.size();
-     ROS_INFO("There are %d threats in the list", num);
+gauss_msgs::Geofence geofenceFromThreat(const gauss_msgs::NewThreat &_threat) {
+    gauss_msgs::Geofence out_geofence;
+    out_geofence.circle.x_center = _threat.location.x;
+    out_geofence.circle.y_center = _threat.location.y;
+    out_geofence.circle.radius = 500.0;
+    out_geofence.cylinder_shape = true;
+    out_geofence.id = _threat.threat_id;
+    out_geofence.min_altitude = 0.0;
+    out_geofence.max_altitude = 600.0;
+    out_geofence.start_time = ros::Time::now();
+    out_geofence.end_time.fromSec(ros::Time::now().toSec() + 600.0);
 
-     if (num>0)
-     {
-         gauss_msgs::Threat first_threat=lista.front();
-         if (first_threat.threat_type==first_threat.GEOFENCE_CONFLICT)
-             ROS_INFO("Geofence conflict threat: UAV %d, geofence %d, time %d",first_threat.uav_ids.at(0), first_threat.geofence_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_type==first_threat.GEOFENCE_INTRUSION)
-             ROS_INFO("Geofence intrusion threat: UAV %d, geofence %d, time %d",first_threat.uav_ids.at(0), first_threat.geofence_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_type==first_threat.UAS_IN_CV)
-             ROS_INFO("UAS in CV threat: UAV %d, time %d",first_threat.uav_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_type==first_threat.UAS_OUT_OV)
-             ROS_INFO("UAS out OV threat: UAV %d, time %d",first_threat.uav_ids.at(0), first_threat.times.at(0).sec);
-         if (first_threat.threat_type==first_threat.LOSS_OF_SEPARATION)
-         {
-             ROS_INFO("UAS LOSS OF SEPARATION threat: UAVs %d and %d, times %d and %d",first_threat.uav_ids.at(0), first_threat.uav_ids.at(1),first_threat.times.at(0).sec,first_threat.times.at(1).sec);
-             gauss_msgs::Deconfliction deconfliction_msg;
+    return out_geofence;
+}
 
-             deconfliction_msg.request.tactical=true;
-             deconfliction_msg.request.threat.threat_type=deconfliction_msg.request.threat.LOSS_OF_SEPARATION;
-             deconfliction_msg.request.threat.uav_ids.push_back(first_threat.uav_ids.at(0));
-             deconfliction_msg.request.threat.uav_ids.push_back(first_threat.uav_ids.at(1));
-             deconfliction_msg.request.threat.times.push_back(first_threat.times.at(0));
-             deconfliction_msg.request.threat.times.push_back(first_threat.times.at(1));
-             deconfliction_msg.request.threat.priority_ops.push_back(1);
-             deconfliction_msg.request.threat.priority_ops.push_back(1);
-             ROS_INFO("sending deconfliction request");
-             if(!(deconfliction_client_.call(deconfliction_msg)) || !(deconfliction_msg.response.success))
-             {
-                 ROS_ERROR("Failed to deconfliction message");
-                 return;
-             }
+void airspaceAlertCb(const gauss_msgs::AirspaceUpdate &_alert) {
+    gauss_msgs::Geofence aux_geofence;
+    gauss_msgs::WriteGeofences write_geofences_msg;
+    aux_geofence.circle = _alert.circle;
+    aux_geofence.cylinder_shape = _alert.cylinder_shape;
+    aux_geofence.id = static_cast<uint8_t>(std::stoul(_alert.id));  // String -> int -> uint8_t
+    aux_geofence.min_altitude = 0.0;
+    aux_geofence.max_altitude = 600.0;
+    aux_geofence.polygon = _alert.polygon;
+    aux_geofence.start_time.fromSec(_alert.date_effective / 1000);
+    aux_geofence.end_time.fromSec(_alert.last_updated / 1000 + 600);
+    write_geofences_msg.request.geofence_ids.push_back(aux_geofence.id);
+    write_geofences_msg.request.geofences.push_back(aux_geofence);
 
-             ROS_INFO("Received %d deconfliction plans",deconfliction_msg.response.deconfliction_plans.size());
+    if (!write_geofences_client_.call(write_geofences_msg)) ROS_WARN("[Emergency] Failed to call Database!");
+}
 
-             for(int j=0; j<deconfliction_msg.response.deconfliction_plans.size();j++)
-             {
-                 dec_pub_.publish(deconfliction_msg.response.deconfliction_plans.at(j));
-              //   ROS_INFO("Plan %d: UAV %d new wp x %f y %f z %f",j+1,deconfliction_msg.response.deconfliction_plans.at(j).uav_id
-                   //       deconfliction_msg.response.deconfliction_plans.at(j).waypoint_list.);
+bool threatsCb(gauss_msgs::NewThreatsRequest &_req, gauss_msgs::NewThreatsResponse &_res) {
+    std::string cout_threats;
+    for (auto threat : _req.threats) {
+        cout_threats = cout_threats + " [" + std::to_string(threat.threat_id) + " " + std::to_string(threat.threat_type) + " |";
+        for (auto uav_id : threat.uav_ids) cout_threats = cout_threats + " " + std::to_string(uav_id);
+        cout_threats = cout_threats + "]";
+    }
+    ROS_INFO_STREAM_COND(_req.threats.size() > 0, "[Emergency] Threats received: [id type | uav] " + cout_threats);
 
-             }
-         }
-         lista.pop_front();
-     }
+    gauss_msgs::Notifications notifications_msg;
+    gauss_msgs::WriteGeofences write_geo_msg;
+    for (auto threat : _req.threats) {
+        if (threat.threat_type == threat.GEOFENCE_CONFLICT || threat.threat_type == threat.GEOFENCE_INTRUSION ||
+            threat.threat_type == threat.GNSS_DEGRADATION || threat.threat_type == threat.LACK_OF_BATTERY ||
+            threat.threat_type == threat.LOSS_OF_SEPARATION || threat.threat_type == threat.UAS_OUT_OV) {
+            // Call tactical
+            gauss_msgs::NewDeconfliction tactical_msg;
+            tactical_msg.request.threat = threat;
+            if (tactical_client_.call(tactical_msg)) {
+                int uav_id_smaller_priority = threat.uav_ids.front();
+                if (threat.threat_type == threat.LOSS_OF_SEPARATION) uav_id_smaller_priority = selectSmallerPriority(threat);  // Get the UAV id with less priority
+                notifications_msg.request.notifications.push_back(selectBestSolution(tactical_msg, uav_id_smaller_priority));
+            } else {
+                ROS_WARN("[Emergency] Failed to call tactical deconfliction!");
+            }
+        }
+        if (threat.threat_type == threat.JAMMING_ATTACK || threat.threat_type == threat.SPOOFING_ATTACK) {
+            write_geo_msg.request.geofence_ids.push_back(static_cast<uint8_t>(threat.threat_id));
+            write_geo_msg.request.geofences.push_back(geofenceFromThreat(threat));
+        }
+    }
+    if (notifications_msg.request.notifications.size() > 0) {
+        if(!notification_client_.call(notifications_msg)) ROS_WARN("[Emergency] Failed to call USP manager!");
+    } 
+    if (write_geo_msg.request.geofences.size() > 0) {
+        if(!write_geofences_client_.call(write_geo_msg)) ROS_WARN("[Emergency] Failed to call Database!");
+    }
+    _res.success = true;
+    return _res.success;
+}
 
- }
+int main(int argc, char **argv) {
+    ros::init(argc, argv, "Emergency_management");
 
+    ros::NodeHandle nh;
 
-// MAIN function
-int main(int argc, char *argv[])
-{
-    ros::init(argc,argv,"emergency_management");
+    auto threats_srv_url = "/gauss/new_threats";
+    auto airspace_sub_url = "/gauss/airspace_alert";
+    auto notifications_clt_url = "/gauss/notifications";
+    auto tactical_clt_url = "/gauss/new_tactical_deconfliction";
+    auto write_geofences_clt_utl = "/gauss/write_geofences";
 
-    // Create a EmergencyManagement object
-    EmergencyManagement *emergency_management = new EmergencyManagement();
+    ros::Subscriber airspace_sub = nh.subscribe(airspace_sub_url, 10, airspaceAlertCb);
+    ros::ServiceServer threats_server = nh.advertiseService(threats_srv_url, threatsCb);
+    notification_client_ = nh.serviceClient<gauss_msgs::Notifications>(notifications_clt_url);
+    tactical_client_ = nh.serviceClient<gauss_msgs::NewDeconfliction>(tactical_clt_url);
+    write_geofences_client_ = nh.serviceClient<gauss_msgs::WriteGeofences>(write_geofences_clt_utl);
+
+    ROS_INFO("[Emergency] Waiting for required services...");
+    ros::service::waitForService(notifications_clt_url, -1);
+    ROS_INFO("[Emergency] %s: ok", notifications_clt_url);
+    ros::service::waitForService(tactical_clt_url, -1);
+    ROS_INFO("[Emergency] %s: ok", tactical_clt_url);
+
+    ros::Rate rate(1);  // [Hz]
+    while (ros::ok()) {
+        ros::spinOnce();
+        rate.sleep();
+    }
 
     ros::spin();
+    return 0;
 }
