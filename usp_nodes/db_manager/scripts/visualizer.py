@@ -429,6 +429,14 @@ def main():
     id_to_color[7] = 'tan'
     id_to_color[8] = 'brown'
     id_to_color[9] = 'light_gray'
+    # Default map is atlas TODO: from parameters!
+    map_url = 'package://db_manager/maps/atlas.dae'
+    map_position = Point()
+    map_scale = 2080.92
+    # Uncomment for Loring map
+    # map_url = 'package://db_manager/maps/loring.dae'
+    # map_position.y = -30  # TODO: visual correction
+    # map_scale = 3048
 
     rospy.loginfo('[Viz] Waiting for service {}'.format(read_icao_srv_url))
     rospy.wait_for_service(read_icao_srv_url)
@@ -488,13 +496,13 @@ def main():
         map_marker.lifetime = rospy.Duration()
         map_marker.id = 0
         map_marker.type = Marker.MESH_RESOURCE
-        map_marker.mesh_resource = 'package://db_manager/maps/loring.dae'
+        map_marker.mesh_resource = map_url
         map_marker.action = Marker.ADD
-        map_marker.pose.position.y = -30  # TODO: visual correction
+        map_marker.pose.position = map_position
         map_marker.pose.orientation.w = 1
-        map_marker.scale.x = 3048
-        map_marker.scale.y = 3048
-        map_marker.scale.z = 3048
+        map_marker.scale.x = map_scale
+        map_marker.scale.y = map_scale
+        map_marker.scale.z = map_scale
         map_marker.mesh_use_embedded_materials = True
         marker_array.markers.append(map_marker)
 
