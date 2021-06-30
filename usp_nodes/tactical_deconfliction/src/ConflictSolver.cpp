@@ -685,7 +685,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 polygon_test_input.points.push_back(polygon_test_input.points.front());
             }
             geometry_msgs::Polygon polygon_test_output;
-            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*1.1, polygon_test_output); 
+            decreasePolygon(polygon_test_input, -conflictive_operations.front().operational_volume*2, polygon_test_output); 
             if (!geofences.front().cylinder_shape) {
                 polygon_test_output.points.pop_back();
             }
