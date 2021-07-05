@@ -373,6 +373,7 @@ gauss_msgs::Waypoint ConflictSolver::intersectingPoint(gauss_msgs::Waypoint &_p1
     return out_point;
 }
 
+// Calcula la distancia recorrida (en x,y,z) por el vector que forma el campo WaypointList del mensaje Deconfliction.msg
 double ConflictSolver::pathDistance(gauss_msgs::DeconflictionPlan &_wp_list) {
     double distance = 0;
     for (int i = 0; i < _wp_list.waypoint_list.size() - 1; i++) {
@@ -384,6 +385,7 @@ double ConflictSolver::pathDistance(gauss_msgs::DeconflictionPlan &_wp_list) {
     return distance;
 }
 
+// Calcula la distancia (en x,y) de dos puntos.
 double ConflictSolver::pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2) {
     double distance = 0;
     Eigen::Vector2f p1 = Eigen::Vector2f(_p1.x, _p1.y);
@@ -393,6 +395,7 @@ double ConflictSolver::pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Way
     return distance;
 }
 
+// Calcula la minima distancia a que pasa la trayectoria WaypointList de la Geofence (sólo considera las componentes x e y)
 double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &_wp_list, geometry_msgs::Polygon &_polygon) {
     double min_distance = 1000000;
     for (auto wp : _wp_list) {
@@ -421,6 +424,10 @@ double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &
     return min_distance;
 }
 
+// Check conflict (monitoring) te dice qué conflictos estás generando con el nuevo path. Nº de conflictos/Nº de metros del nuevo plan. Los alternatives
+// flight se normalizan a un metro de distancia entre dos waypoints del mismo. Es decir, se considera que los mismo conflictos en mayor distancia
+// es algo menos riesgoso. Se propone una solución al conflicto pero se pueden infringir otros conflictos. En la nueva trayectoria el número de waypoints
+// coincide con el número de metros. Se hace una interpolación para llegar a ello.
 double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan) {
     nav_msgs::Path temp_path;
     for (auto wp : _newplan.waypoint_list) {
@@ -448,7 +455,7 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
     if (!check_client_.call(check_conflict) || !check_conflict.response.success)
         ROS_ERROR("[Tactical] Failed checking conflicts");
 
-    return 100 * check_conflict.response.threats.size() / interp_path.poses.size();
+    return 100 * check_conflict.response.threats.size() / interp_path.poses.size(); // No sé porqué multiplica por 100.
 }
 
 // deconflictCB callback
@@ -467,6 +474,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 }
             }
         }
+
+// USE CASE 1: LOSS OF SEPARATION
 
         if (req.threat.threat_type == req.threat.LOSS_OF_SEPARATION) {
             if (req.operations.size() != 2) ROS_ERROR("[Tactical] Loss of separation. Operation size should be equal to 2 not %zd", req.operations.size());
@@ -645,6 +654,9 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             }
             res.message = "Conflict solved";
             res.success = true;
+
+// USE CASE 3: GEOFENCE CONFLICT    
+
         } else if (req.threat.threat_type == req.threat.GEOFENCE_CONFLICT) {
             nav_msgs::Path res_path;
             std::vector<double> res_times;
@@ -737,6 +749,9 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
 
             res.message = "Conflict solved";
             res.success = true;
+
+// USE CASE 2: GEOFENCE INTRUSION
+
         } else if (req.threat.threat_type == req.threat.GEOFENCE_INTRUSION) {
             nav_msgs::Path res_path;
             std::vector<double> res_times;
