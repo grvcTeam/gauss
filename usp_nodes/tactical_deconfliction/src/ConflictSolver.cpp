@@ -576,6 +576,21 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
+                // Back Home
+                newplan.waypoint_list.clear();
+                newwp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+                newwp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+                newwp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+                newwp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+                newplan.waypoint_list.push_back(newwp);
+                newwp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+                newwp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+                newwp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+                newplan.waypoint_list.push_back(newwp);
+                newplan.maneuver_type = 3;
+                newplan.cost = pathDistance(newplan);
+                newplan.riskiness = 0;  // TODO: other? minDistanceToGeofence(newplan.waypoint_list, polygon)?
+                res.deconfliction_plans.push_back(newplan);
             }
             if (req.threat.priority_ops.back() >= req.threat.priority_ops.front()) {
                 newplan.uav_id = req.threat.uav_ids.front();
@@ -651,6 +666,21 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
+                // Back Home
+                newplan.waypoint_list.clear();
+                newwp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+                newwp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+                newwp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+                newwp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+                newplan.waypoint_list.push_back(newwp);
+                newwp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+                newwp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+                newwp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+                newplan.waypoint_list.push_back(newwp);
+                newplan.maneuver_type = 3;
+                newplan.cost = pathDistance(newplan);
+                newplan.riskiness = 0;  // TODO: other? minDistanceToGeofence(newplan.waypoint_list, polygon)?
+                res.deconfliction_plans.push_back(newplan);
             }
             res.message = "Conflict solved";
             res.success = true;
