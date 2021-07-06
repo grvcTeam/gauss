@@ -385,11 +385,11 @@ double ConflictSolver::pathDistance(gauss_msgs::DeconflictionPlan &_wp_list) {
     return distance;
 }
 
-// Calcula la distancia (en x,y) de dos puntos.
+// Calcula la distancia (en x,y,z) de dos puntos.
 double ConflictSolver::pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2) {
     double distance = 0;
-    Eigen::Vector2f p1 = Eigen::Vector2f(_p1.x, _p1.y);
-    Eigen::Vector2f p2 = Eigen::Vector2f(_p2.x, _p2.y);
+    Eigen::Vector3f p1 = Eigen::Vector3f(_p1.x, _p1.y, _p1.z);
+    Eigen::Vector3f p2 = Eigen::Vector3f(_p2.x, _p2.y, _p2.z);
     distance = (p2 - p1).norm();
 
     return distance;
@@ -731,21 +731,22 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
             // [3] Ruta que me manda devuelta a casa
-            // temp_wp_list.waypoint_list.clear();
-            // temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
-            // temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
-            // temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
-            // temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-            // temp_wp_list.waypoint_list.push_back(temp_wp);
-            // temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
-            // temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
-            // temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
-            // temp_wp_list.waypoint_list.push_back(temp_wp);
-            // temp_wp_list.maneuver_type = 3;
-            // temp_wp_list.cost = pathDistance(temp_wp_list);
-            // temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
-            // temp_wp_list.uav_id = req.threat.uav_ids.front();
-            // res.deconfliction_plans.push_back(temp_wp_list);
+            temp_wp_list.waypoint_list.clear();
+            temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+            temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+            temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+            temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+            temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+            temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+            temp_wp_list.waypoint_list.push_back(temp_wp);
+            temp_wp_list.maneuver_type = 3;
+            temp_wp_list.cost = 99999999999999999;
+            temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
+            temp_wp_list.uav_id = req.threat.uav_ids.front();
+            ROS_INFO("[Tactical] The cost of go back home is [%lf]", temp_wp_list.cost);
+            res.deconfliction_plans.push_back(temp_wp_list);
 
             res.message = "Conflict solved";
             res.success = true;
