@@ -90,6 +90,7 @@ class EmergencyManagement():
             beta = 0.75 # Weight of riskiness
             value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
             values.append(value)
+        print("Los valores de la funcion de optimizacion son los siguientes:",values)
         value_min = min(values)
         pos_min = values.index(value_min)
         best_solution = deconfliction_plans_list[pos_min]
