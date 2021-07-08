@@ -871,8 +871,6 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // a_star_times_res = path_finder.interpWaypointList(interp_times, a_star_path_res.poses.size() - 1);
             // a_star_times_res.push_back(res_times.at(goal_astar_pos));
             // // Solutions of conflict solver are a_star_path_res and a_star_times_res
-            gauss_msgs::Waypoint temp_wp;
-            gauss_msgs::DeconflictionPlan temp_wp_list;
             // temp_wp.x = conflict_point.x;
             // temp_wp.y = conflict_point.y;
             // temp_wp.z = conflict_point.z;
@@ -927,26 +925,17 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
             // temp_wp_list.uav_id = req.threat.uav_ids.front();
             // res.deconfliction_plans.push_back(temp_wp_list);
-            // [?] Ruta que me manda a un landing spot
-            if (conflictive_operations.front().landing_spots.waypoints.size() > 0) {
-                temp_wp_list.waypoint_list.clear();
-                temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
-                temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
-                temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
-                temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-                temp_wp_list.waypoint_list.push_back(temp_wp);
-                temp_wp.x = conflictive_operations.front().landing_spots.waypoints.front().x;
-                temp_wp.y = conflictive_operations.front().landing_spots.waypoints.front().y;
-                temp_wp.z = conflictive_operations.front().landing_spots.waypoints.front().z;
-                temp_wp.stamp = ros::Time(conflictive_operations.front().estimated_trajectory.waypoints.front().stamp.toSec() + 300.0); // * Random addition
-                temp_wp_list.waypoint_list.push_back(temp_wp);
-                temp_wp_list.maneuver_type = 5;
-                // temp_wp_list.cost = pathDistance(temp_wp_list);
-                // intersect_p = intersectingPoint(temp_wp_list.waypoint_list.front(), temp_wp_list.waypoint_list.back(), res_polygon);
-                // temp_wp_list.riskiness = pointsDistance(temp_wp_list.waypoint_list.front(), intersect_p);
-                temp_wp_list.cost = 0.0;        // ! Forcing this solution to be the one of choice
-                temp_wp_list.riskiness = 0.0;   // ! Forcing this solution to be the one of choice
+            // [?] Rutas que me mandan a los landing spots
+            for (auto wp_land : conflictive_operations.front().landing_spots.waypoints) {
+                auto current_wp = conflictive_operations.front().estimated_trajectory.waypoints.front();
+                wp_land.stamp = ros::Time(current_wp.stamp.toSec() + 300.0);  // Add 5 minutes
+                gauss_msgs::DeconflictionPlan temp_wp_list;
+                temp_wp_list.waypoint_list.push_back(current_wp);
+                temp_wp_list.waypoint_list.push_back(wp_land);
+                temp_wp_list.cost = pointsDistance(current_wp, wp_land);
+                temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
                 temp_wp_list.uav_id = req.threat.uav_ids.front();
+                temp_wp_list.maneuver_type = 5;
                 res.deconfliction_plans.push_back(temp_wp_list);
             }
 
