@@ -871,6 +871,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             // a_star_times_res = path_finder.interpWaypointList(interp_times, a_star_path_res.poses.size() - 1);
             // a_star_times_res.push_back(res_times.at(goal_astar_pos));
             // // Solutions of conflict solver are a_star_path_res and a_star_times_res
+            // gauss_msgs::Waypoint temp_wp;
+            // gauss_msgs::DeconflictionPlan temp_wp_list;
             // temp_wp.x = conflict_point.x;
             // temp_wp.y = conflict_point.y;
             // temp_wp.z = conflict_point.z;
