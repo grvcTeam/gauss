@@ -1,12 +1,12 @@
 # Old light_sim.launch
-operations_json: "arenosillo/loss_separation"
+operations_json: "arenosillo/geofence_conflict"
 geofences_json: "no_geofences"
 origin_latitude: 37.10229
 origin_longitude: -6.73639
 origin_ellipsoidal_height: 51.9697  # This altitude is the distance between the ground and the wgs-84 ellipsoid at the origin point
 init_time: 0.0  # https://time.is/Unix_time_now
-time_horizon: 360
-dT: 50
+time_horizon: 800
+dT: 10
 minX: -100000
 minY: -100000
 minZ: 0
@@ -17,6 +17,7 @@ deltaX: 5000.0
 deltaY: 5000.0
 deltaZ: 5000.0
 safetyDistance: 500
+safetyDistance: 450
 just_one_threat: true
 
 simulation:
@@ -25,13 +26,8 @@ simulation:
     - {icao: 3434009, delay: 1.0}
 
   # change_param:
-  #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
+  #   - {icao: 3434000, delay: 15.0, yaml: {name: jamming, type: float, value: 0.6}}
 
-  # 4D -> speed should be 0.0 | 3D -> setup a speed
   cruising_speed:
     - {icao: 3434007, speed: 0.0}
     - {icao: 3434009, speed: 0.0}
-
-# ATLANTIC (3434009)
-# M600 (3434008)
-# SCRABII (3434007)

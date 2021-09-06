@@ -1,45 +1,302 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
 <Document>
-	<name>roborder_loring.kml</name>
-	<open>1</open>
-	<Style id="default">
+	<name>fps_arenosillo.kml</name>
+	<Style id="inline02">
 		<LineStyle>
-			<color>ff00ffff</color>
-			<width>3</width>
+			<color>ff0000ff</color>
+			<width>2</width>
 		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
 	</Style>
-	<StyleMap id="default0">
+	<StyleMap id="inline111">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#default</styleUrl>
+			<styleUrl>#inline020</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#hl</styleUrl>
+			<styleUrl>#inline220</styleUrl>
 		</Pair>
 	</StyleMap>
-	<Style id="hl">
-		<IconStyle>
-			<scale>1.2</scale>
-		</IconStyle>
+	<StyleMap id="inline29">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline26</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline11</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="inline112">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline32</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline00</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="inline26">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="inline200">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline02</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline80</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="inline41">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline36</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline28</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="inline25">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline00">
+		<LineStyle>
+			<color>ffffff55</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="inline1751">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline1451</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline3261</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="inline32">
+		<LineStyle>
+			<color>ffffff55</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline1451">
 		<LineStyle>
 			<color>ff00ffff</color>
-			<width>3</width>
+			<width>2</width>
 		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
 	</Style>
+	<Style id="inline">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline0">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline36">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline11">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="inline1">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="inline220">
+		<LineStyle>
+			<color>ffffff00</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline28">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline020">
+		<LineStyle>
+			<color>ffffff00</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline3261">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline140">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline80">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="inline01">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline140</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline25</styleUrl>
+		</Pair>
+	</StyleMap>
 	<Folder>
-		<name>Fase</name>
+		<name>Sitios temporales</name>
 		<open>1</open>
-		<description></description>
 		<Placemark>
-			<name>M600_op1.1</name>
-			<styleUrl>#inline100</styleUrl>
+			<name>FP_Circuito_Fase4_Atlantic</name>
+			<open>1</open>
+			<styleUrl>#inline29</styleUrl>
 			<LineString>
 				<tessellate>1</tessellate>
 				<altitudeMode>relativeToGround</altitudeMode>
 				<coordinates>
-					-3.285046362862727,38.1172631309182,420 -3.253142966384789,38.12867722573244,420 -3.234094954738885,38.12815852843449,420 -3.205255809958389,38.13794514738532,420 -3.190721581341763,38.13727191151676,420 -3.154392158836743,38.15282880748746,420 
+					-6.659509002762109,36.96044772772015,400.0000000000001 -6.733163102952568,36.92346560413105,400.0000000000001 -6.744571718138718,36.93491146461517,400.0000000000001 -6.668859393445615,36.97380032912212,400.0000000000001 -6.659509002762109,36.96044772772015,400.0000000000001 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>FP_UC2.3_M600</name>
+			<open>1</open>
+			<styleUrl>#inline111</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<altitudeMode>relativeToGround</altitudeMode>
+				<coordinates>
+					-6.736507995000001,37.094833,50.00000000000001 -6.738050921995927,37.09271639957303,50.00000000000001 -6.737031399284613,37.09212286748264,50.00000000000001 -6.737192552832489,37.09191706251202,50.00000000000001 -6.738339981901669,37.09222908038798,50.00000000000001 -6.738800049591963,37.09173483576826,50.00000000000001 -6.738800049591963,37.09173483576826,25.00000000000001 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>FP_UC 2.5_Atlantic</name>
+			<open>1</open>
+			<styleUrl>#inline01</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<altitudeMode>relativeToGround</altitudeMode>
+				<coordinates>
+					-6.798332304307531,37.09399162481711,400.0000000000001 -6.758732331281755,37.07815144390501,400.0000000000001 -6.762734058600199,37.07204113136157,400.0000000000001 -6.802287707018446,37.08740764780208,400.0000000000001 -6.798332304307531,37.09399162481711,400.0000000000001 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>FP_UC2.1_Atlantic</name>
+			<open>1</open>
+			<styleUrl>#inline200</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<altitudeMode>relativeToGround</altitudeMode>
+				<coordinates>
+					-6.774626417035337,36.98591215622536,400.0000000000001 -6.740391905270836,37.02152953877803,400.0000000000001 -6.735597055228116,37.0186985810145,400.0000000000001 -6.749096765631467,37.0037307148805,400.0000000000001 -6.744585539645756,37.00074366613156,400.0000000000001 -6.730431634742812,37.01547526057539,400.0000000000001 -6.725714557976421,37.01239620093427,400.0000000000001 -6.740364958382486,36.99789231081571,400.0000000000001 -6.735959931954643,36.99501725366062,400.0000000000001 -6.721149015060867,37.00945037078883,400.0000000000001 -6.716995420483034,37.00669424904375,400.0000000000001 -6.731748661133039,36.9924056938119,400.0000000000001 -6.727224441820004,36.98953752474799,400.0000000000001 -6.712784036896044,37.00403691005499,400.0000000000001 -6.708867034535698,37.00151517595061,400.0000000000001 -6.723405478085168,36.98693484210686,400.0000000000001 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>FP_UC2.4_SCRABII</name>
+			<open>1</open>
+			<styleUrl>#inline1751</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-6.710444696995081,36.91242339659211,700 -6.795603060734521,36.96839978851362,700 -6.792348269564009,36.97198240065693,700 -6.706338748489486,36.91566081585877,700 -6.702642244630189,36.91961662289596,700 -6.788595029093923,36.97620390622838,700 -6.784823866036652,36.98060843957411,700 -6.698716316389339,36.92419052264038,700 -6.695161392238119,36.92834610948228,700 -6.780637049264903,36.98471258155586,700 -6.776840585113612,36.98919387547243,700 -6.690744480708124,36.93303418552652,700 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>FP_UC2.2_M600</name>
+			<open>1</open>
+			<styleUrl>#inline112</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<altitudeMode>relativeToGround</altitudeMode>
+				<coordinates>
+					-6.737788133849104,37.0933105988238,100 -6.736644782802345,37.09281913141444,100 -6.736778567975744,37.09260205683084,100 -6.738368226171452,37.09326852905838,100 -6.738550346879396,37.09299493816143,100 -6.73624761007273,37.09203806060057,100 -6.736408149322783,37.09177757442789,100 -6.739140954052793,37.09291386610258,100 -6.739301483862189,37.09265337193468,100 -6.736546918017179,37.09150854903341,100 -6.736734390402415,37.09122628169917,100 -6.739009982644236,37.09218328875714,100 -6.739170510670776,37.09192279777675,100 -6.737575343930099,37.09124339202148,100 -6.737746760281283,37.09098717372836,100 -6.738949862399463,37.0914912805651,100 
 				</coordinates>
 			</LineString>
 		</Placemark>

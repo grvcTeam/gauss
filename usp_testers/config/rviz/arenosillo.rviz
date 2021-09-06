@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
       Splitter Ratio: 0.861671448
-    Tree Height: 720
+    Tree Height: 359
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -74,16 +74,6 @@ Visualization Manager:
       Marker Topic: /visualization_marker_array
       Name: Visualization
       Namespaces:
-        3434007/estimated_trajectory: true
-        3434007/flight_plan: true
-        3434007/flight_plan_updated: true
-        3434007/landing_spots: true
-        3434007/operation_info: true
-        3434007/track: true
-        3434007/volumes/flight_geometry: false
-        3434007/volumes/flight_geometry_spheres: false
-        3434007/volumes/operational_volume: true
-        3434007/volumes/operational_volume_spheres: false
         3434009/estimated_trajectory: true
         3434009/flight_plan: true
         3434009/flight_plan_updated: true
@@ -138,16 +128,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 19730.4414
+      Distance: 21486.8867
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 680.313232
-        Y: -13540.624
-        Z: 348.704895
+        X: 1251.34534
+        Y: -13782.9717
+        Z: -502.218536
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
@@ -156,7 +146,7 @@ Visualization Manager:
       Pitch: 1.56979632
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.61265421
+      Yaw: 4.59765387
     Saved: ~
 Window Geometry:
   Displays:
