@@ -7,22 +7,22 @@ origin_ellipsoidal_height: 51.9697  # This altitude is the distance between the 
 init_time: 0.0  # https://time.is/Unix_time_now
 time_horizon: 360
 dT: 50
-minX: -100000
-minY: -100000
+minX: -5273
+minY: -21073
 minZ: 0
-maxX: 100000
-maxY: 100000
-maxZ: 10000
-deltaX: 5000.0
-deltaY: 5000.0
-deltaZ: 5000.0
-safetyDistance: 500
+maxX: 4067
+maxY: -8963
+maxZ: 687
+deltaX: 93
+deltaY: 121
+deltaZ: 7
+safetyDistance: 152
 just_one_threat: true
 
 simulation:
   auto_start:
-    - {icao: 3434007, delay: 1.0}
-    - {icao: 3434009, delay: 1.0}
+    - {icao: 3434007, delay: 5.0}
+    - {icao: 3434009, delay: 5.0}
 
   # change_param:
   #   - {icao: 5525496, delay: 20.0, yaml: {name: jamming, type: float, value: 0.6}}
