@@ -444,6 +444,19 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 possible_solution.waypoint_list = delayFlightPlan(segments_first_second.at(i), req.threat.conflictive_operations.at(i).flight_plan_updated, req.threat.conflictive_operations.at(i).actual_wp);
                 res.deconfliction_plans.push_back(possible_solution);
             }
+            // [?] Ruta a un landing spot
+            fake_value = 0.0;  // ! Forcing this solution to be selected
+            for (int i = 0; i < 2; i++) {
+                gauss_msgs::DeconflictionPlan possible_solution;
+                possible_solution.maneuver_type = 8;  // !Should be another maneuver type?
+                possible_solution.waypoint_list.clear();
+                possible_solution.uav_id = req.threat.uav_ids.front();
+                possible_solution.cost = possible_solution.riskiness = fake_value;
+                possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
+                req.threat.conflictive_operations.front().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
+                possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().landing_spots.waypoints.front());
+                res.deconfliction_plans.push_back(possible_solution);
+            }
             // Visualize "space" results
             visualization_msgs::MarkerArray marker_array;
             visualization_msgs::Marker marker_spheres = createMarkerSpheres(req.threat.loss_conflictive_segments.point_at_t_min_segment_first, req.threat.loss_conflictive_segments.point_at_t_min_segment_second);

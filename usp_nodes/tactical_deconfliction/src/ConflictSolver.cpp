@@ -567,6 +567,25 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     newplan.riskiness = calculateRiskiness(newplan);
                     res.deconfliction_plans.push_back(newplan);
                 }
+                // [?] Ruta a un landing spot
+                // TODO: Maybe it is not neccessary to place it between these if, else if. 
+                if (req.threat.uav_ids.back() == conflictive_operations.back().uav_id) {
+                    newplan.maneuver_type = 8;  // !Should be another maneuver type?
+                    newplan.waypoint_list.clear();
+                    newplan.cost = newplan.riskiness = 0;  // !Forcing this solution to be selected
+                    newplan.waypoint_list.push_back(conflictive_operations.back().estimated_trajectory.waypoints.front());
+                    conflictive_operations.back().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
+                    newplan.waypoint_list.push_back(conflictive_operations.back().landing_spots.waypoints.front());
+                    res.deconfliction_plans.push_back(newplan);
+                } else if (req.threat.uav_ids.front() == conflictive_operations.front().uav_id) {
+                    newplan.maneuver_type = 8;  // !Should be another maneuver type?
+                    newplan.waypoint_list.clear();
+                    newplan.cost = newplan.riskiness = 0;  // !Forcing this solution to be selected
+                    newplan.waypoint_list.push_back(conflictive_operations.front().estimated_trajectory.waypoints.front());
+                    conflictive_operations.front().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
+                    newplan.waypoint_list.push_back(conflictive_operations.front().landing_spots.waypoints.front());
+                    res.deconfliction_plans.push_back(newplan);
+                }
             }
             if (req.threat.priority_ops.back() >= req.threat.priority_ops.front()) {
                 newplan.uav_id = req.threat.uav_ids.front();
@@ -640,6 +659,25 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                     }
                     newplan.cost = pathDistance(newplan);
                     newplan.riskiness = calculateRiskiness(newplan);
+                    res.deconfliction_plans.push_back(newplan);
+                }
+                // [?] Ruta a un landing spot
+                // TODO: Maybe it is not neccessary to place it between these if, else if. 
+                if (req.threat.uav_ids.back() == conflictive_operations.back().uav_id) {
+                    newplan.maneuver_type = 8;  // !Should be another maneuver type?
+                    newplan.waypoint_list.clear();
+                    newplan.cost = newplan.riskiness = 0;  // !Forcing this solution to be selected
+                    newplan.waypoint_list.push_back(conflictive_operations.back().estimated_trajectory.waypoints.front());
+                    conflictive_operations.back().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
+                    newplan.waypoint_list.push_back(conflictive_operations.back().landing_spots.waypoints.front());
+                    res.deconfliction_plans.push_back(newplan);
+                } else if (req.threat.uav_ids.front() == conflictive_operations.front().uav_id) {
+                    newplan.maneuver_type = 8;  // !Should be another maneuver type?
+                    newplan.waypoint_list.clear();
+                    newplan.cost = newplan.riskiness = 0;  // !Forcing this solution to be selected
+                    newplan.waypoint_list.push_back(conflictive_operations.front().estimated_trajectory.waypoints.front());
+                    conflictive_operations.front().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
+                    newplan.waypoint_list.push_back(conflictive_operations.front().landing_spots.waypoints.front());
                     res.deconfliction_plans.push_back(newplan);
                 }
             }
