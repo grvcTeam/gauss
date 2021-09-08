@@ -450,11 +450,11 @@ bool deconflictCB(gauss_msgs::NewDeconfliction::Request &req, gauss_msgs::NewDec
                 gauss_msgs::DeconflictionPlan possible_solution;
                 possible_solution.maneuver_type = 8;  // !Should be another maneuver type?
                 possible_solution.waypoint_list.clear();
-                possible_solution.uav_id = req.threat.uav_ids.front();
+                possible_solution.uav_id = req.threat.conflictive_operations.at(i).uav_id;
                 possible_solution.cost = possible_solution.riskiness = fake_value;
-                possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().estimated_trajectory.waypoints.front());
-                req.threat.conflictive_operations.front().landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
-                possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.front().landing_spots.waypoints.front());
+                possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.at(i).estimated_trajectory.waypoints.front());
+                req.threat.conflictive_operations.at(i).landing_spots.waypoints.front().stamp.fromSec(ros::Time::now().toSec() + 360.0);
+                possible_solution.waypoint_list.push_back(req.threat.conflictive_operations.at(i).landing_spots.waypoints.front());
                 res.deconfliction_plans.push_back(possible_solution);
             }
             // Visualize "space" results

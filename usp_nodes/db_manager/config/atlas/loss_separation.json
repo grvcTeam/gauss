@@ -278,15 +278,8 @@
 			"landing_spots": {
 				"waypoints": [
 					{
-						"x": 20,
-						"y": 20,
-						"z": 0,
-						"stamp": 1,
-						"mandatory": 0
-					},
-					{
-						"x": 90,
-						"y": -30,
+						"x": 0,
+						"y": 0,
 						"z": 0,
 						"stamp": 1,
 						"mandatory": 0
