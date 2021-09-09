@@ -7,6 +7,7 @@ import copy
 from gauss_msgs.srv import Threats, ThreatsRequest, ThreatsResponse
 from gauss_msgs.srv import ChangeFlightStatus, ChangeFlightStatusRequest, ChangeFlightStatusResponse
 from gauss_msgs.srv import Notifications, NotificationsRequest, NotificationsResponse
+from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
 from gauss_msgs.msg import Notification
 from gauss_msgs.msg import Waypoint, WaypointList
 from gauss_msgs_mqtt.msg import UTMAlternativeFlightPlan
@@ -19,8 +20,9 @@ class DummyUMT():
         rate = rospy.Rate(0.5) # hz
 
         self.notifications_clt = rospy.ServiceProxy('/gauss/notifications', Notifications)
-        self.threats_srv = rospy.Service('/gauss/threats', Threats, self.threatsSrvCb) 
+        self.read_operation_clt = rospy.ServiceProxy('/gauss/read_operation', ReadOperation)
         self.change_flight_status_srv = rospy.Service('/gauss/flight', ChangeFlightStatus, self.changeFlightStatusSrvCb)
+        # self.threats_srv = rospy.Service('/gauss/threats', Threats, self.threatsSrvCb) 
 
         if rospy.has_param('~/operations_json'):
             self.json_file_ = self.inputJSONFile(rospy.get_param('~/operations_json'))
@@ -40,18 +42,27 @@ class DummyUMT():
         assert os.path.exists(file_to_check), "I did not find the file at, "+str(file_to_check)
         return file_to_check
 
+    def getActualPosition(self, uav_id):
+        read_operation_req = ReadOperationRequest()
+        read_operation_req.uav_ids.append(uav_id)
+        read_operation_res = self.read_operation_clt(read_operation_req)
+        return read_operation_res.operation[0].estimated_trajectory.waypoints[0]
+
     def prepareNotification(self, json_data):
+        # Prepare notification message
         notification = Notification()
         notification.uav_id = json_data['operations'][0]['uav_id']
         notification.threat.threat_id = json_data['operations'][0]['threat_id']
         notification.threat.threat_type = json_data['operations'][0]['threat_type']
         notification.description = json_data['operations'][0]['description']
+        # Get the current position of the UAV and place it in the new flight plan
+        notification.new_flight_plan.waypoints.append(self.getActualPosition(notification.uav_id))
         for wp in json_data['operations'][0]['new_flight_plan']['waypoints']:
             waypoint = Waypoint()
             waypoint.x = wp['x']
             waypoint.y = wp['y']
             waypoint.z = wp['z']
-            waypoint.stamp = rospy.Time.from_sec(rospy.Time.now().to_sec() + wp['stamp'])
+            waypoint.stamp = rospy.Time.from_sec(rospy.Time.now().to_sec() + wp['stamp']) # TODO: Check if this is correct
             notification.new_flight_plan.waypoints.append(waypoint)
         return notification
 
@@ -64,29 +75,28 @@ class DummyUMT():
         # Send notification (to USPM)
         self.notifications_clt(notifications)
 
-    # TODO: This should be replaced by threatSrvCb if we want a bit more flexibility
+    # TODO: This can be replaced by threatSrvCb if we want a bit more flexibility
     # TODO: Or just leave it as it is and use the json file for more configuration
     def changeFlightStatusSrvCb(self, request):
         req = ChangeFlightStatusRequest()
         req = copy.deepcopy(request)
-        
         if req.is_started == True:
             self.conflictTriggered()
-        
+            
         res = ChangeFlightStatusResponse()
         res.success = True
         return res
 
-    def threatsSrvCb(self, request):
-        req = ThreatsRequest()
-        req = copy.deepcopy(request)
-        rospy.loginfo("[UTM] %d threats received!", len(req.threats)) 
-        zero_time = rospy.Time()
-        for threat in range(len(req.threats)):
-            print(threat)
-        res = ThreatsResponse()
-        res.success = True
-        return res 
+    # def threatsSrvCb(self, request):
+    #     req = ThreatsRequest()
+    #     req = copy.deepcopy(request)
+    #     rospy.loginfo("[UTM] %d threats received!", len(req.threats)) 
+    #     zero_time = rospy.Time()
+    #     for threat in range(len(req.threats)):
+    #         print(threat)
+    #     res = ThreatsResponse()
+    #     res.success = True
+    #     return res 
 
 if __name__ == '__main__':
     utm = DummyUMT()
