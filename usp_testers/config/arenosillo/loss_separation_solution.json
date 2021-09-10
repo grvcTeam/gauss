@@ -1,10 +1,23 @@
 {
-	"operations": [
+	"conflicts": [
+		{
+			"uav_id": [0, 1],
+			"icao": [3434007, 3434009],
+			"threat_id": 0, 
+			"threat_type": 4,
+			"trigger_stamp": 10.0
+		},
+		{
+			"uav_id": [0, 1],
+			"icao": [3434007, 3434009],
+			"threat_id": 1, 
+			"threat_type": 4,
+			"trigger_stamp": 20.0
+		}
+	],
+	"notifications": [
 		{
             "uav_id": 1,
-			"icao": 3434009,
-			"threat_type": 4,
-            "threat_id": 0,
             "new_flight_plan" : 
 			{
                 "waypoints" : 
@@ -22,8 +35,28 @@
 						"stamp" : 1000.0
 					}
 				]
-			},
-            "description": "Solution"
+			}
+		},
+		{
+            "uav_id": 0,
+            "new_flight_plan" : 
+			{
+                "waypoints" : 
+				[
+                    {
+                        "x" : 0.0,
+						"y" : 0.0,
+						"z" : 500.0,
+						"stamp" : 500.0
+					},
+                    {
+                        "x" : 0.0,
+						"y" : 0.0,
+						"z" : 0.0,
+						"stamp" : 1000.0
+					}
+				]
+			}
 		}
     ]
 }
