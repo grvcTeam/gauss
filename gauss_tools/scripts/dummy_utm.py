@@ -4,14 +4,13 @@ import json
 import os
 import sys
 import copy
-from gauss_msgs.srv import Threats, ThreatsRequest, ThreatsResponse
 from gauss_msgs.srv import ChangeFlightStatus, ChangeFlightStatusRequest, ChangeFlightStatusResponse
 from gauss_msgs.srv import Notifications, NotificationsRequest, NotificationsResponse
 from gauss_msgs.srv import ReadOperation, ReadOperationRequest, ReadOperationResponse
+from gauss_msgs.srv import WriteGeofences, WriteGeofencesRequest, WriteGeofencesResponse
 from gauss_msgs.msg import Notification
-from gauss_msgs.msg import Waypoint, WaypointList
-from gauss_msgs_mqtt.msg import UTMAlternativeFlightPlan
-from gauss_msgs_mqtt.msg import Waypoint as WaypointMQTT
+from gauss_msgs.msg import Geofence
+from gauss_msgs.msg import Waypoint
 
 
 class DummyUMT():
@@ -28,6 +27,8 @@ class DummyUMT():
             '/gauss/notifications', Notifications)
         self.read_operation_clt = rospy.ServiceProxy(
             '/gauss/read_operation', ReadOperation)
+        self.write_geofences_clt = rospy.ServiceProxy(
+            '/gauss/write_geofences', WriteGeofences)
         self.change_flight_status_srv = rospy.Service(
             '/gauss/flight', ChangeFlightStatus, self.changeFlightStatusSrvCb)
 
@@ -71,6 +72,37 @@ class DummyUMT():
         read_operation_res = self.read_operation_clt(read_operation_req)
         return read_operation_res.operation[0].estimated_trajectory.waypoints[0]
 
+    def prepareGeofence(self, conflict_id):
+        # Prepare geofence
+        geofence = Geofence()
+        geofence.id = conflict_id
+        geofence.static_geofence = True
+        geofence.cylinder_shape = True
+        geofence.max_altitude = self.json_data_[
+            'conflicts'][conflict_id]['geofence']['h']
+        geofence.min_altitude = 0.0
+        geofence.start_time = rospy.Time.now()
+        geofence.end_time = rospy.Time.from_sec(rospy.Time.now(
+        ).to_sec() + self.json_data_['conflicts'][conflict_id]['geofence']['end_stamp'])
+        # If there are empty values, get it from the UAV actual position
+        if self.json_data_['conflicts'][conflict_id]['geofence']['x'] is not '' and self.json_data_['conflicts'][conflict_id]['geofence']['y'] is not '':
+            geofence.circle.x_center = self.json_data_[
+                'conflicts'][conflict_id]['geofence']['x']
+            geofence.circle.y_center = self.json_data_[
+                'conflicts'][conflict_id]['geofence']['y']
+        else:
+            actual_wp = self.getActualPosition(
+                self.json_data_['notifications'][conflict_id]['uav_id'])
+            geofence.circle.x_center = actual_wp.x
+            geofence.circle.y_center = actual_wp.y
+        geofence.circle.radius = self.json_data_[
+            'conflicts'][conflict_id]['geofence']['radius']
+        # Call service to write geofence
+        write_geofences_req = WriteGeofencesRequest()
+        write_geofences_req.geofence_ids.append(geofence.id)
+        write_geofences_req.geofences.append(geofence)
+        self.write_geofences_clt(write_geofences_req)
+
     def prepareNotification(self, conflict_id):
         # Prepare notification message
         notification = Notification()
@@ -98,14 +130,20 @@ class DummyUMT():
     def conflictTriggered(self, conflict_id):
         # Print conflict detected
         rospy.loginfo("[UTM] Conflict detected [%d]! %s! UAVs involved " +
-                      str(self.json_data_['conflicts'][conflict_id]['uav_id']) + "!", self.json_data_['conflicts'][conflict_id]['threat_id'], self.threat_types_dictionary_[self.json_data_['conflicts'][conflict_id]['threat_type']])
-
+                      str(self.json_data_['conflicts']
+                          [conflict_id]['uav_id']) + "!",
+                      self.json_data_['conflicts'][conflict_id]['threat_id'],
+                      self.threat_types_dictionary_[self.json_data_['conflicts'][conflict_id]['threat_type']])
+        # Prepare geofence if needed
+        if 'geofence' in self.json_data_['conflicts'][conflict_id]:
+            self.prepareGeofence(conflict_id)
         # Prepare notification
         notifications = NotificationsRequest()
         notifications.notifications.append(
             self.prepareNotification(conflict_id))
         # Send notification (to USPM)
         self.notifications_clt(notifications)
+        
         rospy.loginfo("[UTM] Notification sent to UAV [%d]!",
                       notifications.notifications[0].uav_id)
 
@@ -126,6 +164,7 @@ class DummyUMT():
         delta_time = rospy.Time.now().to_sec() - self.started_time
         for conflict_id, conflict in enumerate(self.json_data_['conflicts']):
             if delta_time > self.json_data_['conflicts'][conflict_id]['trigger_stamp'] and self.json_data_['conflicts'][conflict_id]['trigger_stamp'] > 0:
+                # Trigger conflict!
                 self.conflictTriggered(conflict_id)
                 # Conflict solved! Do not trigger again.
                 self.json_data_['conflicts'][conflict_id]['trigger_stamp'] = -1

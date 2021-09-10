@@ -221,7 +221,7 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
                 id_threat_flight_plan_map_[msg.uav_id].push_back(threat_flight_plan);
             } 
         }
-        else if(msg.threat.threat_type == gauss_msgs::NewThreat::JAMMING_ATTACK)
+        else if(msg.threat.threat_type == gauss_msgs::NewThreat::JAMMING_ATTACK || msg.threat.threat_type == gauss_msgs::NewThreat::SPOOFING_ATTACK)
         {
             // TODO: Set properly alert message and title
             gauss_msgs_mqtt::UTMAlert utm_alert_msg;
