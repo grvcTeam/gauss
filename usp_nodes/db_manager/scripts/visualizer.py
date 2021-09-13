@@ -430,9 +430,14 @@ def main():
     id_to_color[8] = 'brown'
     id_to_color[9] = 'light_gray'
     # Default map is atlas TODO: from parameters!
-    map_url = 'package://db_manager/maps/atlas.dae'
+    # map_url = 'package://db_manager/maps/atlas.dae'
+    # map_position = Point()
+    # map_scale = 2080.92
+    map_url = 'package://db_manager/maps/arenosillo.dae'
     map_position = Point()
-    map_scale = 2080.92
+    map_scale = 25400.0
+    map_position.x = 5800.00
+    map_position.y = -9999.00
     # Uncomment for Loring map
     # map_url = 'package://db_manager/maps/loring.dae'
     # map_position.y = -30  # TODO: visual correction
