@@ -1,4 +1,4 @@
-mosquitto_pub -t rpastateinfo/11259137 -m '{    
+mosquitto_pub -h 95.216.180.100 -p 1883 -t rpastateinfo -m '{    
   "icao": 11259137,
   "latitude": 6.2,
   "longitude": 5.1,

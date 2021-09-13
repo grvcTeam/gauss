@@ -39,7 +39,7 @@ bridge:
     topic_from: adsb/+
     topic_to: /gauss/adsb
 
-  - factory: mqtt_bridge.bridge:MqttToRosBridge
+  - factory: mqtt_bridge.bridge:RPAStateInfoMqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPAStateInfo
     topic_from: rpastateinfo
     topic_to: /gauss/rpastateinfo
