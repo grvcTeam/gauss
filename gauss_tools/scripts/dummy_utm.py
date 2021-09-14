@@ -23,6 +23,7 @@ class DummyUMT():
 
         rospy.wait_for_service('/gauss/notifications')
         rospy.wait_for_service('/gauss/read_operation')
+        rospy.wait_for_service('/gauss/write_geofences')
         self.notifications_clt = rospy.ServiceProxy(
             '/gauss/notifications', Notifications)
         self.read_operation_clt = rospy.ServiceProxy(
@@ -59,9 +60,11 @@ class DummyUMT():
         # If there is no paramaterer, ask the user for a file
         if not file_name:
             file_name = raw_input(
-                "An example of the file path : atlas/loss_separation\nEnter the path of your file : ")
+                "An example of the file path : atlas\nEnter the path of your file : ")
+        else:
+            file_name = file_name.split('/')[0]  # Get only first element of the path
 
-        file_to_check = usp_tester_config_directory + file_name + '_solution.json'
+        file_to_check = usp_tester_config_directory + file_name + '/schedule.json'
         assert os.path.exists(
             file_to_check), "I did not find the file at, "+str(file_to_check)
         return file_to_check
@@ -72,7 +75,7 @@ class DummyUMT():
         read_operation_res = self.read_operation_clt(read_operation_req)
         return read_operation_res.operation[0].estimated_trajectory.waypoints[0]
 
-    def prepareGeofence(self, conflict_id):
+    def sendGeofence(self, conflict_id):
         # Prepare geofence
         geofence = Geofence()
         geofence.id = conflict_id
@@ -103,7 +106,7 @@ class DummyUMT():
         write_geofences_req.geofences.append(geofence)
         self.write_geofences_clt(write_geofences_req)
 
-    def prepareNotification(self, conflict_id):
+    def sendNotification(self, conflict_id):
         # Prepare notification message
         notification = Notification()
         notification.uav_id = self.json_data_[
@@ -123,9 +126,15 @@ class DummyUMT():
             waypoint.y = wp['y']
             waypoint.z = wp['z']
             waypoint.stamp = rospy.Time.from_sec(
-                rospy.Time.now().to_sec() + wp['stamp'])  # TODO: Check if this is correct
+                self.started_time + wp['stamp'])
             notification.new_flight_plan.waypoints.append(waypoint)
-        return notification
+
+        notifications = NotificationsRequest()
+        notifications.notifications.append(notification)
+        # Send notification (to USPM)
+        self.notifications_clt(notifications)        
+        rospy.loginfo("[UTM] Notification sent to UAV [%d]!",
+                      notifications.notifications[0].uav_id)
 
     def conflictTriggered(self, conflict_id):
         # Print conflict detected
@@ -136,16 +145,9 @@ class DummyUMT():
                       self.threat_types_dictionary_[self.json_data_['conflicts'][conflict_id]['threat_type']])
         # Prepare geofence if needed
         if 'geofence' in self.json_data_['conflicts'][conflict_id]:
-            self.prepareGeofence(conflict_id)
+            self.sendGeofence(conflict_id)
         # Prepare notification
-        notifications = NotificationsRequest()
-        notifications.notifications.append(
-            self.prepareNotification(conflict_id))
-        # Send notification (to USPM)
-        self.notifications_clt(notifications)
-        
-        rospy.loginfo("[UTM] Notification sent to UAV [%d]!",
-                      notifications.notifications[0].uav_id)
+        self.sendNotification(conflict_id)
 
     # ! First trigger method.
     # ! Wait for this service and trigger the conflict written in the icao variable.
