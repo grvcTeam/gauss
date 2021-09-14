@@ -228,7 +228,23 @@ bool USPManager::notificationsCB(gauss_msgs::Notifications::Request &req, gauss_
             utm_alert_msg.alert_message = msg.description;
             utm_alert_msg.alert_title = "JAMMING ATTACK";
             utm_alert_msg.alert_id = "JAMMING ATTACK";
-            alert_pub_.publish(utm_alert_msg);   
+            alert_pub_.publish(utm_alert_msg);
+            // Finish threatened operation
+            gauss_msgs_mqtt::RPSChangeFlightStatus change_flight_status_msg;
+            change_flight_status_msg.status = "stop";
+            change_flight_status_msg.icao = id_icao_map_[msg.uav_id];
+            flight_status_pub_.publish(change_flight_status_msg);
+            // gauss_msgs::ChangeFlightStatus change_flight_status_msg;
+            // change_flight_status_msg.request.icao = id_icao_map_[msg.uav_id];
+            // change_flight_status_msg.request.is_started = false;
+            // change_flight_status_client_.call(change_flight_status_msg);
+        } else if (msg.threat.threat_type == gauss_msgs::Threat::SPOOFING_ATTACK) {
+            // TODO: Set properly alert message and title
+            gauss_msgs_mqtt::UTMAlert utm_alert_msg;
+            utm_alert_msg.alert_message = msg.description;
+            utm_alert_msg.alert_title = "SPOOFING ATTACK";
+            utm_alert_msg.alert_id = "SPOOFING ATTACK";
+            alert_pub_.publish(utm_alert_msg);
             // Finish threatened operation
             gauss_msgs_mqtt::RPSChangeFlightStatus change_flight_status_msg;
             change_flight_status_msg.status = "stop";

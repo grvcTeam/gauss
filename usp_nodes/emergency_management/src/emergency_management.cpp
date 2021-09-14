@@ -75,13 +75,13 @@ gauss_msgs::Geofence geofenceFromThreat(const gauss_msgs::NewThreat &_threat) {
     gauss_msgs::Geofence out_geofence;
     out_geofence.circle.x_center = _threat.location.x;
     out_geofence.circle.y_center = _threat.location.y;
-    out_geofence.circle.radius = 500.0;
+    out_geofence.circle.radius = 1000.0;
     out_geofence.cylinder_shape = true;
     out_geofence.id = _threat.threat_id;
     out_geofence.min_altitude = 0.0;
-    out_geofence.max_altitude = 600.0;
+    out_geofence.max_altitude = 1000.0;
     out_geofence.start_time = ros::Time::now();
-    out_geofence.end_time.fromSec(ros::Time::now().toSec() + 600.0);
+    out_geofence.end_time.fromSec(ros::Time::now().toSec() + 3600.0);
 
     return out_geofence;
 }
