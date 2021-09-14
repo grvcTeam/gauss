@@ -456,8 +456,9 @@ class EmergencyManagement():
             if threat_type == Threat.SPOOFING_ATTACK: 
                 #Publish the action which the UAV has to make.
                 uav_threatened = uavs_threatened[0]
-                notification.description = 'Activate the Flight Termination System (FTS) of the UAV.'
+                notification.description = 'Attention: Spoofing attack. Land now.'
                 notification.uav_id = uav_threatened
+                notification.threat.threat_type = Threat.SPOOFING_ATTACK
                 self._notifications_list.append(notification) 
             
                 # We create a geofence.
@@ -465,12 +466,15 @@ class EmergencyManagement():
                 alarm_center = threat.location
                 geofence_base.x_center = alarm_center.x
                 geofence_base.y_center = alarm_center.y
+                geofence_base.radius = 1000
                 geofence = Geofence()
                 geofence.id = 4
-                geofence.cylinder_shape = True
                 geofence.min_altitude = 0.0
-                geofence.max_altitude = 100.0
+                geofence.max_altitude = 1000.0
                 geofence.circle = geofence_base
+                geofence.cylinder_shape = True
+                geofence.start_time = rospy.Time().now()
+                geofence.end_time = rospy.Time().from_sec(rospy.Time.now().to_sec() + 3600.0)
                     
                 # We write a geofence.
                 req = WriteGeofencesRequest()
