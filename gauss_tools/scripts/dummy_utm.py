@@ -30,7 +30,7 @@ class DummyUMT():
         self.write_geofences_clt = rospy.ServiceProxy(
             '/gauss/write_geofences', WriteGeofences)
         self.change_flight_status_srv = rospy.Service(
-            '/gauss/flight', ChangeFlightStatus, self.changeFlightStatusSrvCb)
+            '/gauss/dummy_trigger', ChangeFlightStatus, self.changeFlightStatusSrvCb)
 
         self.timer = rospy.Timer(rospy.Duration(1), self.timerCb)
         self.started_time = rospy.Time.now().to_sec()
@@ -85,7 +85,7 @@ class DummyUMT():
         geofence.end_time = rospy.Time.from_sec(rospy.Time.now(
         ).to_sec() + self.json_data_['conflicts'][conflict_id]['geofence']['end_stamp'])
         # If there are empty values, get it from the UAV actual position
-        if self.json_data_['conflicts'][conflict_id]['geofence']['x'] is not '' and self.json_data_['conflicts'][conflict_id]['geofence']['y'] is not '':
+        if self.json_data_['conflicts'][conflict_id]['geofence']['x'] is not None and self.json_data_['conflicts'][conflict_id]['geofence']['y'] is not None:
             geofence.circle.x_center = self.json_data_[
                 'conflicts'][conflict_id]['geofence']['x']
             geofence.circle.y_center = self.json_data_[
