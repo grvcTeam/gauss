@@ -328,8 +328,8 @@ bool Tracking::changeFlightStatusCB(gauss_msgs::ChangeFlightStatus::Request &req
     case FlightStatus::STARTED:
         if(req.is_started == false)
         {
-            uav_id_flight_status_map_[uav_id] = FlightStatus::ENDED;
-            ROS_INFO_STREAM("[Tracking] Change flight status request received for ICAO [" << req.icao << "] UAV [" << (int)uav_id << "] : Flight ended");
+            uav_id_flight_status_map_[uav_id] = FlightStatus::NOT_STARTED;
+            ROS_INFO_STREAM("[Tracking] Change flight status request received for ICAO [" << req.icao << "] UAV [" << (int)uav_id << "] : Flight NOT STARTED");
         }
         break;
     case FlightStatus::ENDED:

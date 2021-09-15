@@ -398,6 +398,7 @@ class RPAStateInfoWrapper {
             return false;
 
         } else if (flight_plan.waypoints.size() == 1) {
+            ROS_WARN("[Sim] Flight plan is one waypoint");
             tf.transform.translation.x = flight_plan.waypoints[0].x;
             tf.transform.translation.y = flight_plan.waypoints[0].y;
             tf.transform.translation.z = flight_plan.waypoints[0].z;
@@ -426,6 +427,7 @@ class RPAStateInfoWrapper {
         if (prev.stamp == next.stamp) {
             // Last waypoint is reached
             running = false;
+            ROS_INFO("[Sim]: Last waypoint is reached!");
             tf.transform.translation.x = next.x;
             tf.transform.translation.y = next.y;
             tf.transform.translation.z = next.z;
@@ -435,8 +437,8 @@ class RPAStateInfoWrapper {
             gauss_msgs::Waypoint target_point;
             target_point = interpolate(prev, next, elapsed, &target_yaw);
             // TODO: Realism level as a parameter!
-            //copyTarget(target_point, target_yaw, &tf.transform, &data.yaw);
-            smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            copyTarget(target_point, target_yaw, &tf.transform, &data.yaw);
+            //smoothTarget(target_point, target_yaw, &tf.transform, &data.yaw);
             //simTarget(target_point, target_yaw, &tf.transform, &data.yaw);  // TODO: Merge copy, smooth and sim into one function?
         }
 
@@ -736,6 +738,20 @@ class LightSim {
     }
 
     void startOperation(const std::string& icao_address) {
+        // First, refresh operations
+        auto read_operation_srv_url = "/gauss/read_operation";
+        ros::ServiceClient operation_client = n.serviceClient<gauss_msgs::ReadOperation>(read_operation_srv_url);
+        gauss_msgs::ReadOperation read_operation;
+        read_operation.request.uav_ids.push_back(1);  // TODO: Magic Number! std::stoi(icao_address));
+        if (operation_client.call(read_operation)) {
+            ROS_INFO("[Sim] Read operations... ok");
+            this->setOperations(read_operation.response.operation);
+            ROS_INFO("[Sim] Set operations... ok");
+        } else {
+            ROS_ERROR("[Sim] Failed to call service: [%s]", read_operation_srv_url);
+        }
+
+        // Now, really start operation
         bool started = icao_to_is_started_map[icao_address];
         if (started) {
             ROS_WARN("[Sim] Operation icao [%s] already started", icao_address.c_str());
