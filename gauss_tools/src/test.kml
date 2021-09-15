@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
 <Document>
-	<name>fps_arenosillo.kml</name>
-	<Style id="inline02">
+	<name>fps_ultimo.kml</name>
+	<Style id="inline3261">
+		<LineStyle>
+			<color>ff00ffff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="inline01">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline140</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline25</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="inline11">
 		<LineStyle>
 			<color>ff0000ff</color>
 			<width>2</width>
@@ -11,73 +30,14 @@
 			<fill>0</fill>
 		</PolyStyle>
 	</Style>
-	<StyleMap id="inline111">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#inline020</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#inline220</styleUrl>
-		</Pair>
-	</StyleMap>
-	<StyleMap id="inline29">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#inline26</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#inline11</styleUrl>
-		</Pair>
-	</StyleMap>
-	<StyleMap id="inline112">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#inline32</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#inline00</styleUrl>
-		</Pair>
-	</StyleMap>
-	<Style id="inline26">
-		<LineStyle>
-			<color>ff0000ff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<StyleMap id="inline200">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#inline02</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#inline80</styleUrl>
-		</Pair>
-	</StyleMap>
-	<StyleMap id="inline41">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#inline36</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#inline28</styleUrl>
-		</Pair>
-	</StyleMap>
-	<Style id="inline25">
-		<LineStyle>
-			<color>ff0000ff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
+	<Style id="s_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
 	</Style>
 	<Style id="inline00">
 		<LineStyle>
@@ -88,108 +48,17 @@
 			<fill>0</fill>
 		</PolyStyle>
 	</Style>
-	<StyleMap id="inline1751">
+	<StyleMap id="inline29">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#inline1451</styleUrl>
+			<styleUrl>#inline260</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#inline3261</styleUrl>
+			<styleUrl>#inline11</styleUrl>
 		</Pair>
 	</StyleMap>
-	<Style id="inline32">
-		<LineStyle>
-			<color>ffffff55</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
 	<Style id="inline1451">
-		<LineStyle>
-			<color>ff00ffff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline">
-		<LineStyle>
-			<color>ff00ffff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline0">
-		<LineStyle>
-			<color>ff00ffff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline36">
-		<LineStyle>
-			<color>ff00ffff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline11">
-		<LineStyle>
-			<color>ff0000ff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<StyleMap id="inline1">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#inline</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#inline0</styleUrl>
-		</Pair>
-	</StyleMap>
-	<Style id="inline220">
-		<LineStyle>
-			<color>ffffff00</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline28">
-		<LineStyle>
-			<color>ff00ffff</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline020">
-		<LineStyle>
-			<color>ffffff00</color>
-			<width>2</width>
-		</LineStyle>
-		<PolyStyle>
-			<fill>0</fill>
-		</PolyStyle>
-	</Style>
-	<Style id="inline3261">
 		<LineStyle>
 			<color>ff00ffff</color>
 			<width>2</width>
@@ -207,7 +76,55 @@
 			<fill>0</fill>
 		</PolyStyle>
 	</Style>
-	<Style id="inline80">
+	<StyleMap id="inline290">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline26</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline110</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="inline111">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline020</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline220</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="inline1751">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline1451</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline3261</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="inline32">
+		<LineStyle>
+			<color>ffffff55</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline26">
 		<LineStyle>
 			<color>ff0000ff</color>
 			<width>2</width>
@@ -216,34 +133,87 @@
 			<fill>0</fill>
 		</PolyStyle>
 	</Style>
-	<StyleMap id="inline01">
+	<Style id="inline110">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline260">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="m_ylw-pushpin">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#inline140</styleUrl>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#inline25</styleUrl>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
 		</Pair>
 	</StyleMap>
+	<Style id="inline220">
+		<LineStyle>
+			<color>ffffff00</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<StyleMap id="inline112">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#inline32</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#inline00</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="inline25">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
+	<Style id="inline020">
+		<LineStyle>
+			<color>ffffff00</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<fill>0</fill>
+		</PolyStyle>
+	</Style>
 	<Folder>
 		<name>Sitios temporales</name>
 		<open>1</open>
 		<Placemark>
 			<name>FP_Circuito_Fase4_Atlantic</name>
-			<open>1</open>
-			<styleUrl>#inline29</styleUrl>
+			<styleUrl>#inline290</styleUrl>
 			<LineString>
 				<tessellate>1</tessellate>
 				<altitudeMode>relativeToGround</altitudeMode>
 				<coordinates>
-					-6.659509002762109,36.96044772772015,400.0000000000001 -6.733163102952568,36.92346560413105,400.0000000000001 -6.744571718138718,36.93491146461517,400.0000000000001 -6.668859393445615,36.97380032912212,400.0000000000001 -6.659509002762109,36.96044772772015,400.0000000000001 
+					-6.776999340242544,36.99161506869304,400.0000000000001 -6.755177617258211,37.05886381342102,400.0000000000001 
 				</coordinates>
 			</LineString>
 		</Placemark>
 		<Placemark>
 			<name>FP_UC2.3_M600</name>
-			<open>1</open>
 			<styleUrl>#inline111</styleUrl>
 			<LineString>
 				<tessellate>1</tessellate>
@@ -255,48 +225,63 @@
 		</Placemark>
 		<Placemark>
 			<name>FP_UC 2.5_Atlantic</name>
-			<open>1</open>
 			<styleUrl>#inline01</styleUrl>
 			<LineString>
 				<tessellate>1</tessellate>
 				<altitudeMode>relativeToGround</altitudeMode>
 				<coordinates>
-					-6.798332304307531,37.09399162481711,400.0000000000001 -6.758732331281755,37.07815144390501,400.0000000000001 -6.762734058600199,37.07204113136157,400.0000000000001 -6.802287707018446,37.08740764780208,400.0000000000001 -6.798332304307531,37.09399162481711,400.0000000000001 
-				</coordinates>
-			</LineString>
-		</Placemark>
-		<Placemark>
-			<name>FP_UC2.1_Atlantic</name>
-			<open>1</open>
-			<styleUrl>#inline200</styleUrl>
-			<LineString>
-				<tessellate>1</tessellate>
-				<altitudeMode>relativeToGround</altitudeMode>
-				<coordinates>
-					-6.774626417035337,36.98591215622536,400.0000000000001 -6.740391905270836,37.02152953877803,400.0000000000001 -6.735597055228116,37.0186985810145,400.0000000000001 -6.749096765631467,37.0037307148805,400.0000000000001 -6.744585539645756,37.00074366613156,400.0000000000001 -6.730431634742812,37.01547526057539,400.0000000000001 -6.725714557976421,37.01239620093427,400.0000000000001 -6.740364958382486,36.99789231081571,400.0000000000001 -6.735959931954643,36.99501725366062,400.0000000000001 -6.721149015060867,37.00945037078883,400.0000000000001 -6.716995420483034,37.00669424904375,400.0000000000001 -6.731748661133039,36.9924056938119,400.0000000000001 -6.727224441820004,36.98953752474799,400.0000000000001 -6.712784036896044,37.00403691005499,400.0000000000001 -6.708867034535698,37.00151517595061,400.0000000000001 -6.723405478085168,36.98693484210686,400.0000000000001 
+					-6.802287707018446,37.08740764780208,400.0000000000001 -6.798332304307531,37.09399162481711,400.0000000000001 -6.758732331281755,37.07815144390501,400.0000000000001 -6.762734058600199,37.07204113136157,400.0000000000001 -6.802287707018446,37.08740764780208,400.0000000000001 
 				</coordinates>
 			</LineString>
 		</Placemark>
 		<Placemark>
 			<name>FP_UC2.4_SCRABII</name>
-			<open>1</open>
 			<styleUrl>#inline1751</styleUrl>
 			<LineString>
 				<tessellate>1</tessellate>
 				<coordinates>
-					-6.710444696995081,36.91242339659211,700 -6.795603060734521,36.96839978851362,700 -6.792348269564009,36.97198240065693,700 -6.706338748489486,36.91566081585877,700 -6.702642244630189,36.91961662289596,700 -6.788595029093923,36.97620390622838,700 -6.784823866036652,36.98060843957411,700 -6.698716316389339,36.92419052264038,700 -6.695161392238119,36.92834610948228,700 -6.780637049264903,36.98471258155586,700 -6.776840585113612,36.98919387547243,700 -6.690744480708124,36.93303418552652,700 
+					-6.720474000000001,36.99105433,700 -6.807943444,37.047721,700 -6.800854556,37.05471544,700 -6.713290667,36.99809878,700 -6.706207333,37.00509322,700 -6.793699,37.06176267,700 -6.786607333000001,37.06875711,700 -6.699190667,37.01201544,700 
 				</coordinates>
 			</LineString>
 		</Placemark>
 		<Placemark>
 			<name>FP_UC2.2_M600</name>
-			<open>1</open>
 			<styleUrl>#inline112</styleUrl>
 			<LineString>
 				<tessellate>1</tessellate>
 				<altitudeMode>relativeToGround</altitudeMode>
 				<coordinates>
 					-6.737788133849104,37.0933105988238,100 -6.736644782802345,37.09281913141444,100 -6.736778567975744,37.09260205683084,100 -6.738368226171452,37.09326852905838,100 -6.738550346879396,37.09299493816143,100 -6.73624761007273,37.09203806060057,100 -6.736408149322783,37.09177757442789,100 -6.739140954052793,37.09291386610258,100 -6.739301483862189,37.09265337193468,100 -6.736546918017179,37.09150854903341,100 -6.736734390402415,37.09122628169917,100 -6.739009982644236,37.09218328875714,100 -6.739170510670776,37.09192279777675,100 -6.737575343930099,37.09124339202148,100 -6.737746760281283,37.09098717372836,100 -6.738949862399463,37.0914912805651,100 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>FP_UC2.1_Atlantic</name>
+			<styleUrl>#inline291</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-6.819307986698862,37.02625141228397,400 -6.783888738959148,37.00357599506375,400 -6.780585769371701,37.006486248203,400 -6.815882593100646,37.02941970141514,400 -6.812259259110922,37.03255054887153,400 -6.777524684694905,37.01043748682362,400 -6.774063216433381,37.01373947787333,400 -6.808748519657263,37.03624611677359,400 -6.80536403277528,37.03961649607103,400 -6.770913234921691,37.01706622802619,400 -6.761993892316895,37.02639680115544,400 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>EsperaFase5</name>
+			<styleUrl>#inline291</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-6.803084637107146,37.07511170892285,0 -6.803354518318256,37.07476951369776,0 -6.803084637107146,37.07511170892285,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>SpoofingFase3</name>
+			<styleUrl>#inline29</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-6.761303144270833,37.04079145339189,0 
 				</coordinates>
 			</LineString>
 		</Placemark>
