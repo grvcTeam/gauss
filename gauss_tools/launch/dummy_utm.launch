@@ -1,7 +1,7 @@
 <launch>
     <!-- Arguments -->
-    <arg name="rviz_name" default="atlas"/>
-    <arg name="use_case_yaml" default="atlas/loss_separation"/>
+    <arg name="rviz_name" default="arenosillo"/>
+    <arg name="use_case_yaml" default="arenosillo/loss_separation"/>
     <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml).yaml" />
     <arg name="bag_dir" default="/home/hector/ros/bags"/>
     <arg name="bag_name" default="$(arg use_case_yaml)"/>
