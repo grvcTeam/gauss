@@ -179,7 +179,7 @@ target_link_libraries(coordinate_conversion_tool ${GeographicLib_LIBRARIES})
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  scripts/dummy_utm.py
+  scripts/dummy_utm.py scripts/write_operation_from_json.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

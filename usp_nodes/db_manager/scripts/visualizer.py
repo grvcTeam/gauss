@@ -517,7 +517,7 @@ def main():
             if (operation.is_started) :
                 is_started_alpha = 1.0
             else :
-                is_started_alpha = 0.1
+                is_started_alpha = 0.8
 
             # Visualize non-trajectory information
             if operation.track.waypoints:

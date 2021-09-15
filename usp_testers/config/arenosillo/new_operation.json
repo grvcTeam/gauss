@@ -1,0 +1,77 @@
+{
+    "uav_id": 1,
+    "icao_address": "3434009",
+    "frame": 0,
+    "autonomy": 10.0,
+    "priority": 0,
+    "current_wp": 1,
+    "is_started": false,
+    "flight_plan": {
+        "waypoints": [
+            {
+                "x": -3609.09639328,
+                "y": -11465.6762753,
+                "z": 488.643538574,
+                "stamp": 0,
+                "mandatory": false
+            },
+            {
+                "x": -1664.90544666,
+                "y": -4002.67985224,
+                "z": 498.523242066,
+                "stamp": 0,
+                "mandatory": false
+            }
+        ]
+    },
+    "flight_plan_updated": {
+        "waypoints": []
+    },
+    "flight_plan_mod_t": 1631723879.44,
+    "dT": 0.0,
+    "time_tracked": 10.0,
+    "track": {
+        "waypoints": [
+            {
+                "x": -3609.09639328,
+                "y": -11465.6762753,
+                "z": 488.643538574,
+                "stamp": 0,
+                "mandatory": false
+            }
+        ]
+    },
+    "time_horizon": 0.0,
+    "estimated_trajectory": {
+        "waypoints": [
+            {
+                "x": -3609.09639328,
+                "y": -11465.6762753,
+                "z": 488.643538574,
+                "stamp": 0,
+                "mandatory": false
+            },
+            {
+                "x": -1664.90544666,
+                "y": -4002.67985224,
+                "z": 498.523242066,
+                "stamp": 0,
+                "mandatory": false
+            }
+        ]
+    },
+    "landing_spots": {
+        "waypoints": [
+            {
+                "x": -14.58814709,
+                "y": -22.6915857169,
+                "z": 0.999942877249,
+                "stamp": 0,
+                "mandatory": false
+            }
+        ]
+    },
+    "flight_geometry": 80.0,
+    "operational_volume": 100.0,
+    "conop": "Power line inspection"
+}
