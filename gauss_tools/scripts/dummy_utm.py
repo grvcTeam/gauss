@@ -43,6 +43,7 @@ class DummyUMT():
             json_file = self.inputJSONFile('')
 
         # Get data from json file
+        print(json_file)
         self.json_data_ = json.load(open(json_file))
 
         # Dictionary to store threat types

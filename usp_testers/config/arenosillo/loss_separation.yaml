@@ -21,7 +21,7 @@ just_one_threat: true
 
 simulation:
   auto_start:
-    - {icao: 3434007, delay: 755.0}
+    - {icao: 3434007, delay: 5.0}
     - {icao: 3434009, delay: 5.0}
 
   # change_param:
