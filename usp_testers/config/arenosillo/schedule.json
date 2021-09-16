@@ -10,28 +10,28 @@
 		{
 			"uav_id": [0],
 			"icao": [3434007],
-			"threat_id": 2,
+			"threat_id": 1,
 			"threat_type": 0,
 			"trigger_stamp": -1,
 			"geofence": {
-				"x": null,
-				"y": null,
+				"x": -2150.2,
+				"y": -5867.8,
 				"h": 1000.0,
-				"radius": 2000.0,
-				"end_stamp": 360.0
+				"radius": 1000.0,
+				"end_stamp": 3600.0
 			}
 		},
 		{
 			"uav_id": [1],
 			"icao": [3434009],
-			"threat_id": 3,
+			"threat_id": 2,
 			"threat_type": 7,
 			"trigger_stamp": -1
 		},
 		{
 			"uav_id": [2],
 			"icao": [3434008],
-			"threat_id": 4,
+			"threat_id": 3,
 			"threat_type": 0,
 			"trigger_stamp": -1,
 			"geofence": {
@@ -45,7 +45,7 @@
 		{
 			"uav_id": [1],
 			"icao": [3434009],
-			"threat_id": 5,
+			"threat_id": 4,
 			"threat_type": 5,
 			"trigger_stamp": -1
 		}
@@ -97,19 +97,19 @@
                     {
                         "x" : -2000.0,
 						"y" : -9000.0,
-						"z" : 500.0,
+						"z" : 1000.0,
 						"stamp" : 0.0
 					},
                     {
                         "x" : -1000.0,
 						"y" : -7000.0,
-						"z" : 500.0,
+						"z" : 1000.0,
 						"stamp" : 1000.0
 					}, 
 					{
                         "x" : -1500.0,
 						"y" : -6000.0,
-						"z" : 500.0,
+						"z" : 1000.0,
 						"stamp" : 1500.0
 					},
 					{
@@ -117,7 +117,7 @@
 						"stamp" : 7712.0873735118903,
 						"x" : -1664.9054466565728,
 						"y" : -4002.6798522362033,
-						"z" : 498.52324206618187
+						"z" : 1000.52324206618187
 					}
 				]
 			}
