@@ -15,7 +15,7 @@
         <param name="timing_file" value="$(find usp_testers)/config/$(arg use_case_yaml).yaml"/>
     </node>
     <!-- ROSBAG -->
-    <!-- <node pkg="rosbag" type="record" name="rosbag_record" output="screen"
+    <node pkg="rosbag" type="record" name="rosbag_record" output="screen"
           args="-o $(arg bag_dir)/$(arg bag_name) -a"
-    /> -->
+    />
 </launch>

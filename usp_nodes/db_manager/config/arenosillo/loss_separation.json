@@ -92,8 +92,8 @@
 					}
 				]
 			},
-			"flight_geometry": 10.0,
-			"operational_volume": 20.0,
+			"flight_geometry": 100.0,
+			"operational_volume": 150.0,
 			"conop": "Forest Surveilance"
 		}, 
 		{
@@ -209,8 +209,8 @@
 					}
 				]
 			},
-			"flight_geometry": 10.0,
-			"operational_volume": 20.0,
+			"flight_geometry": 100.0,
+			"operational_volume": 150.0,
 			"conop": "Precision agriculture"
 		}
 	]

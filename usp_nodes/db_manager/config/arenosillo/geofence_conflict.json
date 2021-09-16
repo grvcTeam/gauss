@@ -15,34 +15,6 @@
 					{
 						"mandatory" : 0,
 						"stamp" : 0,
-						"x" : 1423.2632422028146,
-						"y" : -11529.103678380196,
-						"z" : 789.39057364491509
-					},
-					{
-						"mandatory" : 0,
-						"stamp" : 933,
-						"x" : -6359.5776191617324,
-						"y" : -5237.3900667229373,
-						"z" : 794.67697132470494
-					},
-					{
-						"mandatory" : 0,
-						"stamp" : 993,
-						"x" : -5728.3840126256837,
-						"y" : -4461.5228808958636,
-						"z" : 795.86596125820688
-					},
-					{
-						"mandatory" : 0,
-						"stamp" : 1173,
-						"x" : 2062.6184264404983,
-						"y" : -10747.111298132029,
-						"z" : 790.58572588459538
-					},
-					{
-						"mandatory" : 0,
-						"stamp" : 1233,
 						"x" : 2692.9558782260888,
 						"y" : -9970.6229381389676,
 						"z" : 791.61589300304877
@@ -92,8 +64,8 @@
                     }
 				]
 			},
-			"flight_geometry": 15.0,
-			"operational_volume": 30.0,
+			"flight_geometry": 100.0,
+			"operational_volume": 150.0,
 			"conop": "Event monitoring"
         }, 
         {
@@ -146,8 +118,8 @@
                     }
 				]
 			},
-			"flight_geometry": 80.0,
-			"operational_volume": 100.0,
+			"flight_geometry": 100.0,
+			"operational_volume": 150.0,
 			"conop": "Power line inspection"
         }
     ]

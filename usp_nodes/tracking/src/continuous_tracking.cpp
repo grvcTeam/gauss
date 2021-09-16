@@ -157,7 +157,7 @@ Tracking::Tracking()
     // Params
     nh_.param<bool>("use_position_report", use_position_report_, true);
     nh_.param<bool>("use_adsb_", use_adsb_, true);
-    nh_.param<double>("wp_distance_threshold_margin", distance_wp_threshold_margin_, 10.0);
+    nh_.param<double>("wp_distance_threshold_margin", distance_wp_threshold_margin_, 200.0);
     nh_.param<bool>("use_speed_info", use_speed_info_, false);
     nh_.param<double>("time_horizon", time_horizon_, 90.0);
     nh_.param<double>("dT", dT_, 5.0);
