@@ -89,6 +89,9 @@ class EmergencyManagement():
             alfa = 0.25 # Weight of cost
             beta = 0.75 # Weight of riskiness
             value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
+            print("La métrica de coste en este caso es:", deconfliction_plan.cost)
+            print("La métrica de riesgo en este caso es:", deconfliction_plan.riskiness)
+            print("El valor de la función de coste en este caso es:", value)
             values.append(value)
         print("Los valores de la funcion de optimizacion son los siguientes:",values)
         value_min = min(values)
