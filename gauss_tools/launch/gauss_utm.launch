@@ -1,9 +1,7 @@
 <launch>
     <!-- Arguments -->
-    <arg name="rviz_name" default="leon"/>
-    <arg name="use_case_yaml" default="leon/loss_separation"/>
-    <arg name="bag_dir" default="/home/hector/ros/bags"/> 
-    <arg name="bag_name" default="$(arg use_case_yaml)"/>
+    <arg name="rviz_name" default="madrid"/>
+    <arg name="use_case_yaml" default="madrid/loss_separation"/>
     <rosparam command="load" file="$(find usp_testers)/config/$(arg use_case_yaml).yaml" />
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find usp_testers)/config/rviz/$(arg rviz_name).rviz" required="true"/>
@@ -15,8 +13,4 @@
     <node pkg="usp_manager" type="USPmanager" name="usp_manager" output="screen" required="true"/>
     <node pkg="tactical_deconfliction" type="ConflictSolver" name="tactical_deconfliction" output="screen" required="true"/>
     <node pkg="monitoring" type="monitoring" name="monitoring" required="true" output="screen"/>
-    <!-- ROSBAG -->
-    <node pkg="rosbag" type="record" name="rosbag_record" output="screen"
-          args="-o $(arg bag_dir)/$(arg bag_name) -a"
-    />
 </launch>

@@ -1,5 +1,5 @@
 # Old madrid_large_geo_light_sim.launch
-operations_json: "madrid/geo_conflict"
+operations_json: "madrid/atlantic_geo_conflict"
 geofences_json: "no_geofences"
 origin_latitude: 40.65974645776713
 origin_longitude: -3.59689676974471
