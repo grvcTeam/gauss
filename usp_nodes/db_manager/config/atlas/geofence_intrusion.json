@@ -218,8 +218,8 @@
                     }
 				]
 			},
-			"flight_geometry": 10.0,
-			"operational_volume": 20.0,
+			"flight_geometry": 2.0,
+			"operational_volume": 5.0,
 			"conop": "Wind turbine inspection"
         }
     ]

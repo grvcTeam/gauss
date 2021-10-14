@@ -385,7 +385,7 @@ std::vector<LossConflictiveSegments> checkTrajectoriesLoss(const std::pair<gauss
             // std::cout << segments.second.point_A << "_____________\n" << segments.second.point_B << '\n';
             auto loss_check = checkSegmentsLoss(segments, s_threshold);
             if (loss_check.threshold_is_violated) {
-                ROS_ERROR("[Monitoring] Loss of separation! [i = %d, j = %d]", i, j);
+                // ROS_ERROR("[Monitoring] Loss of separation! [i = %d, j = %d]", i, j);
                 // std::cout << loss_check << '\n';
                 segment_loss_results.push_back(loss_check);
             }
@@ -913,7 +913,7 @@ std::vector<GeoConflictiveTrajectory> checkGeofenceConflict(const std::vector<ga
                     && in_range(current_position.z, rectified_geofence.min_altitude, rectified_geofence.max_altitude)
                     && (pow(current_position.x - rectified_geofence.circle.x_center, 2) + pow(current_position.y - rectified_geofence.circle.y_center, 2) < pow(rectified_geofence.circle.radius, 2))
                     ) {
-                    ROS_ERROR("[Monitoring] Geofence intrusion! [i = %d]", current_result.trajectory_index);
+                    // ROS_ERROR("[Monitoring] Geofence intrusion! [i = %d]", current_result.trajectory_index);
                     current_result.closest_exit_wp.mandatory = true;
                     auto exit_circle = geofence.circle;
                     exit_circle.radius += operational_volume * 2.0;

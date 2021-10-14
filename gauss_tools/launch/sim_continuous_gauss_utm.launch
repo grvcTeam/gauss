@@ -1,7 +1,7 @@
 <launch>
     <!-- Arguments -->
-    <arg name="use_case_yaml" default="continuous_loss_separation"/>
-    <arg name="rviz_name" default="continuous"/>
+    <arg name="use_case_yaml" default="madrid/loss_separation"/>
+    <arg name="rviz_name" default="madrid"/>
     <!-- GAUSS -->
     <include file="$(find gauss_tools)/launch/gauss_continuous_utm.launch">
         <arg name="use_case_yaml" value="$(arg use_case_yaml)"/>

@@ -162,8 +162,8 @@
                     }
 				]
 			},
-			"flight_geometry": 15.0,
-			"operational_volume": 30.0,
+			"flight_geometry":5.0,
+			"operational_volume": 10.0,
 			"conop": "Event monitoring"
         }, 
         {
