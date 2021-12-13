@@ -1,3 +1,3 @@
 #!/bin/bash
 
-rostopic echo /gauss/flight
+rostopic echo /gauss/change_flight_status

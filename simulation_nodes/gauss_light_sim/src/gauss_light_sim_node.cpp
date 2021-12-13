@@ -640,9 +640,9 @@ class LightSim {
         }
         change_param_service = n.advertiseService("gauss_light_sim/change_param", &LightSim::changeParamCallback, this);
         change_flight_plan_service = n.advertiseService("gauss_light_sim/change_flight_plan", &LightSim::changeFlightPlanCallback, this);
-        status_sub = n.subscribe("/gauss/flight", 10, &LightSim::flightStatusCallback, this);
-        status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/flight", 10);
-        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo", 10);
+        status_sub = n.subscribe("/gauss/change_flight_status", 10, &LightSim::flightStatusCallback, this);
+        status_pub = n.advertise<gauss_msgs_mqtt::RPSChangeFlightStatus>("/gauss/change_flight_status", 10);
+        rpa_state_info_pub = n.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state_info", 10);
         n.getParam("sim_rate", sim_rate);
     }
 

@@ -103,7 +103,7 @@ USPUALBridge::USPUALBridge() : available_velocity_msg_(false),
 
     // Publish
     //rpacommands_pub_ = nh_.advertise<gauss_msgs::Notification>("/gauss/commands",1);  //TBD message to UAVs
-    rpa_state_info_pub_ = nh_.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpastateinfo", 1);
+    rpa_state_info_pub_ = nh_.advertise<gauss_msgs_mqtt::RPAStateInfo>("/gauss/rpa_state_info", 1);
     adsb_surveillance_pub_ = nh_.advertise<gauss_msgs_mqtt::ADSBSurveillance>("/gauss/adsb", 1);
 
     // Subscribe

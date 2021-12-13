@@ -17,7 +17,7 @@ bridge:
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPSChangeFlightStatus
     topic_from: flight/+
-    topic_to: /gauss/flight
+    topic_to: /gauss/change_flight_status
 
   - factory: mqtt_bridge.bridge:AlternativeFlightPlanRosToMqttBridge
     msg_type: gauss_msgs_mqtt.msg:UTMAlternativeFlightPlan
@@ -27,7 +27,7 @@ bridge:
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPSFlightPlanAccept
     topic_from: flightacceptance
-    topic_to: /gauss/flightacceptance
+    topic_to: /gauss/flight_acceptance
 
   - factory: mqtt_bridge.bridge:RosToMqttBridge
     msg_type: gauss_msgs_mqtt.msg:UTMGeofenceCreation
@@ -42,7 +42,7 @@ bridge:
   - factory: mqtt_bridge.bridge:MqttToRosBridge
     msg_type: gauss_msgs_mqtt.msg:RPAStateInfo
     topic_from: rpastateinfo/+
-    topic_to: /gauss/rpastateinfo
+    topic_to: /gauss/rpa_state_info
 
   - factory: mqtt_bridge.bridge:UTMAlertRosToMqttBridge
     msg_type: gauss_msgs_mqtt.msg:UTMAlert
