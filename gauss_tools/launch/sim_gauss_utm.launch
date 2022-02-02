@@ -1,7 +1,7 @@
 <launch>
     <!-- Arguments -->
     <arg name="rviz_name" default="atlas"/>
-    <arg name="use_case_yaml" default="atlas/geofence_conflict"/>
+    <arg name="use_case_yaml" default="atlas/loss_separation"/>
     <!-- GAUSS -->
     <include file="$(find gauss_tools)/launch/gauss_utm.launch">
         <arg name="use_case_yaml" value="$(arg use_case_yaml)"/>

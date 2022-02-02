@@ -5,6 +5,7 @@
 '''This script is the emergency management module developed in the UTM to decide what is the best action 
 to take in the U-space when some Threats are showed up.'''
 
+import numpy as np
 import rospy
 import time
 import copy
@@ -79,6 +80,7 @@ class EmergencyManagement():
         request.operations = self._conflictive_operations 
         request.geofences = self._conflictive_geofences 
         self._deconfliction_response = self._requestDeconfliction_service_handle(request) 
+        print(self._deconfliction_response.deconfliction_plans)
         return self._deconfliction_response
    
     def select_optimal_route(self):
@@ -86,8 +88,8 @@ class EmergencyManagement():
         deconfliction_plans_list = self._deconfliction_response.deconfliction_plans
         values = []
         for deconfliction_plan in deconfliction_plans_list:
-            alfa = 0.25 # Weight of cost
-            beta = 0.75 # Weight of riskiness
+            alfa = 0.2 # Weight of cost
+            beta = 0.4 # Weight of riskiness
             value = alfa*deconfliction_plan.cost + beta*deconfliction_plan.riskiness
             print("La métrica de coste en este caso es:", deconfliction_plan.cost)
             print("La métrica de riesgo en este caso es:", deconfliction_plan.riskiness)
@@ -219,7 +221,15 @@ class EmergencyManagement():
                 temp_pose.stamp = flightplan.waypoints[i].stamp
                 new_flight_plan.waypoints.append(temp_pose)
         return new_flight_plan
-        
+
+# Añadir un metodo que calcule la distancia de un plan de vuelo alternative_flight_plan (x, y, z)
+#    def calculate_abs_distance(self, alternative_flight_plan):    
+#        abs_distance = 0
+#        for i in len(alternative_flight_plan):
+#            p1 = (alternative_flight_plan[i].x, alternative_flight_plan[i].y, alternative_flight_plan[i].z)
+#            p2 = (alternative_flight_plan[i+1].x, alternative_flight_plan[i+1].y, alternative_flight_plan[i+1].z)
+#            abs_distance = abs_distance + (p2-p1)
+#            print(abs_distance)
 
     def ask_update_threat(self, threat_id):
         request = UpdateThreatsRequest()
