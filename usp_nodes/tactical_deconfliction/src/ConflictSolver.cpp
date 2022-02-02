@@ -35,6 +35,8 @@ class ConflictSolver {
     double calculateRiskiness(gauss_msgs::DeconflictionPlan newplan);
     void decreasePolygon(const geometry_msgs::Polygon &p, double thickness, geometry_msgs::Polygon &q);
     double signedArea(const geometry_msgs::Polygon &p);
+    double pathLength(const gauss_msgs::WaypointList& _wp_list, size_t _from_index, size_t _to_index);
+    size_t closestIndex(gauss_msgs::WaypointList& _wp_list, gauss_msgs::Waypoint& _wp);
 
     // Auxilary variables
     double rate_;
@@ -385,6 +387,42 @@ double ConflictSolver::pathDistance(gauss_msgs::DeconflictionPlan &_wp_list) {
     return distance;
 }
 
+double ConflictSolver::pathLength(const gauss_msgs::WaypointList& _wp_list, size_t _from_index = 0, size_t _to_index = 0) {
+    if (_to_index == 0) {
+        _to_index = _wp_list.waypoints.size();
+    }
+
+    if (_from_index < 0) {
+        ROS_ERROR("Ïnvalid _from_index argument: %ld < 0", _from_index);
+        return 0;
+    }
+
+    if (_to_index > _wp_list.waypoints.size()) {
+        ROS_ERROR("Ïnvalid _from_index argument: %ld > %ld", _to_index, _wp_list.waypoints.size());
+        return 0;
+    }
+
+    double distance = 0;
+    for (int i = _from_index; i < _to_index - 1; i++) {
+        Eigen::Vector3f p1 = Eigen::Vector3f(_wp_list.waypoints.at(i).x, _wp_list.waypoints.at(i).y, _wp_list.waypoints.at(i).z);
+        Eigen::Vector3f p2 = Eigen::Vector3f(_wp_list.waypoints.at(i + 1).x, _wp_list.waypoints.at(i + 1).y, _wp_list.waypoints.at(i + 1).z);
+        distance = distance + (p2 - p1).norm();
+    }
+
+    return distance;
+}
+
+size_t ConflictSolver::closestIndex(gauss_msgs::WaypointList& _wp_list, gauss_msgs::Waypoint& _wp) {
+    std::vector<double> distances;
+    for (auto& p: _wp_list.waypoints) {
+        auto distance = pointsDistance(p, _wp);
+        distances.push_back(distance);
+    }
+
+    auto min_it = std::min_element(std::begin(distances), std::end(distances));
+    return std::distance(std::begin(distances), min_it);
+}
+
 // Calcula la distancia (en x,y,z) de dos puntos.
 double ConflictSolver::pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Waypoint &_p2) {
     double distance = 0;
@@ -588,7 +626,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newwp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
                 newplan.waypoint_list.push_back(newwp);
                 newplan.maneuver_type = 3;
-                newplan.cost = 99999999999; //Funcion que penalice volver a casa.
+                newplan.cost = pathLength(conflictive_operations.back().flight_plan);  // Funcion que penalice volver a casa.
                 newplan.riskiness = calculateRiskiness(newplan);  // // El risk se tiene que calcular como la minima distancia del nuevo flight plan hasta el UAS conflictivo.
                 res.deconfliction_plans.push_back(newplan);
                 // Routes to landing spots
@@ -691,17 +729,20 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newwp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
                 newplan.waypoint_list.push_back(newwp);
                 newplan.maneuver_type = 3;
-                newplan.cost = 99999999999; //TODO función que penalize volver a casa
+                newplan.cost = pathLength(conflictive_operations.front().flight_plan); // TODO función que penalize volver a casa
                 newplan.riskiness = calculateRiskiness(newplan);  // El risk se tiene que calcular como la minima distancia del nuevo flight plan hasta el UAS conflictivo.
                 res.deconfliction_plans.push_back(newplan);
                 // Routes to landing spots
+                auto current_wp = conflictive_operations.front().estimated_trajectory.waypoints.front();
+                auto current_index = closestIndex(conflictive_operations.front().flight_plan, current_wp);
+                ROS_INFO("closest_index = %ld", current_index);
                 for (auto wp_land : conflictive_operations.front().landing_spots.waypoints) {
                     auto current_wp = conflictive_operations.front().estimated_trajectory.waypoints.front();
                     wp_land.stamp = ros::Time(current_wp.stamp.toSec() + 300.0);  // Add 5 minutes
                     gauss_msgs::DeconflictionPlan temp_wp_list;
                     temp_wp_list.waypoint_list.push_back(current_wp);
                     temp_wp_list.waypoint_list.push_back(wp_land);
-                    temp_wp_list.cost = pointsDistance(current_wp, wp_land);
+                    temp_wp_list.cost = pointsDistance(current_wp, wp_land) + pathLength(conflictive_operations.front().flight_plan, current_index);
                     temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
                     temp_wp_list.uav_id = req.threat.uav_ids.front();
                     temp_wp_list.maneuver_type = 5;
@@ -798,7 +839,7 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
             temp_wp_list.waypoint_list.push_back(temp_wp);
             temp_wp_list.maneuver_type = 3;
-            temp_wp_list.cost = 99999999999999999; //TODO función que penalice este caso.
+            temp_wp_list.cost = pathLength(conflictive_operations.front().flight_plan);
             temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon); //TODO Distancia minima a la geofence
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             ROS_INFO("[Tactical] The cost of go back home is [%lf]", temp_wp_list.cost);
