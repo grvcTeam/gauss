@@ -493,7 +493,7 @@ double ConflictSolver::calculateRiskiness(gauss_msgs::DeconflictionPlan _newplan
     if (!check_client_.call(check_conflict) || !check_conflict.response.success)
         ROS_ERROR("[Tactical] Failed checking conflicts");
 
-    return check_conflict.response.threats.size(); // No sé porqué multiplica por 100.
+    return check_conflict.response.threats.size(); 
 }
 
 // deconflictCB callback
@@ -626,8 +626,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
                 newwp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
                 newplan.waypoint_list.push_back(newwp);
                 newplan.maneuver_type = 3;
-                newplan.cost = pathLength(conflictive_operations.back().flight_plan);  // Funcion que penalice volver a casa.
-                newplan.riskiness = calculateRiskiness(newplan);  // // El risk se tiene que calcular como la minima distancia del nuevo flight plan hasta el UAS conflictivo.
+                newplan.cost = pathLength(conflictive_operations.back().flight_plan);  
+                newplan.riskiness = calculateRiskiness(newplan);  //  El risk se tiene que calcular como la minima distancia del nuevo flight plan hasta el UAS conflictivo.
                 res.deconfliction_plans.push_back(newplan);
                 // Routes to landing spots
                 for (auto wp_land : conflictive_operations.front().landing_spots.waypoints) {
@@ -755,6 +755,8 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
 // USE CASE 3: GEOFENCE CONFLICT    
 
         } else if (req.threat.threat_type == req.threat.GEOFENCE_CONFLICT) {
+            gauss_msgs::DeconflictionPlan newplan;
+            gauss_msgs::Waypoint newwp;
             nav_msgs::Path res_path;
             std::vector<double> res_times;
             for (int i = 0; i < conflictive_operations.front().estimated_trajectory.waypoints.size(); i++) {
@@ -828,36 +830,65 @@ bool ConflictSolver::deconflictCB(gauss_msgs::Deconfliction::Request &req, gauss
             temp_wp_list.uav_id = req.threat.uav_ids.front();
             res.deconfliction_plans.push_back(temp_wp_list);
             // [3] Ruta que me manda devuelta a casa
-            temp_wp_list.waypoint_list.clear();
-            temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
-            temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
-            temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
-            temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
-            temp_wp_list.waypoint_list.push_back(temp_wp);
-            temp_wp_list.maneuver_type = 3;
-            temp_wp_list.cost = pathLength(conflictive_operations.front().flight_plan);
-            temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon); //TODO Distancia minima a la geofence
-            temp_wp_list.uav_id = req.threat.uav_ids.front();
-            ROS_INFO("[Tactical] The cost of go back home is [%lf]", temp_wp_list.cost);
-            res.deconfliction_plans.push_back(temp_wp_list);
+            // Back Home
+            newplan.waypoint_list.clear();
+            newwp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+            newwp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+            newwp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+            newwp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            newplan.waypoint_list.push_back(newwp);
+            newwp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+            newwp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+            newwp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+            newplan.waypoint_list.push_back(newwp);
+            newplan.maneuver_type = 3;
+            newplan.cost = pathLength(conflictive_operations.front().flight_plan); // TODO función que penalize volver a casa
+            newplan.riskiness = minDistanceToGeofence(newplan.waypoint_list, res_polygon);  // eEl risk se tiene que calcular como la minima distancia del nuevo flight plan hasta el UAS conflictivo.
+            res.deconfliction_plans.push_back(newplan);
             // Routes to landing spots
-                for (auto wp_land : conflictive_operations.front().landing_spots.waypoints) {
-                    auto current_wp = conflictive_operations.front().estimated_trajectory.waypoints.front();
-                    wp_land.stamp = ros::Time(current_wp.stamp.toSec() + 300.0);  // Add 5 minutes
-                    gauss_msgs::DeconflictionPlan temp_wp_list;
-                    temp_wp_list.waypoint_list.push_back(current_wp);
-                    temp_wp_list.waypoint_list.push_back(wp_land);
-                    temp_wp_list.cost = pointsDistance(current_wp, wp_land);
-                    temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
-                    temp_wp_list.uav_id = req.threat.uav_ids.front();
-                    temp_wp_list.maneuver_type = 5;
-                    res.deconfliction_plans.push_back(temp_wp_list);
-                }
-
+            auto current_wp = conflictive_operations.front().estimated_trajectory.waypoints.front();
+            auto current_index = closestIndex(conflictive_operations.front().flight_plan, current_wp);
+            ROS_INFO("closest_index = %ld", current_index);
+            for (auto wp_land : conflictive_operations.front().landing_spots.waypoints) {
+                auto current_wp = conflictive_operations.front().estimated_trajectory.waypoints.front();
+                wp_land.stamp = ros::Time(current_wp.stamp.toSec() + 300.0);  // Add 5 minutes
+                gauss_msgs::DeconflictionPlan temp_wp_list;
+                temp_wp_list.waypoint_list.push_back(current_wp);
+                temp_wp_list.waypoint_list.push_back(wp_land);
+                temp_wp_list.cost = pointsDistance(current_wp, wp_land) + pathLength(conflictive_operations.front().flight_plan, current_index);
+                temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon);
+                temp_wp_list.uav_id = req.threat.uav_ids.front();
+                temp_wp_list.maneuver_type = 5;
+                res.deconfliction_plans.push_back(temp_wp_list);
+            }
+            // temp_wp_list.waypoint_list.clear();
+            // temp_wp.x = conflictive_operations.front().estimated_trajectory.waypoints.front().x;
+            // temp_wp.y = conflictive_operations.front().estimated_trajectory.waypoints.front().y;
+            //temp_wp.z = conflictive_operations.front().estimated_trajectory.waypoints.front().z;
+            //temp_wp.stamp = conflictive_operations.front().estimated_trajectory.waypoints.front().stamp;
+            //temp_wp_list.waypoint_list.push_back(temp_wp);
+            //temp_wp.x = conflictive_operations.front().flight_plan.waypoints.front().x;
+            //temp_wp.y = conflictive_operations.front().flight_plan.waypoints.front().y;
+            //temp_wp.z = conflictive_operations.front().flight_plan.waypoints.front().z;
+            //temp_wp_list.waypoint_list.push_back(temp_wp);
+            //temp_wp_list.maneuver_type = 3;
+            //temp_wp_list.cost = pathLength(conflictive_operations.front().flight_plan);
+            //temp_wp_list.riskiness = minDistanceToGeofence(temp_wp_list.waypoint_list, res_polygon); //TODO Distancia minima a la geofence
+            //temp_wp_list.uav_id = req.threat.uav_ids.front();
+            //ROS_INFO("[Tactical] The cost of go back home is [%lf]", temp_wp_list.cost);
+            //res.deconfliction_plans.push_back(temp_wp_list);
+            // Routes to landing spots
+            //for (auto wp_land : conflictive_operations.front().landing_spots.waypoints) {
+            //        auto current_wp = conflictive_operations.front().estimated_trajectory.waypoints.front();
+            //        wp_land.stamp = ros::Time(current_wp.stamp.toSec() + 300.0);  // Add 5 minutes
+            //        gauss_msgs::DeconflictionPlan temp_wp_list;
+            //        temp_wp_list.waypoint_list.push_back(current_wp);
+            //        temp_wp_list.waypoint_list.push_back(wp_land);
+            //        temp_wp_list.cost = pointsDistance(current_wp, wp_land);
+            //        temp_wp_list.riskiness = calculateRiskiness(temp_wp_list);
+            //        temp_wp_list.uav_id = req.threat.uav_ids.front();
+            //        temp_wp_list.maneuver_type = 5;
+            //        res.deconfliction_plans.push_back(temp_wp_list);
             res.message = "Conflict solved";
             res.success = true;
 
