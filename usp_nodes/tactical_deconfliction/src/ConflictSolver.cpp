@@ -433,6 +433,23 @@ double ConflictSolver::pointsDistance(gauss_msgs::Waypoint &_p1, gauss_msgs::Way
     return distance;
 }
 
+double approximateMinDistance(const gauss_msgs::WaypointList& _path_a, const gauss_msgs::WaypointList& _path_b, double _time_th = 300) {
+    double min_squared_distance = std::numeric_limits<double>::infinity();
+    for (const auto& p: _path_a.waypoints) {
+        for (const auto& q: _path_b.waypoints) {
+            auto dt = q.stamp - p.stamp;
+            if (fabs(dt.toSec()) < _time_th) {
+                auto dx = q.x - p.x;
+                auto dy = q.y - p.y;
+                auto dz = q.z - p.z;
+                auto squared_distance = pow(dx, 2) + pow(dy, 2) + pow(dz, 2);
+                min_squared_distance = min(min_squared_distance, squared_distance);
+            }
+        }
+    }
+    return sqrt(min_squared_distance);
+}
+
 // Calcula la minima distancia a que pasa la trayectoria WaypointList de la Geofence (sólo considera las componentes x e y)
 double ConflictSolver::minDistanceToGeofence(std::vector<gauss_msgs::Waypoint> &_wp_list, geometry_msgs::Polygon &_polygon) {
     double min_distance = 1000000;
